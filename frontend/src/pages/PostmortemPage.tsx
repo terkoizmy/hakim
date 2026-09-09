@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import { type PostmortemResponse, type PricePoint } from '../types/contract';
-import { formatPct, formatRupiah } from '../utils/format';
-import { MemoView } from './MemoPage';
+import { formatPct, formatRupiah, formatDate } from '../utils/format';
 import { VerdictBadge } from './JournalPage';
-import { RichBadge } from './CourtroomPage';
-import { AlertIcon, ArrowDownIcon, ArrowUpIcon, BookIcon, ScaleIcon } from '../components/icons';
+import { Markdown } from '../utils/md';
+import { AlertIcon } from '../components/icons';
 
-const PCT_CLS = 'text-[clamp(30px,4.6vw,48px)] font-bold tracking-[-0.01em] leading-[1.1]';
+/** Label putusan dengan kata kunci dimiringkan — gaya h2 mock postmortem. */
+const VERDICT_H2: Record<string, { plain: string; em: string }> = {
+  layak_diteliti_lanjut: { plain: 'Layak ', em: 'diteliti lanjut' },
+  perlu_kehati_hatian: { plain: 'Perlu ', em: 'kehati-hatian' },
+  red_flag_berat: { plain: 'Red flag ', em: 'berat' },
+};
 
 export default function PostmortemPage() {
   const { memoId } = useParams<{ memoId: string }>();
@@ -36,154 +40,200 @@ export default function PostmortemPage() {
     };
   }, [memoId]);
 
-  if (state === 'loading') {
-    return (
-      <div className="container pt-8 pb-14">
-        <div className="flex flex-col gap-4">
-          <span className="skeleton w-[320px] h-[22px]" />
-          <div className="card card-pad skeleton h-[160px]" />
-          <div className="card card-pad skeleton h-[200px]" />
-        </div>
+  return (
+    <div className="pt-12">
+      <div className="mx-auto w-full max-w-[980px] px-6 pb-14">
+        {state === 'loading' ? (
+          <PmSkeleton />
+        ) : state === 'error' || !data ? (
+          <section
+            className="mx-auto my-10 max-w-[560px] rounded-[14px] border border-[#3a332a] bg-bg-2 p-8 text-center"
+            role="alert"
+          >
+            <span className="mx-auto mb-4 grid h-[50px] w-[50px] place-items-center rounded-pill border border-brass-600 bg-[rgba(201,162,74,0.08)] text-brass-300">
+              <AlertIcon size={22} />
+            </span>
+            <h2 className="mb-2 font-display text-[22px] font-medium text-text-0">
+              Rekap sidang tidak ditemukan
+            </h2>
+            <p className="text-[14px] text-text-2">{error}</p>
+            <div className="mt-5 flex justify-center">
+              <Link
+                to="/journal"
+                className="rounded-pill border border-brass-600 px-5 py-[10px] font-mono text-[12px] tracking-[0.5px] text-brass-400 transition-colors hover:bg-brass-500 hover:text-bg-1"
+              >
+                Kembali ke Jurnal
+              </Link>
+            </div>
+          </section>
+        ) : (
+          <PmView data={data} />
+        )}
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  if (state === 'error' || !data) {
-    return (
-      <div className="container pt-8 pb-14">
-        <section className="card p-8 text-center max-w-[560px] mx-auto my-10 anim-scale">
-          <span className="w-[50px] h-[50px] mx-auto mb-4 grid place-items-center rounded-pill text-brass-300 bg-[rgba(217,180,109,0.12)] border border-[color:rgba(217,180,109,0.34)]">
-            <AlertIcon size={22} />
-          </span>
-          <h2 className="text-[22px] mb-2">Rekap sidang tidak ditemukan</h2>
-          <p className="muted">{error}</p>
-          <div className="flex justify-center mt-4">
-            <Link to="/journal" className="btn btn-primary"><BookIcon size={16} /> Kembali ke Jurnal</Link>
-          </div>
-        </section>
-      </div>
-    );
-  }
-
+function PmView({ data }: { data: PostmortemResponse }) {
   const { memo, price_at_trial, price_now, change_pct, days_elapsed, price_series } = data;
   const up = (change_pct ?? 0) >= 0;
   const hasPrice = change_pct != null && price_now != null;
   const hasSeries = price_series != null && price_series.length >= 2;
+  const vLabel = VERDICT_H2[memo.verdict.category] ?? { plain: '', em: memo.verdict.category };
 
   return (
     <div>
-      <div className="container pt-8 pb-14">
-        <header className="flex justify-between items-start gap-5 mb-6 flex-wrap anim-in">
-          <div>
-            <div className="flex items-center gap-2 mb-2 small muted">
-              <Link to="/journal" className="text-text-2 hover:text-brass-300">← Jurnal Sidang</Link>
-              <span className="text-text-3">·</span>
-              <span className="font-mono">{memo.memo_id}</span>
-            </div>
-            <h1 className="text-[clamp(26px,4vw,40px)]">
-              Rekap Sidang <span className="text-brass-300 font-mono">{memo.ticker}</span>
-            </h1>
-            <p className="muted">{memo.company_name}</p>
-          </div>
-          <div className="flex gap-3 pt-2 flex-wrap">
+      <nav className="anim-in mb-[22px] font-mono text-[12px] uppercase tracking-[1px] text-text-3">
+        <Link to="/journal" className="text-brass-500 transition-colors hover:text-brass-300">
+          Jurnal Sidang
+        </Link>
+        <span className="mx-[6px]">/</span>
+        <span>Post-mortem</span>
+      </nav>
+
+      {/* ---------- HEAD ---------- */}
+      <header className="anim-in mb-[30px] flex flex-wrap items-end justify-between gap-5 border-b border-[#3a332a] pb-[26px]">
+        <div>
+          <p className="mb-[10px] font-mono text-[11px] uppercase tracking-[2px] text-brass-500">
+            Evaluasi Putusan
+          </p>
+          <h1 className="font-display text-[clamp(30px,4.5vw,44px)] font-medium leading-[1.1] text-text-0">
+            {memo.ticker}
+            <em className="not-italic text-brass-300">.</em>{' '}
+            <span className="text-[0.55em] text-text-2">{memo.company_name}</span>
+          </h1>
+          <div className="mt-[10px] flex flex-wrap items-center gap-[10px] text-[13.5px] text-text-2">
+            <span>
+              Putusan <span className="font-mono text-text-0">{formatDate(memo.created_at)}</span>
+            </span>
             <VerdictBadge category={memo.verdict.category} />
-            <RichBadge richness={memo.info_richness} />
           </div>
-        </header>
-
-        {/* Grafik harga — garis sejak memo, penanda vertikal di tanggal putusan */}
-        <section className="card card-pad anim-in-slow mb-6">
-          <div className="flex justify-between items-baseline gap-4 flex-wrap mb-4">
-            <h2 className="section-title">Perjalanan <em className="italic text-brass-300">harga</em></h2>
-            <span className="tiny muted font-mono">ARSIP · BUKAN REAL-TIME</span>
-          </div>
-          {hasSeries ? (
-            <PostmortemChart points={price_series!} verdictDate={memo.created_at} />
-          ) : (
-            <p className="py-6 text-center muted">
-              Seri harga belum tersedia — butuh setidaknya dua titik sejak memorandum untuk ticker ini.
-            </p>
-          )}
-        </section>
-
-        {/* Kartu perubahan harga */}
-        <section className="card card-pad anim-in-slow grid grid-cols-[1.2fr_1fr] gap-6 items-center mb-6 bg-[linear-gradient(150deg,rgba(217,180,109,0.08),var(--bg-2)_60%)] max-[980px]:grid-cols-1">
-          {hasPrice ? (
-            <>
-              <div className="flex items-center gap-5">
-                <div className="w-[58px] h-[58px] flex-none grid place-items-center rounded-lg">
-                  {up ? <ArrowUpIcon size={26} /> : <ArrowDownIcon size={26} />}
-                </div>
-                <div>
-                  <div className="tiny muted uppercase tracking-[0.06em]">Pergerakan sejak memorandum</div>
-                  <div className={`font-mono ${PCT_CLS} ${up ? 'up' : 'down'}`}>{formatPct(change_pct!)}</div>
-                  <div className="muted small">
-                    Sisi pembeli vs pembeli — perkiraan, bukan nasihat.
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-4 justify-end max-[980px]:justify-start">
-                <PriceCol label="Harga saat sidang" value={price_at_trial != null ? formatRupiah(price_at_trial) : '—'} />
-                <PriceCol label="Harga hari ini" value={formatRupiah(price_now!)} tone={up ? 'up' : 'down'} />
-                <PriceCol label="Hari berlalu" value={`${days_elapsed} hari`} />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-5">
-                <div className="w-[58px] h-[58px] flex-none grid place-items-center rounded-lg text-text-2 bg-bg-3 border border-line-1"><ScaleIcon size={22} /></div>
-                <div>
-                  <div className="tiny muted uppercase tracking-[0.06em]">Pergerakan sejak memorandum</div>
-                  <div className={`font-mono ${PCT_CLS}`}>Belum tersedia</div>
-                  <div className="muted small">
-                    Data harga saat ini belum dapat diambil — bukan kesalahan memo.
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-4 justify-end max-[980px]:justify-start">
-                <PriceCol label="Harga saat sidang" value={price_at_trial != null ? formatRupiah(price_at_trial) : '—'} />
-                <PriceCol label="Harga hari ini" value="—" />
-                <PriceCol label="Hari berlalu" value={`${days_elapsed} hari`} />
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* Ringkasan keputusan */}
-        <section className="card card-pad anim-in flex justify-between items-center gap-4 mb-8 flex-wrap">
-          <div>
-            <span className="tiny muted font-mono">PUTUSAN SAAT ITU</span>
-            <h2 className="text-[19px]">{memo.verdict.category === 'layak_diteliti_lanjut' ? 'Layak diteliti lanjut' : memo.verdict.category === 'perlu_kehati_hatian' ? 'Perlu kehati-hatian' : 'Red flag berat'}</h2>
-          </div>
-          <div className="muted small">
-            Post-mortem membandingkan arah yang benar dari komite, bukan presisi angka.
-          </div>
-        </section>
-
-        <MemoView memo={memo} />
-
-        <div className="flex items-center justify-center my-6">
-          <Link to="/journal" className="btn btn-ghost"><BookIcon size={16} /> Ke Jurnal Semua Sidang</Link>
         </div>
-      </div>
+      </header>
+
+      {/* ---------- CHART ---------- */}
+      <section className="anim-in mb-[30px] rounded-[14px] border border-[#3a332a] bg-bg-2 px-[22px] pb-[18px] pt-[22px]">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-4">
+          <h2 className="font-display text-[19px] font-medium text-text-0">
+            Perjalanan <em className="italic text-brass-300">harga</em>
+          </h2>
+          <span className="font-mono text-[11px] tracking-[0.5px] text-text-3">
+            ARSIP · BUKAN REAL-TIME
+          </span>
+        </div>
+        {hasSeries ? (
+          <PostmortemChart points={price_series!} verdictDate={memo.created_at} />
+        ) : (
+          <p className="rounded-[10px] border border-dashed border-[#3a332a] px-4 py-6 text-center text-[13px] text-text-2">
+            Seri harga belum tersedia — butuh setidaknya dua titik sejak memorandum untuk ticker ini.
+          </p>
+        )}
+      </section>
+
+      {/* ---------- SUMMARY ROW ---------- */}
+      <section className="anim-in mb-[30px] grid grid-cols-1 gap-px overflow-hidden rounded-[14px] border border-[#3a332a] bg-[#2a251e] min-[640px]:grid-cols-3">
+        <SumCell
+          label="Harga saat putusan"
+          value={price_at_trial != null ? formatRupiah(price_at_trial) : '—'}
+          sub={formatDate(memo.created_at)}
+        />
+        <SumCell
+          label="Harga terakhir"
+          value={price_now != null ? formatRupiah(price_now) : '—'}
+          sub="arsip terbaru"
+        />
+        <SumCell
+          label="Selisih"
+          value={hasPrice ? formatPct(change_pct!) : '—'}
+          tone={hasPrice ? (up ? 'up' : 'down') : undefined}
+          sub={days_elapsed != null ? `sejak putusan · ${days_elapsed} hari` : 'sejak putusan'}
+        />
+      </section>
+
+      {/* ---------- OLD VERDICT CARD ---------- */}
+      <section className="anim-in rounded-[14px] border border-[#3a332a] bg-bg-2 p-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <span className="font-mono text-[10.5px] uppercase tracking-[1.5px] text-brass-500">
+            Putusan Komite · {formatDate(memo.created_at)}
+          </span>
+          <Link
+            to={`/memo/${memo.memo_id}`}
+            className="font-mono text-[11px] uppercase tracking-[1px] text-brass-500 transition-colors hover:text-brass-300"
+          >
+            Memorandum lengkap →
+          </Link>
+        </div>
+        <h2 className="mb-[6px] font-display text-[22px] font-medium text-text-0">
+          {vLabel.plain}
+          <em className="italic text-brass-300">{vLabel.em}</em>
+        </h2>
+        <div className="max-w-[62ch] text-[14.5px] leading-[1.6] text-text-2 [&>*:last-child]:mb-0 [&_p]:mb-0">
+          <Markdown source={memo.verdict.rationale_md} />
+        </div>
+        {memo.verdict.verification_questions.length > 0 && (
+          <div className="mt-[18px] flex flex-wrap">
+            {memo.verdict.verification_questions.map((q) => (
+              <span
+                key={q}
+                className="mb-[6px] mr-[6px] inline-block rounded-pill border border-brass-600 bg-[rgba(201,162,74,0.05)] px-3 py-[5px] font-mono text-[11px] text-brass-500"
+              >
+                {q}
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
 
-function PriceCol({ label, value, tone }: { label: string; value: string; tone?: 'up' | 'down' }) {
+/** Sel ringkasan gaya .sum mock — label mono faint, nilai mono 22px, sub kecil. */
+function SumCell({
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: 'up' | 'down';
+}) {
   return (
-    <div className="flex flex-col gap-[2px] pl-5 border-l border-line-1">
-      <span className="tiny muted uppercase tracking-[0.06em]">{label}</span>
-      <span className={`font-mono text-[18px] font-semibold text-text-0 ${tone ?? ''}`}>{value}</span>
+    <div className="bg-bg-2 px-5 py-[18px]">
+      <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">
+        {label}
+      </div>
+      <div
+        className={`font-mono text-[22px] font-medium tabular-nums ${
+          tone === 'up' ? 'text-[#7fb069]' : tone === 'down' ? 'text-[#c96a5a]' : 'text-text-0'
+        }`}
+      >
+        {value}
+      </div>
+      {sub && <div className="mt-1 text-[12px] text-text-2">{sub}</div>}
     </div>
   );
 }
 
-const PM_W = 900;
-const PM_H = 260;
-const PM_PAD_X = 10;
-const PM_PAD_TOP = 30;
-const PM_PAD_BOTTOM = 30;
+function PmSkeleton() {
+  return (
+    <div className="flex flex-col gap-[30px]">
+      <span className="skeleton h-[120px] w-full" />
+      <span className="skeleton h-[300px] w-full" />
+      <span className="skeleton h-[110px] w-full" />
+      <span className="skeleton h-[180px] w-full" />
+    </div>
+  );
+}
+
+// Mock postmortem: viewBox 900x260, gridline tetap di 40/130/220,
+// label min/max faint di kiri, penanda putusan dashed + titik brass-soft.
+const W = 900;
+const H = 260;
+const TOP = 40;
+const MID = 130;
+const BOT = 220;
 
 /** Grafik harga post-mortem: garis brass + area, penanda vertikal di tanggal putusan. */
 function PostmortemChart({ points, verdictDate }: { points: PricePoint[]; verdictDate: string }) {
@@ -191,65 +241,88 @@ function PostmortemChart({ points, verdictDate }: { points: PricePoint[]; verdic
   const min = Math.min(...closes);
   const max = Math.max(...closes);
   const span = max - min || Math.max(1, max * 0.01);
-  const innerW = PM_W - PM_PAD_X * 2;
-  const innerH = PM_H - PM_PAD_TOP - PM_PAD_BOTTOM;
 
-  const x = (i: number) => PM_PAD_X + (innerW * i) / (points.length - 1);
-  const y = (v: number) => PM_PAD_TOP + innerH * (1 - (v - min) / span);
+  const x = (i: number) => (W * i) / (points.length - 1);
+  const y = (v: number) => 44 + (206 - 44) * (1 - (v - min) / span);
 
   const line = points
     .map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.close).toFixed(1)}`)
     .join(' ');
-  const area = `${line} L${x(points.length - 1).toFixed(1)},${PM_PAD_TOP + innerH} L${PM_PAD_X},${PM_PAD_TOP + innerH} Z`;
+  const area = `${line} L${W},${BOT} L0,${BOT} Z`;
 
   // Penanda putusan: titik terdekat dengan tanggal memo.
   const vIdx = nearestIndex(points, verdictDate);
   const vX = x(vIdx);
   const vY = y(points[vIdx].close);
+  // Label di kanan penanda; bila terlalu mepet tepi, balik ke kiri.
+  const flip = vIdx > (points.length - 1) * 0.72;
 
   const first = points[0];
-  const last = points[points.length - 1];
 
   return (
     <svg
-      className="w-full h-[260px] block overflow-visible max-[640px]:h-[220px]"
-      viewBox={`0 0 ${PM_W} ${PM_H}`}
+      className="block h-[260px] w-full overflow-visible max-[640px]:h-[220px]"
+      viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label={`Grafik harga ${first.date} sampai ${last.date} dengan penanda tanggal putusan`}
+      aria-label={`Grafik harga ${first.date} sampai ${points[points.length - 1].date} dengan penanda tanggal putusan`}
       preserveAspectRatio="none"
     >
-      <defs>
-        <linearGradient id="pm-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(217,180,109,0.18)" />
-          <stop offset="100%" stopColor="rgba(217,180,109,0.02)" />
-        </linearGradient>
-      </defs>
+      {/* gridline tetap — dekorasi posisi mock */}
+      {[TOP, MID, BOT].map((gy) => (
+        <line key={gy} stroke="#2a251e" strokeWidth={1} x1={0} y1={gy} x2={W} y2={gy} />
+      ))}
 
-      <line className="stroke-line-1 [stroke-width:1]" x1={PM_PAD_X} y1={y(max)} x2={PM_W - PM_PAD_X} y2={y(max)} />
-      <line className="stroke-line-1 [stroke-width:1]" x1={PM_PAD_X} y1={y(min)} x2={PM_W - PM_PAD_X} y2={y(min)} />
-      <text className="font-mono text-[10.5px] fill-text-3" x={PM_PAD_X + 2} y={y(max) - 6}>
-        {fmt(max)}
+      <path d={area} fill="rgba(201,162,74,0.08)" />
+      <path
+        d={line}
+        fill="none"
+        stroke="#c9a24a"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* penanda putusan */}
+      <line
+        stroke="#e0c27a"
+        strokeWidth={1.5}
+        strokeDasharray="4 4"
+        x1={vX}
+        y1={20}
+        x2={vX}
+        y2={240}
+      />
+      <circle cx={vX} cy={vY} r={4} fill="#e0c27a" />
+      <text
+        className="font-mono text-[10.5px]"
+        fill="#e0c27a"
+        x={flip ? vX - 12 : vX + 12}
+        y={vY - 8}
+        textAnchor={flip ? 'end' : 'start'}
+      >
+        Rp {fmt(points[vIdx].close)}
       </text>
-      <text className="font-mono text-[10.5px] fill-text-3" x={PM_PAD_X + 2} y={y(min) - 6}>
-        {fmt(min)}
-      </text>
-
-      <path d={area} fill="url(#pm-fill)" />
-      <path d={line} className="fill-none stroke-brass-400 [stroke-width:2] [stroke-linecap:round] [stroke-linejoin:round]" />
-
-      <line className="stroke-brass-300 [stroke-width:1.5] [stroke-dasharray:4_4]" x1={vX} y1={PM_PAD_TOP - 8} x2={vX} y2={PM_H - PM_PAD_BOTTOM + 8} />
-      <circle className="fill-brass-300" cx={vX} cy={vY} r="4" />
-      <text className="font-mono text-[10px] fill-brass-300 tracking-[0.5px]" x={vX + 8} y={vY - 8}>
+      <text
+        className="font-mono text-[10px] tracking-[0.5px]"
+        fill="#e0c27a"
+        x={flip ? vX - 12 : vX + 12}
+        y={vY + 12}
+        textAnchor={flip ? 'end' : 'start'}
+      >
         PUTUSAN
       </text>
-      <text className="font-mono text-[10.5px] fill-brass-300" x={vX + 8} y={vY + 12}>
-        {fmt(points[vIdx].close)}
-      </text>
 
-      <text className="font-mono text-[10.5px] fill-text-3" x={PM_PAD_X} y={PM_H - 8}>
-        {fmtDate(first.date)}
+      {/* label nilai & axis */}
+      <text className="font-mono text-[10.5px]" fill="#6f675a" x={0} y={TOP - 6}>
+        Rp {fmt(max)}
       </text>
-      <text className="font-mono text-[10.5px] fill-text-3 [text-anchor:end]" x={PM_W - PM_PAD_X} y={PM_H - 8} textAnchor="end">
+      <text className="font-mono text-[10.5px]" fill="#6f675a" x={0} y={BOT - 6}>
+        Rp {fmt(min)}
+      </text>
+      <text className="font-mono text-[10.5px]" fill="#6f675a" x={0} y={255}>
+        {fmtDateShort(first.date)}
+      </text>
+      <text className="font-mono text-[10.5px]" fill="#6f675a" x={W} y={255} textAnchor="end">
         kini
       </text>
     </svg>
@@ -274,8 +347,9 @@ function fmt(v: number): string {
   return v.toLocaleString('id-ID', { maximumFractionDigits: 0 });
 }
 
-function fmtDate(iso: string): string {
+/** Bentuk pendek untuk axis — "09 Sep". */
+function fmtDateShort(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' });
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
 }
