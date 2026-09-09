@@ -1,0 +1,421 @@
+{
+  "_company_name": "Petrindo Jaya Kreasi Tbk",
+  "_current_price": 7900,
+  "company_report:CUAN:sections=financials,valuation,peers,management,ownership,dividend": {
+    "symbol": "CUAN",
+    "company_name": "Petrindo Jaya Kreasi Tbk",
+    "sector": "Energy",
+    "sub_sector": "Coal",
+    "market_cap": 250000000000000,
+    "market_cap_rank": 12,
+    "last_close_price": 8400,
+    "all_time_price": {
+      "ytd_high": 9800,
+      "ytd_low": 5200,
+      "52_w_high": 9800,
+      "52_w_low": 4800,
+      "all_time_high": 12000,
+      "all_time_low": 100
+    },
+    "valuation": {
+      "close_price": 8400,
+      "forward_pe": 8.4,
+      "intrinsic_value": 6100,
+      "historical_valuation": {
+        "2025": {
+          "pe": 6.2,
+          "pb": 1.8,
+          "pe_peer_avg": 14.1,
+          "pb_peer_avg": 1.5
+        }
+      }
+    },
+    "financials": {
+      "eps": 1000,
+      "historical_financials": {
+        "2025": {
+          "revenue": 30000000000000,
+          "net_income": 8000000000000,
+          "total_assets": 60000000000000,
+          "total_equity": 25000000000000,
+          "roe": 0.32,
+          "net_profit_margin": 0.27,
+          "debt_to_equity_ratio": 1.4
+        }
+      },
+      "yoy_quarter_earnings_growth": -0.18,
+      "yoy_quarter_revenue_growth": -0.12
+    },
+    "peers": {
+      "peers": [
+        {
+          "symbol": "ADRO",
+          "pe_ttm": 9.1,
+          "pb_mrq": 1.2,
+          "market_cap": 120000000000000,
+          "net_income": 15000000000000,
+          "total_revenue": 90000000000000
+        },
+        {
+          "symbol": "PTBA",
+          "pe_ttm": 7.4,
+          "pb_mrq": 1.1,
+          "market_cap": 60000000000000,
+          "net_income": 9000000000000,
+          "total_revenue": 40000000000000
+        },
+        {
+          "symbol": "ITMG",
+          "pe_ttm": 6.8,
+          "pb_mrq": 1.0,
+          "market_cap": 50000000000000,
+          "net_income": 8000000000000,
+          "total_revenue": 35000000000000
+        }
+      ]
+    },
+    "management": {
+      "key_executives": [
+        {
+          "name": "Michael",
+          "position": "President Director"
+        }
+      ]
+    },
+    "ownership": {
+      "major_shareholders": [
+        {
+          "name": "PT Kreasi Investama",
+          "share_percentage": 0.61
+        }
+      ],
+      "top_transactions": [
+        {
+          "date": "2026-08-28",
+          "type": "sell",
+          "name": "Institutional",
+          "value": -800000000000
+        }
+      ],
+      "institutional_transaction_flow": {
+        "net_flow": -600000000000,
+        "direction": "sell"
+      }
+    },
+    "dividend": {
+      "yield_ttm": 0.012,
+      "dividend_ttm": 100,
+      "payout_ratio": 0.2,
+      "last_ex_dividend_date": "2026-05-15"
+    }
+  },
+  "quarterly_financials:CUAN:n_quarters=4": {
+    "symbol": "CUAN",
+    "quarterly": [
+      {
+        "quarter": "Q2-2026",
+        "revenue": 7000000000000,
+        "net_income": 1800000000000,
+        "yoy_growth": -0.18
+      },
+      {
+        "quarter": "Q1-2026",
+        "revenue": 7500000000000,
+        "net_income": 2000000000000,
+        "yoy_growth": -0.1
+      },
+      {
+        "quarter": "Q4-2025",
+        "revenue": 8200000000000,
+        "net_income": 2300000000000,
+        "yoy_growth": 0.05
+      },
+      {
+        "quarter": "Q3-2025",
+        "revenue": 8500000000000,
+        "net_income": 2400000000000,
+        "yoy_growth": 0.12
+      }
+    ]
+  },
+  "revenue_segments:CUAN": {
+    "symbol": "CUAN",
+    "segments": [
+      {
+        "segment": "Penjualan Batubara",
+        "revenue": 26000000000000,
+        "share": 0.87
+      },
+      {
+        "segment": "Jasa Pertambangan",
+        "revenue": 4000000000000,
+        "share": 0.13
+      }
+    ]
+  },
+  "daily_transaction:CUAN": {
+    "symbol": "CUAN",
+    "data": [
+      {
+        "date": "2026-09-08",
+        "close": 8400,
+        "volume": 25000000,
+        "change_pct": 4.1
+      },
+      {
+        "date": "2026-09-01",
+        "close": 8069,
+        "volume": 18000000,
+        "change_pct": -2.5
+      },
+      {
+        "date": "2026-08-25",
+        "close": 8276,
+        "volume": 22000000,
+        "change_pct": 3.2
+      },
+      {
+        "date": "2026-08-18",
+        "close": 8019,
+        "volume": 15000000,
+        "change_pct": -1.8
+      },
+      {
+        "date": "2026-08-11",
+        "close": 8166,
+        "volume": 20000000,
+        "change_pct": 2.1
+      },
+      {
+        "date": "2026-08-04",
+        "close": 7998,
+        "volume": 16000000,
+        "change_pct": -3.0
+      },
+      {
+        "date": "2026-07-28",
+        "close": 8245,
+        "volume": 19000000,
+        "change_pct": 1.5
+      },
+      {
+        "date": "2026-07-21",
+        "close": 8123,
+        "volume": 14000000,
+        "change_pct": -2.2
+      },
+      {
+        "date": "2026-07-14",
+        "close": 8306,
+        "volume": 17000000,
+        "change_pct": 0.8
+      },
+      {
+        "date": "2026-07-07",
+        "close": 8240,
+        "volume": 15000000,
+        "change_pct": -1.1
+      },
+      {
+        "date": "2026-06-30",
+        "close": 8332,
+        "volume": 18000000,
+        "change_pct": 0.5
+      },
+      {
+        "date": "2026-06-16",
+        "close": 8290,
+        "volume": 16000000,
+        "change_pct": -0.4
+      }
+    ]
+  },
+  "index_daily:index=IDXCOMPOSITE": {
+    "index": "IDXCOMPOSITE",
+    "data": [
+      {
+        "date": "2026-09-08",
+        "close": 7200,
+        "change_pct": 0.3
+      },
+      {
+        "date": "2026-09-01",
+        "close": 7178,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-08-25",
+        "close": 7185,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-08-18",
+        "close": 7171,
+        "change_pct": -0.3
+      },
+      {
+        "date": "2026-08-11",
+        "close": 7193,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-08-04",
+        "close": 7186,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-07-28",
+        "close": 7200,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-07-21",
+        "close": 7186,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-07-14",
+        "close": 7193,
+        "change_pct": 0.0
+      },
+      {
+        "date": "2026-07-07",
+        "close": 7193,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-06-30",
+        "close": 7207,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-06-16",
+        "close": 7200,
+        "change_pct": 0.0
+      }
+    ]
+  },
+  "top_movers": {
+    "data": [
+      {
+        "symbol": "GOTO",
+        "change_pct": 12.5,
+        "close": 80
+      },
+      {
+        "symbol": "BREN",
+        "change_pct": -8.2,
+        "close": 5000
+      },
+      {
+        "symbol": "CUAN",
+        "change_pct": 4.1,
+        "close": 8400
+      }
+    ]
+  },
+  "top_brokers:CUAN": {
+    "symbol": "CUAN",
+    "top_buyers": [
+      {
+        "broker": "UBS Sekuritas",
+        "net_value": 400000000000,
+        "type": "institutional"
+      },
+      {
+        "broker": "CGS-CIMB",
+        "net_value": 250000000000,
+        "type": "institutional"
+      }
+    ],
+    "top_sellers": [
+      {
+        "broker": "Trimegah Sekuritas",
+        "net_value": -700000000000,
+        "type": "institutional"
+      },
+      {
+        "broker": "BNI Sekuritas",
+        "net_value": -300000000000,
+        "type": "institutional"
+      }
+    ]
+  },
+  "foreign_flow:CUAN": {
+    "symbol": "CUAN",
+    "net_foreign_flow": -450000000000,
+    "direction": "sell",
+    "period": "30d"
+  },
+  "filings:CUAN:symbol=CUAN": {
+    "symbol": "CUAN",
+    "filings": [
+      {
+        "date": "2026-08-10",
+        "type": "sell",
+        "name": "Direksi",
+        "shares": 120000,
+        "value": 1000000000
+      },
+      {
+        "date": "2026-07-22",
+        "type": "sell",
+        "name": "Pemegang Saham Utama",
+        "shares": 500000,
+        "value": 4200000000
+      }
+    ]
+  },
+  "suspensions:CUAN:symbol=CUAN": {
+    "symbol": "CUAN",
+    "suspensions": [
+      {
+        "date": "2025-11-14",
+        "reason": "Perubahan signifikan harga saham",
+        "status": "ended"
+      }
+    ]
+  },
+  "corporate_actions:CUAN": {
+    "symbol": "CUAN",
+    "corporate_actions": [
+      {
+        "date": "2026-05-15",
+        "type": "dividend",
+        "description": "Dividen tunai Rp100/saham"
+      },
+      {
+        "date": "2025-09-10",
+        "type": "rights_issue",
+        "description": "HMETD (rights issue) untuk ekspansi tambang"
+      }
+    ]
+  },
+  "screener:limit=10&order_by=symbol&where=symbol in ['CUAN']": {
+    "results": [
+      {
+        "symbol": "CUAN",
+        "company_name": "Petrindo Jaya Kreasi Tbk",
+        "free_float": 0.39,
+        "market_cap": 250000000000000,
+        "forward_pe": 8.4,
+        "yield_ttm": 0.012
+      }
+    ],
+    "pagination": {
+      "total_count": 1,
+      "showing": 1,
+      "limit": 10,
+      "offset": 0,
+      "has_next": false,
+      "has_previous": false
+    },
+    "llm_translation": {
+      "natural_query": "",
+      "translated_params": {
+        "where": "symbol in ['CUAN']"
+      },
+      "message": ""
+    }
+  }
+}

@@ -1,0 +1,588 @@
+{
+  "_company_name": "Perusahaan Tercatat IDX",
+  "_current_price": 5000,
+  "_listed_companies": [
+    {
+      "symbol": "BBCA",
+      "company_name": "Bank Central Asia Tbk"
+    },
+    {
+      "symbol": "CUAN",
+      "company_name": "Petrindo Jaya Kreasi Tbk"
+    },
+    {
+      "symbol": "BBRI",
+      "company_name": "Bank Rakyat Indonesia Tbk"
+    },
+    {
+      "symbol": "BMRI",
+      "company_name": "Bank Mandiri Tbk"
+    },
+    {
+      "symbol": "BBNI",
+      "company_name": "Bank Negara Indonesia Tbk"
+    },
+    {
+      "symbol": "TLKM",
+      "company_name": "Telkom Indonesia Tbk"
+    },
+    {
+      "symbol": "ASII",
+      "company_name": "Astra International Tbk"
+    },
+    {
+      "symbol": "GOTO",
+      "company_name": "GoTo Gojek Tokopedia Tbk"
+    },
+    {
+      "symbol": "BREN",
+      "company_name": "Barito Renewables Energy Tbk"
+    },
+    {
+      "symbol": "ANTM",
+      "company_name": "Aneka Tambang Tbk"
+    },
+    {
+      "symbol": "ADRO",
+      "company_name": "Alamtri Resources Indonesia Tbk"
+    },
+    {
+      "symbol": "PTBA",
+      "company_name": "Bukit Asam Tbk"
+    },
+    {
+      "symbol": "ITMG",
+      "company_name": "Indo Tambangraya Megah Tbk"
+    },
+    {
+      "symbol": "INCO",
+      "company_name": "Vale Indonesia Tbk"
+    },
+    {
+      "symbol": "MDKA",
+      "company_name": "Merdeka Copper Gold Tbk"
+    },
+    {
+      "symbol": "PGAS",
+      "company_name": "Perusahaan Gas Negara Tbk"
+    },
+    {
+      "symbol": "UNTR",
+      "company_name": "United Tractors Tbk"
+    },
+    {
+      "symbol": "ICBP",
+      "company_name": "Indofood CBP Sukses Makmur Tbk"
+    },
+    {
+      "symbol": "INDF",
+      "company_name": "Indofood Sukses Makmur Tbk"
+    },
+    {
+      "symbol": "KLBF",
+      "company_name": "Kalbe Farma Tbk"
+    },
+    {
+      "symbol": "GGRM",
+      "company_name": "Gudang Garam Tbk"
+    },
+    {
+      "symbol": "HMSP",
+      "company_name": "HM Sampoerna Tbk"
+    },
+    {
+      "symbol": "UNVR",
+      "company_name": "Unilever Indonesia Tbk"
+    },
+    {
+      "symbol": "SMGR",
+      "company_name": "Semen Indonesia Tbk"
+    },
+    {
+      "symbol": "INTP",
+      "company_name": "Indocement Tunggal Prakarsa Tbk"
+    },
+    {
+      "symbol": "WIKA",
+      "company_name": "Wijaya Karya Tbk"
+    },
+    {
+      "symbol": "PTPP",
+      "company_name": "PP Tbk"
+    },
+    {
+      "symbol": "ADHI",
+      "company_name": "Adhi Karya Tbk"
+    },
+    {
+      "symbol": "JSMR",
+      "company_name": "Jasa Marga Tbk"
+    },
+    {
+      "symbol": "EXCL",
+      "company_name": "XL Axiata Tbk"
+    },
+    {
+      "symbol": "ISAT",
+      "company_name": "Indosat Ooredoo Hutchison Tbk"
+    },
+    {
+      "symbol": "TOWR",
+      "company_name": "Sarana Menara Nusantara Tbk"
+    },
+    {
+      "symbol": "MTEL",
+      "company_name": "Dayamitra Telekomunikasi Tbk"
+    },
+    {
+      "symbol": "ESSA",
+      "company_name": "Surya Esa Perkasa Tbk"
+    },
+    {
+      "symbol": "MEDC",
+      "company_name": "Medco Energi Internasional Tbk"
+    },
+    {
+      "symbol": "ELSA",
+      "company_name": "Elnusa Tbk"
+    },
+    {
+      "symbol": "AKRA",
+      "company_name": "AKR Corporindo Tbk"
+    },
+    {
+      "symbol": "AMRT",
+      "company_name": "Sumber Alfaria Trijaya Tbk"
+    },
+    {
+      "symbol": "MAPI",
+      "company_name": "Mitra Adiperkasa Tbk"
+    },
+    {
+      "symbol": "ACES",
+      "company_name": "Ace Hardware Indonesia Tbk"
+    },
+    {
+      "symbol": "ERAA",
+      "company_name": "Erajaya Swasembada Tbk"
+    },
+    {
+      "symbol": "SIDO",
+      "company_name": "Industri Jamu dan Farmasi Sido Muncul Tbk"
+    },
+    {
+      "symbol": "CPIN",
+      "company_name": "Charoen Pokphand Indonesia Tbk"
+    },
+    {
+      "symbol": "JPFA",
+      "company_name": "Japfa Comfeed Indonesia Tbk"
+    },
+    {
+      "symbol": "MYOR",
+      "company_name": "Mayora Indah Tbk"
+    },
+    {
+      "symbol": "TINS",
+      "company_name": "Timah Tbk"
+    },
+    {
+      "symbol": "AALI",
+      "company_name": "Astra Agro Lestari Tbk"
+    },
+    {
+      "symbol": "LSIP",
+      "company_name": "PP London Sumatra Indonesia Tbk"
+    },
+    {
+      "symbol": "SMAR",
+      "company_name": "Sinar Mas Agro Resources Tbk"
+    }
+  ],
+  "company_report:__generic__:sections=financials,valuation,peers,management,ownership,dividend": {
+    "symbol": "GENERIC",
+    "company_name": "Perusahaan Tercatat IDX",
+    "sector": "Industrials",
+    "sub_sector": "General",
+    "market_cap": 50000000000000,
+    "market_cap_rank": 50,
+    "last_close_price": 5000,
+    "all_time_price": {
+      "ytd_high": 6000,
+      "ytd_low": 4000,
+      "52_w_high": 6200,
+      "52_w_low": 3800,
+      "all_time_high": 7000,
+      "all_time_low": 200
+    },
+    "valuation": {
+      "close_price": 5000,
+      "forward_pe": 12.0,
+      "intrinsic_value": 4800,
+      "historical_valuation": {
+        "2025": {
+          "pe": 11.0,
+          "pb": 1.5,
+          "pe_peer_avg": 13.0,
+          "pb_peer_avg": 1.8
+        }
+      }
+    },
+    "financials": {
+      "eps": 420,
+      "historical_financials": {
+        "2025": {
+          "revenue": 20000000000000,
+          "net_income": 2000000000000,
+          "total_assets": 40000000000000,
+          "total_equity": 15000000000000,
+          "roe": 0.13,
+          "net_profit_margin": 0.1,
+          "debt_to_equity_ratio": 1.1
+        }
+      },
+      "yoy_quarter_earnings_growth": 0.05,
+      "yoy_quarter_revenue_growth": 0.04
+    },
+    "peers": {
+      "peers": [
+        {
+          "symbol": "PEER1",
+          "pe_ttm": 13.0,
+          "pb_mrq": 1.8,
+          "market_cap": 40000000000000,
+          "net_income": 1500000000000,
+          "total_revenue": 15000000000000
+        },
+        {
+          "symbol": "PEER2",
+          "pe_ttm": 14.0,
+          "pb_mrq": 2.0,
+          "market_cap": 30000000000000,
+          "net_income": 1000000000000,
+          "total_revenue": 12000000000000
+        }
+      ]
+    },
+    "management": {
+      "key_executives": [
+        {
+          "name": "Direktur Utama",
+          "position": "President Director"
+        }
+      ]
+    },
+    "ownership": {
+      "major_shareholders": [
+        {
+          "name": "Pemegang Saham Pengendali",
+          "share_percentage": 0.55
+        }
+      ],
+      "top_transactions": [
+        {
+          "date": "2026-08-15",
+          "type": "buy",
+          "name": "Institutional",
+          "value": 100000000000
+        }
+      ],
+      "institutional_transaction_flow": {
+        "net_flow": 50000000000,
+        "direction": "buy"
+      }
+    },
+    "dividend": {
+      "yield_ttm": 0.015,
+      "dividend_ttm": 75,
+      "payout_ratio": 0.3,
+      "last_ex_dividend_date": "2026-04-10"
+    }
+  },
+  "quarterly_financials:__generic__:n_quarters=4": {
+    "symbol": "GENERIC",
+    "quarterly": [
+      {
+        "quarter": "Q2-2026",
+        "revenue": 5200000000000,
+        "net_income": 520000000000,
+        "yoy_growth": 0.05
+      },
+      {
+        "quarter": "Q1-2026",
+        "revenue": 5100000000000,
+        "net_income": 500000000000,
+        "yoy_growth": 0.04
+      },
+      {
+        "quarter": "Q4-2025",
+        "revenue": 5000000000000,
+        "net_income": 480000000000,
+        "yoy_growth": 0.03
+      },
+      {
+        "quarter": "Q3-2025",
+        "revenue": 4900000000000,
+        "net_income": 470000000000,
+        "yoy_growth": 0.02
+      }
+    ]
+  },
+  "revenue_segments:__generic__": {
+    "symbol": "GENERIC",
+    "segments": [
+      {
+        "segment": "Segmen Utama",
+        "revenue": 15000000000000,
+        "share": 0.75
+      },
+      {
+        "segment": "Segmen Pendukung",
+        "revenue": 5000000000000,
+        "share": 0.25
+      }
+    ]
+  },
+  "daily_transaction:__generic__": {
+    "symbol": "GENERIC",
+    "data": [
+      {
+        "date": "2026-09-08",
+        "close": 5000,
+        "volume": 8000000,
+        "change_pct": 0.4
+      },
+      {
+        "date": "2026-09-01",
+        "close": 4980,
+        "volume": 7000000,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-08-25",
+        "close": 4990,
+        "volume": 7500000,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-08-18",
+        "close": 4985,
+        "volume": 6500000,
+        "change_pct": -0.3
+      },
+      {
+        "date": "2026-08-11",
+        "close": 5000,
+        "volume": 7200000,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-08-04",
+        "close": 4990,
+        "volume": 6800000,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-07-28",
+        "close": 4995,
+        "volume": 7000000,
+        "change_pct": 0.0
+      },
+      {
+        "date": "2026-07-21",
+        "close": 4995,
+        "volume": 6600000,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-07-14",
+        "close": 5005,
+        "volume": 7100000,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-07-07",
+        "close": 5000,
+        "volume": 6900000,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-06-30",
+        "close": 5005,
+        "volume": 7000000,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-06-16",
+        "close": 5000,
+        "volume": 6800000,
+        "change_pct": 0.0
+      }
+    ]
+  },
+  "index_daily:index=IDXCOMPOSITE": {
+    "index": "IDXCOMPOSITE",
+    "data": [
+      {
+        "date": "2026-09-08",
+        "close": 7200,
+        "change_pct": 0.3
+      },
+      {
+        "date": "2026-09-01",
+        "close": 7178,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-08-25",
+        "close": 7185,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-08-18",
+        "close": 7171,
+        "change_pct": -0.3
+      },
+      {
+        "date": "2026-08-11",
+        "close": 7193,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-08-04",
+        "close": 7186,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-07-28",
+        "close": 7200,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-07-21",
+        "close": 7186,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-07-14",
+        "close": 7193,
+        "change_pct": 0.0
+      },
+      {
+        "date": "2026-07-07",
+        "close": 7193,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-06-30",
+        "close": 7207,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-06-16",
+        "close": 7200,
+        "change_pct": 0.0
+      }
+    ]
+  },
+  "top_movers": {
+    "data": [
+      {
+        "symbol": "GOTO",
+        "change_pct": 12.5,
+        "close": 80
+      },
+      {
+        "symbol": "BREN",
+        "change_pct": -8.2,
+        "close": 5000
+      },
+      {
+        "symbol": "CUAN",
+        "change_pct": 4.1,
+        "close": 8400
+      }
+    ]
+  },
+  "top_brokers:__generic__": {
+    "symbol": "GENERIC",
+    "top_buyers": [
+      {
+        "broker": "Mirae Sekuritas",
+        "net_value": 150000000000,
+        "type": "institutional"
+      },
+      {
+        "broker": "Mandiri Sekuritas",
+        "net_value": 100000000000,
+        "type": "institutional"
+      }
+    ],
+    "top_sellers": [
+      {
+        "broker": "RHB Sekuritas",
+        "net_value": -80000000000,
+        "type": "institutional"
+      }
+    ]
+  },
+  "foreign_flow:__generic__": {
+    "symbol": "GENERIC",
+    "net_foreign_flow": 30000000000,
+    "direction": "buy",
+    "period": "30d"
+  },
+  "corporate_actions:__generic__": {
+    "symbol": "GENERIC",
+    "corporate_actions": [
+      {
+        "date": "2026-04-10",
+        "type": "dividend",
+        "description": "Dividen tunai Rp75/saham"
+      }
+    ]
+  },
+  "screener:limit=10&order_by=symbol&where=symbol in ['__generic__']": {
+    "results": [
+      {
+        "symbol": "GENERIC",
+        "company_name": "Perusahaan Tercatat IDX",
+        "free_float": 0.45,
+        "market_cap": 50000000000000,
+        "forward_pe": 12.0,
+        "yield_ttm": 0.015
+      }
+    ],
+    "pagination": {
+      "total_count": 1,
+      "showing": 1,
+      "limit": 10,
+      "offset": 0,
+      "has_next": false,
+      "has_previous": false
+    },
+    "llm_translation": {
+      "natural_query": "",
+      "translated_params": {
+        "where": "symbol in ['GENERIC']"
+      },
+      "message": ""
+    }
+  },
+  "filings:__generic__:symbol=__generic__": {
+    "symbol": "GENERIC",
+    "filings": [
+      {
+        "date": "2026-07-10",
+        "type": "buy",
+        "name": "Direksi",
+        "shares": 10000,
+        "value": 50000000
+      }
+    ]
+  },
+  "suspensions:__generic__:symbol=__generic__": {
+    "symbol": "GENERIC",
+    "suspensions": []
+  }
+}

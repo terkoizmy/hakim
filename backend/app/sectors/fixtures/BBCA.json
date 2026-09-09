@@ -1,0 +1,397 @@
+{
+  "_company_name": "Bank Central Asia Tbk",
+  "_current_price": 8200,
+  "company_report:BBCA:sections=financials,valuation,peers,management,ownership,dividend": {
+    "symbol": "BBCA",
+    "company_name": "Bank Central Asia Tbk",
+    "sector": "Financials",
+    "sub_sector": "Banks",
+    "market_cap": 1035000000000000,
+    "market_cap_rank": 1,
+    "last_close_price": 8400,
+    "all_time_price": {
+      "ytd_high": 10500,
+      "ytd_low": 7200,
+      "52_w_high": 10500,
+      "52_w_low": 7000,
+      "all_time_high": 11000,
+      "all_time_low": 100
+    },
+    "valuation": {
+      "close_price": 8400,
+      "forward_pe": 8.4,
+      "intrinsic_value": 9200,
+      "historical_valuation": {
+        "2025": {
+          "pe": 7.9,
+          "pb": 4.2,
+          "pe_peer_avg": 14.1,
+          "pb_peer_avg": 2.3
+        }
+      }
+    },
+    "financials": {
+      "eps": 1000,
+      "historical_financials": {
+        "2025": {
+          "revenue": 90000000000000,
+          "net_income": 55000000000000,
+          "total_assets": 1500000000000000,
+          "total_equity": 250000000000000,
+          "roe": 0.22,
+          "net_profit_margin": 0.61,
+          "debt_to_equity_ratio": 0.8
+        }
+      },
+      "yoy_quarter_earnings_growth": 0.12,
+      "yoy_quarter_revenue_growth": 0.08
+    },
+    "peers": {
+      "peers": [
+        {
+          "symbol": "BBRI",
+          "pe_ttm": 12.3,
+          "pb_mrq": 2.1,
+          "market_cap": 700000000000000,
+          "net_income": 40000000000000,
+          "total_revenue": 180000000000000
+        },
+        {
+          "symbol": "BMRI",
+          "pe_ttm": 10.5,
+          "pb_mrq": 2.4,
+          "market_cap": 600000000000000,
+          "net_income": 35000000000000,
+          "total_revenue": 150000000000000
+        }
+      ]
+    },
+    "management": {
+      "key_executives": [
+        {
+          "name": "Jahja Setiaatmadja",
+          "position": "President Director"
+        }
+      ]
+    },
+    "ownership": {
+      "major_shareholders": [
+        {
+          "name": "PT Dwimuria Investama Andalan",
+          "share_percentage": 0.54
+        }
+      ],
+      "top_transactions": [
+        {
+          "date": "2026-08-20",
+          "type": "buy",
+          "name": "Institutional",
+          "value": 1200000000000
+        }
+      ],
+      "institutional_transaction_flow": {
+        "net_flow": 500000000000,
+        "direction": "buy"
+      }
+    },
+    "dividend": {
+      "yield_ttm": 0.021,
+      "dividend_ttm": 176,
+      "payout_ratio": 0.45,
+      "last_ex_dividend_date": "2026-03-20"
+    }
+  },
+  "quarterly_financials:BBCA:n_quarters=4": {
+    "symbol": "BBCA",
+    "quarterly": [
+      {
+        "quarter": "Q2-2026",
+        "revenue": 24000000000000,
+        "net_income": 15000000000000,
+        "yoy_growth": 0.12
+      },
+      {
+        "quarter": "Q1-2026",
+        "revenue": 23000000000000,
+        "net_income": 14000000000000,
+        "yoy_growth": 0.1
+      },
+      {
+        "quarter": "Q4-2025",
+        "revenue": 22000000000000,
+        "net_income": 13000000000000,
+        "yoy_growth": 0.09
+      },
+      {
+        "quarter": "Q3-2025",
+        "revenue": 21000000000000,
+        "net_income": 12500000000000,
+        "yoy_growth": 0.08
+      }
+    ]
+  },
+  "revenue_segments:BBCA": {
+    "symbol": "BBCA",
+    "segments": [
+      {
+        "segment": "Kredit",
+        "revenue": 60000000000000,
+        "share": 0.67
+      },
+      {
+        "segment": "Dana Pihak Ketiga",
+        "revenue": 30000000000000,
+        "share": 0.33
+      }
+    ]
+  },
+  "daily_transaction:BBCA": {
+    "symbol": "BBCA",
+    "data": [
+      {
+        "date": "2026-09-08",
+        "close": 8400,
+        "volume": 12000000,
+        "change_pct": 0.5
+      },
+      {
+        "date": "2026-09-01",
+        "close": 8358,
+        "volume": 9000000,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-08-25",
+        "close": 8375,
+        "volume": 11000000,
+        "change_pct": 0.3
+      },
+      {
+        "date": "2026-08-18",
+        "close": 8350,
+        "volume": 8000000,
+        "change_pct": -0.4
+      },
+      {
+        "date": "2026-08-11",
+        "close": 8384,
+        "volume": 10000000,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-08-04",
+        "close": 8376,
+        "volume": 9500000,
+        "change_pct": -0.3
+      },
+      {
+        "date": "2026-07-28",
+        "close": 8401,
+        "volume": 10500000,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-07-21",
+        "close": 8384,
+        "volume": 8500000,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-07-14",
+        "close": 8392,
+        "volume": 9200000,
+        "change_pct": 0.0
+      },
+      {
+        "date": "2026-07-07",
+        "close": 8392,
+        "volume": 8800000,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-06-30",
+        "close": 8409,
+        "volume": 10000000,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-06-16",
+        "close": 8400,
+        "volume": 9000000,
+        "change_pct": 0.0
+      }
+    ]
+  },
+  "index_daily:index=IDXCOMPOSITE": {
+    "index": "IDXCOMPOSITE",
+    "data": [
+      {
+        "date": "2026-09-08",
+        "close": 7200,
+        "change_pct": 0.3
+      },
+      {
+        "date": "2026-09-01",
+        "close": 7178,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-08-25",
+        "close": 7185,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-08-18",
+        "close": 7171,
+        "change_pct": -0.3
+      },
+      {
+        "date": "2026-08-11",
+        "close": 7193,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-08-04",
+        "close": 7186,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-07-28",
+        "close": 7200,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-07-21",
+        "close": 7186,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-07-14",
+        "close": 7193,
+        "change_pct": 0.0
+      },
+      {
+        "date": "2026-07-07",
+        "close": 7193,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-06-30",
+        "close": 7207,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-06-16",
+        "close": 7200,
+        "change_pct": 0.0
+      }
+    ]
+  },
+  "top_movers": {
+    "data": [
+      {
+        "symbol": "GOTO",
+        "change_pct": 12.5,
+        "close": 80
+      },
+      {
+        "symbol": "BREN",
+        "change_pct": -8.2,
+        "close": 5000
+      },
+      {
+        "symbol": "CUAN",
+        "change_pct": 4.1,
+        "close": 8400
+      }
+    ]
+  },
+  "top_brokers:BBCA": {
+    "symbol": "BBCA",
+    "top_buyers": [
+      {
+        "broker": "Mirae Sekuritas",
+        "net_value": 500000000000,
+        "type": "institutional"
+      },
+      {
+        "broker": "Mandiri Sekuritas",
+        "net_value": 300000000000,
+        "type": "institutional"
+      }
+    ],
+    "top_sellers": [
+      {
+        "broker": "RHB Sekuritas",
+        "net_value": -200000000000,
+        "type": "institutional"
+      }
+    ]
+  },
+  "foreign_flow:BBCA": {
+    "symbol": "BBCA",
+    "net_foreign_flow": 150000000000,
+    "direction": "buy",
+    "period": "30d"
+  },
+  "filings:BBCA:symbol=BBCA": {
+    "symbol": "BBCA",
+    "filings": [
+      {
+        "date": "2026-07-15",
+        "type": "buy",
+        "name": "Direksi",
+        "shares": 5000,
+        "value": 40000000
+      },
+      {
+        "date": "2026-06-10",
+        "type": "sell",
+        "name": "Komisaris",
+        "shares": 2000,
+        "value": 16000000
+      }
+    ]
+  },
+  "suspensions:BBCA:symbol=BBCA": {
+    "symbol": "BBCA",
+    "suspensions": []
+  },
+  "corporate_actions:BBCA": {
+    "symbol": "BBCA",
+    "corporate_actions": [
+      {
+        "date": "2026-03-20",
+        "type": "dividend",
+        "description": "Dividen tunai Rp176/saham"
+      }
+    ]
+  },
+  "screener:limit=10&order_by=symbol&where=symbol in ['BBCA']": {
+    "results": [
+      {
+        "symbol": "BBCA",
+        "company_name": "Bank Central Asia Tbk",
+        "free_float": 0.46,
+        "market_cap": 1035000000000000,
+        "forward_pe": 8.4,
+        "yield_ttm": 0.021
+      }
+    ],
+    "pagination": {
+      "total_count": 1,
+      "showing": 1,
+      "limit": 10,
+      "offset": 0,
+      "has_next": false,
+      "has_previous": false
+    },
+    "llm_translation": {
+      "natural_query": "",
+      "translated_params": {
+        "where": "symbol in ['BBCA']"
+      },
+      "message": ""
+    }
+  }
+}
