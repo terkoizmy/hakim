@@ -67,6 +67,10 @@ class TrialContext:
     llm: LLMClient
     settings: Settings
     shared: dict[str, Any] = field(default_factory=dict)
+    # Real Sectors calls made during the trial — feeds the memo's audit table
+    # (memo.tool_calls). The judge's own source_endpoint strings are prose and
+    # are NOT used for the audit.
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -104,17 +108,16 @@ async def _run_analyst(ctx: TrialContext, spec: AnalystSpec, evidence_counter: l
     try:
         gathered = await spec.gather(ctx)
         for tc in gathered.tool_calls:
-            await ctx.bus.publish(
-                ctx.trial_id,
-                "agent_tool_call",
-                {
-                    "agent_id": spec.agent_id,
-                    "tool": tc.tool,
-                    "endpoint": tc.endpoint,
-                    "params_summary": tc.params_summary,
-                    "cache": tc.cache,
-                },
-            )
+            record = {
+                "agent_id": spec.agent_id,
+                "tool": tc.tool,
+                "endpoint": tc.endpoint,
+                "params_summary": tc.params_summary,
+                "cache": tc.cache,
+                "retrieved_at": now_iso(),
+            }
+            ctx.tool_calls.append(record)
+            await ctx.bus.publish(ctx.trial_id, "agent_tool_call", record)
         evidence = spec.extract(gathered.data, ctx.ticker)
         for ev in evidence:
             evidence_counter[0] += 1
@@ -325,7 +328,7 @@ async def _produce_memo(
             [s.__dict__ for s in summaries], evidence_pool,
         )
 
-    memo_data = _finalize_memo(memo_data, base)
+    memo_data = _finalize_memo(memo_data, base, ctx.tool_calls)
     try:
         return MemoJSON(**memo_data)
     except ValidationError as first_err:
@@ -342,14 +345,22 @@ async def _produce_memo(
                 }
             )
             content = await ctx.llm.chat(ctx.settings.model_judge, repair, json_mode=True, max_tokens=8000)
-            memo_data = _finalize_memo(_parse_json(content), base)
+            memo_data = _finalize_memo(_parse_json(content), base, ctx.tool_calls)
             return MemoJSON(**memo_data)
         except Exception as exc:
             raise TrialFailed("llm_error", f"Memo invalid setelah repair: {exc}", phase="verdict")
 
 
-def _finalize_memo(data: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
-    """Fill required fields, rebuild citations from key_facts, drop dangling cites."""
+def _finalize_memo(
+    data: dict[str, Any], base: dict[str, Any], tool_calls: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Fill required fields, rebuild citations from key_facts, drop dangling cites.
+
+    `tool_calls` are the REAL Sectors calls recorded during the trial — they
+    become memo.tool_calls (the audit table). Fact citations stay keyed to
+    key_facts; their cache flag is upgraded to `hit` when an identical real
+    call was served from cache.
+    """
     data.update(base)
     data.setdefault("schema_version", "1.0.0")
     data.setdefault("disclaimer", DISCLAIMER)
@@ -369,6 +380,7 @@ def _finalize_memo(data: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]
         f.setdefault("source_endpoint", "")
     valid_ids = {f["fact_id"] for f in data["key_facts"]}
 
+    data["tool_calls"] = tool_calls
     data["citations"] = [
         {
             "cite_id": f["fact_id"],
@@ -376,7 +388,9 @@ def _finalize_memo(data: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]
             "endpoint": f["source_endpoint"],
             "params_summary": f["source_endpoint"].split("?", 1)[1] if "?" in f["source_endpoint"] else "",
             "retrieved_at": base["created_at"],
-            "cache": "miss",
+            "cache": "hit"
+            if any(tc["endpoint"] == f["source_endpoint"] and tc["cache"] == "hit" for tc in tool_calls)
+            else "miss",
         }
         for f in data["key_facts"]
     ]
@@ -396,6 +410,7 @@ def _judge_messages(
     utterances: list[dict[str, Any]],
     evidence_pool: list[Evidence],
 ) -> list[dict[str, str]]:
+    real_endpoints = sorted({tc["endpoint"] for tc in ctx.tool_calls})
     system = (
         "Kamu adalah Hakim Ketua dalam sidang saham IDX. Rumuskan memorandum riset "
         "(MemoJSON) berdasarkan semua bukti dan debat. Setiap fakta kunci harus "
@@ -408,7 +423,10 @@ def _judge_messages(
         "insider_findings[{finding_md,direction(beli/jual/netral),cites}], "
         "red_flags[{flag_md,severity(low/medium/high),cites}], "
         "verdict{category(layak_diteliti_lanjut/perlu_kehati_hatian/red_flag_berat),confidence(0-1),rationale_md,verification_questions[]}, "
-        "citations[], disclaimer."
+        "citations[], disclaimer. "
+        "PENTING: source_endpoint setiap key_fact WAJIB salah satu endpoint Sectors "
+        f"yang benar-benar dipanggil sidang ini: {real_endpoints}. Jangan mengarang "
+        "nama endpoint lain."
     )
     user = (
         f"Ticker: {ctx.ticker} ({ctx.company_name}).\n\n"

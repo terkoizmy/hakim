@@ -119,6 +119,14 @@ def test_full_flow_memo_journal_postmortem(app_env):
         for c in memo["citations"]:
             assert c["cite_id"] in fact_ids
 
+        # audit table = REAL Sectors calls recorded during the trial (not the
+        # judge's prose source_endpoint strings)
+        assert memo["tool_calls"], "tool_calls audit harus terisi"
+        for tc in memo["tool_calls"]:
+            assert tc["endpoint"].startswith("/v2/")
+            assert tc["agent_id"]
+            assert tc["cache"] in ("hit", "miss")
+
         # journal
         jr = client.get("/api/journal")
         assert jr.status_code == 200

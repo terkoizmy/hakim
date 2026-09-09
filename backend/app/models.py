@@ -84,6 +84,17 @@ class Citation(BaseModel):
     cache: Literal["hit", "miss"]
 
 
+class ToolCallAudit(BaseModel):
+    """One REAL Sectors call made during the trial (audit table on the memo)."""
+
+    agent_id: str
+    tool: str
+    endpoint: str
+    params_summary: str = ""
+    retrieved_at: str
+    cache: Literal["hit", "miss"]
+
+
 class MemoJSON(BaseModel):
     schema_version: str = SCHEMA_VERSION
     memo_id: str
@@ -102,6 +113,7 @@ class MemoJSON(BaseModel):
     red_flags: list[RedFlag] = Field(default_factory=list)
     verdict: Verdict
     citations: list[Citation] = Field(default_factory=list)
+    tool_calls: list[ToolCallAudit] = Field(default_factory=list)
     disclaimer: str = DISCLAIMER
 
 

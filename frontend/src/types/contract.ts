@@ -239,6 +239,16 @@ export interface Citation {
   cache: CacheStatus;
 }
 
+/** Satu panggilan Sectors NYATA selama sidang (tabel audit memo). */
+export interface ToolCallAudit {
+  agent_id: string;
+  tool: string;
+  endpoint: string;
+  params_summary: string;
+  retrieved_at: string;
+  cache: CacheStatus;
+}
+
 /**
  * MemoJSON — self-contained. Semua sitasi (bull/bear/smart money/insider/
  * red flags) merujuk `key_facts`/`citations` memo ini, BUKAN `evidence_id` stream.
@@ -267,6 +277,8 @@ export interface MemoJSON {
   red_flags: RedFlag[];
   verdict: Verdict;
   citations: Citation[];
+  /** Panggilan Sectors nyata; memo lama (pra-audit) tidak memilikinya. */
+  tool_calls?: ToolCallAudit[];
   disclaimer: string;
 }
 

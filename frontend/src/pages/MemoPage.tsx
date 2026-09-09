@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
-import type { MemoJSON, VerdictCategory } from '../types/contract';
+import type { CacheStatus, MemoJSON, VerdictCategory } from '../types/contract';
 import { formatDate, formatDateTime, formatValue } from '../utils/format';
 import { Markdown } from '../utils/md';
 import { AlertIcon, BookIcon, GavelIcon } from '../components/icons';
@@ -304,7 +304,11 @@ export function MemoView({ memo }: { memo: MemoJSON }) {
 
           {/* ---------- SUMBER DATA ---------- */}
           <section className="anim-in">
-            <SecHead kicker="Audit" title="Sumber Data" note="Endpoint Sectors · cache" />
+            <SecHead
+              kicker="Audit"
+              title="Sumber Data"
+              note={memo.tool_calls?.length ? 'Panggilan Sectors nyata · cache' : 'Endpoint Sectors · cache'}
+            />
             <div className="overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2">
               <table className="w-full border-collapse text-[13.5px]">
                 <thead>
@@ -316,14 +320,14 @@ export function MemoView({ memo }: { memo: MemoJSON }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {memo.citations.map((c) => (
-                    <tr key={c.cite_id} className="transition-colors hover:bg-[#1a1713]">
-                      <td className={`${TD_CLS} font-mono text-[11px] text-text-3`} title={c.endpoint}>{c.endpoint}</td>
-                      <td className={`${TD_CLS} font-mono text-[12.5px] text-text-3`}>{c.params_summary || '—'}</td>
+                  {auditRowsOf(memo).map((r, i) => (
+                    <tr key={`${r.endpoint}-${r.at}-${i}`} className="transition-colors hover:bg-[#1a1713]">
+                      <td className={`${TD_CLS} font-mono text-[11px] text-text-3`} title={r.agent ? `dipanggil oleh ${r.agent}` : r.endpoint}>{r.endpoint}</td>
+                      <td className={`${TD_CLS} break-all font-mono text-[12.5px] text-text-3`}>{r.params || '—'}</td>
                       <td className={`${TD_CLS} font-mono text-[12.5px]`}>
-                        <span className={c.cache === 'hit' ? 'text-[#7fb069]' : 'text-[#c96a5a]'}>{c.cache}</span>
+                        <span className={r.cache === 'hit' ? 'text-[#7fb069]' : 'text-[#c96a5a]'}>{r.cache}</span>
                       </td>
-                      <td className={`${TD_CLS} font-mono text-[12.5px] text-text-3`}>{formatDateTime(c.retrieved_at)}</td>
+                      <td className={`${TD_CLS} whitespace-nowrap font-mono text-[12.5px] text-text-3`}>{formatDateTime(r.at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -337,6 +341,33 @@ export function MemoView({ memo }: { memo: MemoJSON }) {
 }
 
 /* ---------------- bagian-bagian memo ---------------- */
+
+/** Baris tabel audit: panggilan Sectors nyata bila ada, fallback ke sitasi fakta (memo lama). */
+interface AuditRow {
+  endpoint: string;
+  params: string;
+  cache: CacheStatus;
+  at: string;
+  agent?: string;
+}
+
+function auditRowsOf(memo: MemoJSON): AuditRow[] {
+  if (memo.tool_calls?.length) {
+    return memo.tool_calls.map((t) => ({
+      endpoint: t.endpoint,
+      params: t.params_summary,
+      cache: t.cache,
+      at: t.retrieved_at,
+      agent: t.agent_id,
+    }));
+  }
+  return memo.citations.map((c) => ({
+    endpoint: c.endpoint,
+    params: c.params_summary,
+    cache: c.cache,
+    at: c.retrieved_at,
+  }));
+}
 
 /** Badge kecil baris id (mode data / info richness) — gaya .b-mode / .b-info mock. */
 function HeadBadge({ brass, children }: { brass?: boolean; children: ReactNode }) {

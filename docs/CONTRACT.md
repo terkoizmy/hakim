@@ -108,9 +108,21 @@ Disimpan di SQLite, dikembalikan `GET /api/trials/{id}/memo` dan `GET /api/journ
       "cache": "hit | miss"
     }
   ],
+  "tool_calls": [
+    {
+      "agent_id": "fundamental",
+      "tool": "company_report",
+      "endpoint": "/v2/company/report/CUAN/",
+      "params_summary": "sections=financials,valuation,...",
+      "retrieved_at": "2026-09-09T12:33:40Z",
+      "cache": "hit | miss"
+    }
+  ],
   "disclaimer": "Memo ini adalah alat bantu riset & analisis, bukan rekomendasi investasi. Keputusan investasi sepenuhnya tanggung jawab masing-masing investor."
 }
 ```
+
+**`tool_calls` (opsional, tambahan v1.1)** — catatan panggilan Sectors yang BENAR-BENAR terjadi selama sidang (satu entri per panggilan, dari event `agent_tool_call`). Ini sumber tabel audit "Sumber Data"; `citations` tetap anchor fakta → `key_facts`. Memo lama tanpa field ini tetap valid; UI fallback ke `citations`.
 
 Validasi: pydantic di backend; jika JSON hakim invalid → 1x repair loop → bila tetap gagal, `trial_failed` dengan `error_code: "llm_error"`.
 
