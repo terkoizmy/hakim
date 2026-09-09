@@ -25,6 +25,9 @@ def app_env(tmp_path):
     settings = Settings(
         sectors_mode="fixture",
         db_path=str(tmp_path / "test.db"),
+        # Hermetic: never inherit OLLAMA_API_KEY from backend/.env, or the
+        # trial would call the real LLM and blow the _wait_memo timeout.
+        ollama_api_key="",
         llm_fallback_template=True,
     )
     db = Database(settings.db_path)

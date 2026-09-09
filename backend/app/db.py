@@ -58,6 +58,13 @@ CREATE TABLE IF NOT EXISTS tickers (
     company_name TEXT
 );
 
+CREATE TABLE IF NOT EXISTS price_series (
+    trial_id    TEXT PRIMARY KEY,
+    ticker      TEXT NOT NULL,
+    points_json TEXT NOT NULL,
+    created_at  TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_events_trial ON events(trial_id);
 CREATE INDEX IF NOT EXISTS idx_memos_created ON memos(created_at);
 """
@@ -281,6 +288,34 @@ class Database:
                 (key, json.dumps(payload, ensure_ascii=False), now, now + ttl_days * 86400),
             )
             conn.commit()
+        finally:
+            conn.close()
+
+    # -- price series snapshot ----------------------------------------------
+
+    def save_price_series(
+        self, trial_id: str, ticker: str, points: list[dict[str, Any]], created_at: str
+    ) -> None:
+        """Persist the trial's price series snapshot (CONTRACT 1.1.0)."""
+        conn = self._connect()
+        try:
+            conn.execute(
+                "INSERT OR REPLACE INTO price_series (trial_id, ticker, points_json, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (trial_id, ticker, json.dumps(points, ensure_ascii=False), created_at),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_price_series(self, trial_id: str) -> Optional[list[dict[str, Any]]]:
+        """Return the trial's saved points, or None when no snapshot exists."""
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT points_json FROM price_series WHERE trial_id = ?", (trial_id,)
+            ).fetchone()
+            return json.loads(row["points_json"]) if row else None
         finally:
             conn.close()
 

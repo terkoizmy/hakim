@@ -151,12 +151,26 @@ class JournalResponse(BaseModel):
     total: int
 
 
+class PricePoint(BaseModel):
+    date: str
+    close: Union[int, float]
+    volume: Optional[Union[int, float]] = None
+    change_pct: Optional[Union[int, float]] = None
+
+
+class PriceSeriesResponse(BaseModel):
+    trial_id: str
+    ticker: str
+    points: Optional[list[PricePoint]] = None
+
+
 class PostmortemResponse(BaseModel):
     memo: MemoJSON
     price_at_trial: float
     price_now: float
     change_pct: float
     days_elapsed: int
+    price_series: Optional[list[PricePoint]] = None
 
 
 class HealthResponse(BaseModel):

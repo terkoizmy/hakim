@@ -46,6 +46,8 @@ async def gather_price(ctx: Any) -> GatherResult:
     tool_calls: list[ToolCall] = []
     start, end = _dates(90)
     dt = await ctx.sectors.daily_transaction(ctx.ticker, start, end)
+    # Keep the raw payload for the price-series snapshot (CONTRACT 1.1.0).
+    ctx.shared["daily_transaction"] = dt.payload
     tool_calls.append(ToolCall("daily_transaction", f"/v2/transaction/daily/{ctx.ticker}/", f"start={start}&end={end}", dt.cache))
     idx = await ctx.sectors.index_daily("IDXCOMPOSITE", start, end)
     tool_calls.append(ToolCall("index_daily", "/v2/transaction/index-daily/", f"index=IDXCOMPOSITE&start={start}&end={end}", idx.cache))

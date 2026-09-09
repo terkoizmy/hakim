@@ -26,6 +26,7 @@ from .eventbus import EventBus, now_iso
 from .llm import LLMClient
 from .llm import templates
 from .models import DISCLAIMER, MemoJSON
+from .price_series import build_price_series
 from .sectors import SectorsClient
 
 logger = logging.getLogger(__name__)
@@ -193,7 +194,7 @@ async def _summarize(ctx: TrialContext, spec: AnalystSpec, evidence: list[Eviden
                     ),
                 },
             ]
-            content = await ctx.llm.chat(ctx.settings.model_analyst, messages, json_mode=True, max_tokens=1200)
+            content = await ctx.llm.chat(ctx.settings.model_analyst, messages, json_mode=True, max_tokens=2500)
             data = _parse_json(content)
             return str(data["summary_md"]), str(data.get("data_richness", "B"))
         except Exception as exc:
@@ -230,7 +231,7 @@ async def _utterance(
                 )
             )
             user = _debate_user_prompt(ctx, summaries, evidence_pool, side, round_no, rebuts_id)
-            content = await ctx.llm.chat(ctx.settings.model_debate, [{"role": "system", "content": system}, {"role": "user", "content": user}], json_mode=True, max_tokens=1200)
+            content = await ctx.llm.chat(ctx.settings.model_debate, [{"role": "system", "content": system}, {"role": "user", "content": user}], json_mode=True, max_tokens=3000)
             data = _parse_json(content)
             return {
                 "round": round_no,
@@ -300,7 +301,7 @@ async def _produce_memo(
                 ctx.settings.model_judge,
                 _judge_messages(ctx, summaries, utterances, evidence_pool),
                 json_mode=True,
-                max_tokens=4000,
+                max_tokens=8000,
             )
             memo_data = _parse_json(content)
         except Exception as exc:
@@ -330,7 +331,7 @@ async def _produce_memo(
                     "content": f"Memo di atas tidak valid. Perbaiki sesuai skema. Error: {first_err}",
                 }
             )
-            content = await ctx.llm.chat(ctx.settings.model_judge, repair, json_mode=True, max_tokens=4000)
+            content = await ctx.llm.chat(ctx.settings.model_judge, repair, json_mode=True, max_tokens=8000)
             memo_data = _finalize_memo(_parse_json(content), base)
             return MemoJSON(**memo_data)
         except Exception as exc:
@@ -480,6 +481,11 @@ async def run_trial(ctx: TrialContext) -> MemoJSON:
     price_at_trial = _price_at_trial(ctx)
     await ctx.bus.publish(ctx.trial_id, "memo_ready", {"memo": memo.model_dump()})
     ctx.db.save_memo(memo.model_dump(), price_at_trial)
+    # Snapshot the price series so postmortem/price-series keep historical data
+    # even after the Sectors cache expires (CONTRACT 1.1.0).
+    price_series = build_price_series(ctx.shared.get("daily_transaction", {}))
+    if price_series:
+        ctx.db.save_price_series(ctx.trial_id, ctx.ticker, price_series, now_iso())
     ctx.db.update_trial_status(
         ctx.trial_id, "succeeded", price_at_trial=price_at_trial, finished_at=now_iso()
     )

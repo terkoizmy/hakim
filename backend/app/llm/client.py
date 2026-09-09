@@ -31,7 +31,7 @@ class LLMClient:
             self._client = AsyncOpenAI(
                 base_url=self.settings.ollama_base_url,
                 api_key=self.settings.ollama_api_key,
-                timeout=90.0,
+                timeout=150.0,
                 max_retries=2,
             )
 
@@ -58,7 +58,17 @@ class LLMClient:
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
         resp = await self._client.chat.completions.create(**kwargs)
-        content = resp.choices[0].message.content
+        choice = resp.choices[0]
+        content = choice.message.content
+        # Reasoning models spend completion tokens thinking before the content;
+        # when the budget runs out mid-thought, content comes back empty or cut
+        # off. Retry once with a doubled budget instead of failing outright.
+        if choice.finish_reason == "length":
+            kwargs["max_tokens"] = min(kwargs["max_tokens"] * 2, 16000)
+            logger.warning("LLM terpotong (finish_reason=length), ulang dengan max_tokens=%s", kwargs["max_tokens"])
+            resp = await self._client.chat.completions.create(**kwargs)
+            choice = resp.choices[0]
+            content = choice.message.content
         if not content:
             raise LLMUnavailable("LLM mengembalikan respons kosong")
         return content
