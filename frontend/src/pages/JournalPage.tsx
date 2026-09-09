@@ -1,26 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import { type JournalItem, type VerdictCategory } from '../types/contract';
 import { formatDate } from '../utils/format';
-import { RichBadge } from './CourtroomPage';
-import { AlertIcon, BookIcon, GavelIcon } from '../components/icons';
+import { GavelIcon } from '../components/icons';
 
-const FILTERS: { key: VerdictCategory | 'all'; label: string }[] = [
-  { key: 'all', label: 'Semua' },
-  { key: 'layak_diteliti_lanjut', label: 'Layak Diteliti' },
-  { key: 'perlu_kehati_hatian', label: 'Perlu Hati-hati' },
-  { key: 'red_flag_berat', label: 'Red Flag Berat' },
-];
-
-const TH =
-  'border-b border-line-1 px-4 pb-2.5 pt-3.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.08em] text-text-3';
-const TH_NUM = `${TH} text-right`;
-const TD = 'border-b border-line-0 px-4 py-3 align-middle';
-const CHIP =
-  'inline-flex cursor-pointer items-center rounded-pill px-3.5 py-1.5 text-[12.5px] font-semibold transition-all';
-
-/** Label sentence case sesuai mock (VERDICT_LABEL versi Title Case dipakai panel putusan). */
 const VERDICT_BADGE_LABEL: Record<VerdictCategory, string> = {
   layak_diteliti_lanjut: 'Layak diteliti lanjut',
   perlu_kehati_hatian: 'Perlu kehati-hatian',
@@ -46,10 +30,28 @@ export function VerdictBadge({ category }: { category: VerdictCategory }) {
   );
 }
 
+/** Badge "Info A/B" gaya .b-info mock. */
+export function InfoBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-[7px] whitespace-nowrap rounded-[6px] border border-brass-600 bg-[rgba(201,162,74,0.06)] px-[10px] py-[5px] font-mono text-[11px] tracking-[0.3px] text-brass-300">
+      <span className="h-1.5 w-1.5 flex-none rounded-full bg-brass-500" aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
+
+// Mock jurnal-sidang: th mono di permukaan lebih gelap, td hairline.
+const TH_CLS =
+  'whitespace-nowrap border-b border-[#3a332a] bg-[#1a1713] px-[14px] py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[1.2px] text-text-3';
+const TD_CLS = 'border-b border-[#2a251e] px-[14px] py-[13px] align-middle';
+
+/**
+ * Jurnal Sidang (/journal) — arsip mock jurnal-sidang: kepala halaman
+ * kicker + judul display, lalu satu tabel arsip seluruh putusan.
+ */
 export default function JournalPage() {
   const [items, setItems] = useState<JournalItem[] | null>(null);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState<VerdictCategory | 'all'>('all');
 
   useEffect(() => {
     let alive = true;
@@ -66,145 +68,102 @@ export default function JournalPage() {
     };
   }, []);
 
-  const filtered = useMemo(
-    () => (filter === 'all' ? (items ?? []) : (items ?? []).filter((i) => i.verdict_category === filter)),
-    [items, filter],
-  );
-
-  const stats = useMemo(() => {
-    const list = items ?? [];
-    return {
-      total: list.length,
-      layak: list.filter((i) => i.verdict_category === 'layak_diteliti_lanjut').length,
-      hati: list.filter((i) => i.verdict_category === 'perlu_kehati_hatian').length,
-      berat: list.filter((i) => i.verdict_category === 'red_flag_berat').length,
-    };
-  }, [items]);
+  const list = useMemo(() => items ?? [], [items]);
 
   return (
-    <div>
-      <div className="container py-8 pb-14">
-        <header className="anim-in flex items-center gap-5">
-          <div className="grid h-[52px] w-[52px] flex-none place-items-center rounded-lg border border-[rgba(217,180,109,0.34)] bg-[rgba(217,180,109,0.12)] text-brass-300">
-            <BookIcon size={22} />
-          </div>
-          <div>
-            <h1 className="text-[30px]">
-              Jurnal <em aria-hidden="true" className="font-medium italic text-brass-300">Sidang</em>
-            </h1>
-            <p className="muted mt-1 max-w-[640px]">
-              Memorandum lama dibandingkan dengan pergerakan harga hari ini — komite yang bisa dipertanggungjawabkan.
-            </p>
-          </div>
+    <div className="pt-12">
+      <div className="mx-auto w-full max-w-[1080px] px-6 pb-14">
+        <nav className="mb-[22px] font-mono text-[12px] uppercase tracking-[1px] text-text-3">
+          <Link to="/" className="text-brass-500 transition-colors hover:text-brass-300">Beranda</Link>
+          <span className="mx-[6px]">/</span>
+          <span>Jurnal Sidang</span>
+        </nav>
+
+        {/* ---------- PAGE HEAD ---------- */}
+        <header className="anim-in mb-[30px] border-b border-[#3a332a] pb-[28px]">
+          <p className="mb-[10px] font-mono text-[11px] uppercase tracking-[2px] text-brass-500">Arsip</p>
+          <h1 className="font-display text-[clamp(30px,4.5vw,44px)] font-medium leading-[1.1] text-text-0">
+            Jurnal <em className="italic text-brass-300">Sidang</em>
+          </h1>
+          <p className="mt-3 max-w-[52ch] text-[14.5px] text-text-2">
+            Semua putusan yang pernah diputuskan komite, terarsip.
+          </p>
         </header>
-
-        {/* Stat ringkas */}
-        <div className="anim-in mb-6 grid grid-cols-4 gap-4 max-[980px]:grid-cols-2 max-[640px]:grid-cols-2 max-[640px]:gap-3">
-          <StatCard label="Total sidang" value={String(stats.total)} />
-          <StatCard label="Layak diteliti" value={String(stats.layak)} tone="defend" />
-          <StatCard label="Perlu kehati-hatian" value={String(stats.hati)} tone="brass" />
-          <StatCard label="Red flag berat" value={String(stats.berat)} tone="prosecute" />
-        </div>
-
-        {/* Filter */}
-        <div className="anim-in mb-5 flex flex-wrap items-center gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              className={
-                filter === f.key
-                  ? `${CHIP} border border-transparent bg-gradient-to-b from-brass-300 to-brass-500 text-[#1c1407]`
-                  : `${CHIP} border border-line-2 bg-bg-2 text-text-1 hover:border-brass-500 hover:text-text-0`
-              }
-              onClick={() => setFilter(f.key)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
 
         {items === null ? (
           <JournalSkeleton />
         ) : error ? (
-          <div
-            className="card anim-fade flex flex-col items-center gap-3 px-6 py-10 text-center"
-            role="alert"
-          >
-            <AlertIcon size={20} />
-            <p>{error}</p>
+          <div className="anim-fade rounded-[14px] border border-[#3a332a] bg-bg-2 px-6 py-10 text-center text-text-2" role="alert">
+            {error}
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="card anim-fade flex flex-col items-center gap-3 px-6 py-10 text-center">
-            <span className="grid h-[52px] w-[52px] place-items-center rounded-pill border border-[rgba(217,180,109,0.34)] bg-[rgba(217,180,109,0.12)] text-brass-300">
-              <GavelIcon size={24} />
+        ) : list.length === 0 ? (
+          /* ---------- EMPTY STATE ---------- */
+          <section className="anim-in flex flex-col items-center gap-[18px] rounded-[14px] border border-dashed border-[#3a332a] bg-bg-2 px-6 py-[72px] text-center">
+            <span className="block w-[44px] text-brass-600">
+              <GavelIcon size={44} />
             </span>
-            <h2 className="text-[21px]">
-              {items.length === 0 ? 'Belum ada sidang tersimpan' : 'Tidak ada sidang pada filter ini'}
-            </h2>
-            <p className="muted">
-              {items.length === 0
-                ? 'Mulai sidang pertama Anda, dan lihat hasilnya tercatat di sini.'
-                : 'Pilih filter lain untuk melihat sidang lain.'}
+            <h2 className="font-display text-[22px] font-medium text-text-0">Belum ada sidang.</h2>
+            <p className="max-w-[40ch] text-[14px] text-text-2">
+              Komite belum memutuskan perkara apa pun. Mulai sidang pertama dari daftar emiten.
             </p>
-            <Link to="/" className="btn btn-primary mt-2"><GavelIcon size={16} /> Mulai Sidang Baru</Link>
-          </div>
+            <Link
+              to="/dashboard"
+              className="rounded-pill border border-brass-600 px-5 py-[10px] font-mono text-[12px] tracking-[0.5px] text-brass-400 transition-colors hover:bg-brass-500 hover:text-bg-1"
+            >
+              Ke Daftar Perkara
+            </Link>
+          </section>
         ) : (
-          <div className="card anim-fade overflow-x-auto p-0">
-            <table className="w-full min-w-[720px] border-collapse text-[13.5px]">
-              <thead>
-                <tr>
-                  <th className={TH}>Tanggal</th>
-                  <th className={TH}>Ticker</th>
-                  <th className={TH}>Emiten</th>
-                  <th className={TH}>Putusan</th>
-                  <th className={TH}>Kekayaan Data</th>
-                  <th className={TH_NUM}>Harga Saat Sidang</th>
-                  <th className={TH_NUM} aria-label="aksi">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((it) => (
-                  <tr
-                    key={it.memo_id}
-                    className="transition-colors hover:bg-[rgba(236,224,200,0.03)] [&:last-child>td]:border-b-0"
-                  >
-                    <td className={`${TD} small muted`}>{formatDate(it.created_at)}</td>
-                    <td className={TD}>
-                      <Link to={`/journal/${it.memo_id}/postmortem`} className="mono font-semibold text-brass-200">
-                        {it.ticker}
-                      </Link>
-                    </td>
-                    <td className={TD}>
-                      <Link
-                        to={`/journal/${it.memo_id}/postmortem`}
-                        className="font-medium text-text-0 transition-colors hover:text-brass-300"
-                      >
-                        {it.company_name}
-                      </Link>
-                    </td>
-                    <td className={TD}><VerdictBadge category={it.verdict_category} /></td>
-                    <td className={TD}><RichBadge richness={it.info_richness} /></td>
-                    <td className={`${TD} mono text-right`}>
-                      {it.price_at_trial == null ? '—' : it.price_at_trial.toLocaleString('id-ID')}
-                    </td>
-                    <td className={`${TD} whitespace-nowrap text-right`}>
-                      <Link
-                        to={`/memo/${it.memo_id}`}
-                        className="inline-block border-b border-transparent text-[12.5px] text-brass-300 transition-colors hover:border-brass-500 hover:text-brass-100"
-                      >
-                        Memo
-                      </Link>
-                      <Link
-                        to={`/journal/${it.memo_id}/postmortem`}
-                        className="ml-4 inline-block border-b border-transparent text-[12.5px] text-brass-300 transition-colors hover:border-brass-500 hover:text-brass-100"
-                      >
-                        Post-mortem
-                      </Link>
-                    </td>
+          /* ---------- ARCHIVE TABLE ---------- */
+          <div className="anim-fade overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse text-[13.5px]">
+                <thead>
+                  <tr>
+                    <th className={TH_CLS}>Tanggal</th>
+                    <th className={TH_CLS}>Ticker</th>
+                    <th className={TH_CLS}>Emiten</th>
+                    <th className={TH_CLS}>Putusan</th>
+                    <th className={TH_CLS}>Kekayaan Data</th>
+                    <th className={`${TH_CLS} text-right`}>Harga Saat Sidang</th>
+                    <th className={`${TH_CLS} text-right`} aria-label="aksi">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {list.map((it) => (
+                    <tr key={it.memo_id} className="transition-colors hover:bg-[#1a1713] [&:last-child>td]:border-b-0">
+                      <td className={`${TD_CLS} whitespace-nowrap font-mono text-[12.5px] text-text-3`}>{formatDate(it.created_at)}</td>
+                      <td className={`${TD_CLS} whitespace-nowrap font-mono text-[13px] font-medium tracking-[0.5px] text-text-0`}>
+                        {it.ticker}
+                        <em className="not-italic text-brass-500">.</em>
+                      </td>
+                      <td className={`${TD_CLS} whitespace-nowrap text-[13px] text-text-2`}>
+                        <div className="max-w-[190px] truncate">{it.company_name}</div>
+                      </td>
+                      <td className={TD_CLS}><VerdictBadge category={it.verdict_category} /></td>
+                      <td className={TD_CLS}><InfoBadge>Info {it.info_richness}</InfoBadge></td>
+                      <td className={`${TD_CLS} text-right font-mono text-[12.5px] tabular-nums text-brass-400`}>
+                        {it.price_at_trial == null ? '—' : `Rp ${it.price_at_trial.toLocaleString('id-ID')}`}
+                      </td>
+                      <td className={`${TD_CLS} whitespace-nowrap text-right`}>
+                        <span className="flex justify-end gap-3 text-[12.5px]">
+                          <Link to={`/memo/${it.memo_id}`} className="text-brass-500 transition-colors hover:text-brass-300">
+                            Memo
+                          </Link>
+                          <Link
+                            to={`/journal/${it.memo_id}/postmortem`}
+                            className="text-brass-500 transition-colors hover:text-brass-300"
+                            title="Post-mortem: harga sejak putusan"
+                          >
+                            Post-mortem
+                          </Link>
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -212,24 +171,13 @@ export default function JournalPage() {
   );
 }
 
-function StatCard({ label, value, tone }: { label: string; value: string; tone?: 'defend' | 'brass' | 'prosecute' }) {
-  const toneCls =
-    tone === 'defend' ? 'text-defend-300' : tone === 'brass' ? 'text-brass-300' : tone === 'prosecute' ? 'text-prosecute-300' : '';
-  return (
-    <div className="card flex flex-col gap-[2px] px-6 py-5">
-      <span className={`mono text-[28px] font-[650] text-text-0 ${toneCls}`}>{value}</span>
-      <span className="tiny muted">{label}</span>
-    </div>
-  );
-}
-
 function JournalSkeleton() {
   return (
-    <div className="card flex flex-col gap-4 px-6 py-5">
+    <div className="flex flex-col gap-4 rounded-[14px] border border-[#3a332a] bg-bg-2 px-6 py-5">
       {[...Array(4)].map((_, i) => (
         <div key={i} className="flex items-center gap-3">
           <span className="skeleton" style={{ width: 36, height: 36, borderRadius: 10 }} />
-          <div className="flex flex-col gap-2" style={{ flex: 1 }}>
+          <div className="flex flex-1 flex-col gap-2">
             <span className="skeleton" style={{ width: '50%', height: 14 }} />
             <span className="skeleton" style={{ width: '70%', height: 10 }} />
           </div>
