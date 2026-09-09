@@ -306,8 +306,10 @@ class SectorsClient:
                     return row.get("company_name", sym)
             raise TickerNotFound(sym)
 
-        # live: targeted screener lookup (1 credit) then cache the result
-        resp = await self.screener(where=f"symbol in ['{sym}']", limit=10)
+        # live: targeted screener lookup (1 credit) then cache the result.
+        # The API stores symbols with the .JK suffix (e.g. "BBRI.JK"), so
+        # match both the normalized and suffixed forms in the same call.
+        resp = await self.screener(where=f"symbol in ['{sym}','{sym}.JK']", limit=10)
         results = resp.payload.get("results", [])
         for row in results:
             row_sym = self.normalize_symbol(row.get("symbol", ""))
