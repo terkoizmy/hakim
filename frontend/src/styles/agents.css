@@ -1,20 +1,7 @@
-/* ============================================================
-   Warna per-analis (RGB triplet) — diset via data-agent,
-   dipakai sebagai rgba(var(--agent), alpha) di kartu analis.
-   ============================================================ */
-
-[data-agent='fundamental'] {
-  --agent: 217, 180, 109;
-}
-[data-agent='price'] {
-  --agent: 79, 143, 232;
-}
-[data-agent='smartmoney'] {
-  --agent: 76, 201, 143;
-}
-[data-agent='insider'] {
-  --agent: 158, 129, 255;
-}
-[data-agent='antigorengan'] {
-  --agent: 217, 72, 59;
-}
+/* Warna aksen per-analyst: elemen ber-atribut data-agent mengekspos --agent
+   (format R, G, B — dipakai util via rgba(var(--agent), α)). Palet mock. */
+[data-agent='fundamental']   { --agent: 201, 162, 74; }
+[data-agent='price']         { --agent: 111, 159, 216; }
+[data-agent='smartmoney']    { --agent: 127, 176, 105; }
+[data-agent='insider']       { --agent: 169, 143, 208; }
+[data-agent='antigorengan']  { --agent: 201, 106, 90; }

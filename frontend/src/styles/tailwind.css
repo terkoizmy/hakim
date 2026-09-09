@@ -19,8 +19,9 @@
     line-height: 1.6;
     color: var(--text-0);
     background: var(--bg-0);
-    background-image: radial-gradient(1200px 600px at 50% -12%, rgba(217, 180, 109, 0.06), transparent 60%),
-      linear-gradient(180deg, #0b0e12 0%, var(--bg-1) 240px);
+    background-image: radial-gradient(1200px 600px at 50% -10%, rgba(201, 162, 74, 0.06), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px),
+      linear-gradient(180deg, #14120f 0%, var(--bg-1) 240px);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -207,12 +208,12 @@
   }
 
   .btn-danger {
-    background: rgba(217, 72, 59, 0.14);
-    border-color: rgba(217, 72, 59, 0.4);
+    background: rgba(201, 106, 90, 0.14);
+    border-color: rgba(201, 106, 90, 0.4);
     color: var(--prosecute-300);
   }
   .btn-danger:hover:not(:disabled) {
-    background: rgba(217, 72, 59, 0.22);
+    background: rgba(201, 106, 90, 0.22);
   }
 
   .btn-lg {
@@ -243,8 +244,8 @@
 
   .badge-brass {
     color: var(--brass-200);
-    background: rgba(217, 180, 109, 0.1);
-    border-color: rgba(217, 180, 109, 0.32);
+    background: rgba(201, 162, 74, 0.1);
+    border-color: rgba(201, 162, 74, 0.32);
   }
   .badge-neutral {
     color: var(--text-1);
@@ -253,23 +254,23 @@
   }
   .badge-prosecute {
     color: var(--prosecute-300);
-    background: rgba(217, 72, 59, 0.12);
-    border-color: rgba(217, 72, 59, 0.35);
+    background: rgba(201, 106, 90, 0.12);
+    border-color: rgba(201, 106, 90, 0.35);
   }
   .badge-defend {
     color: var(--defend-300);
-    background: rgba(47, 168, 119, 0.12);
-    border-color: rgba(47, 168, 119, 0.35);
+    background: rgba(127, 176, 105, 0.12);
+    border-color: rgba(127, 176, 105, 0.35);
   }
   .badge-cache-hit {
     color: var(--cache-hit);
-    background: rgba(76, 201, 143, 0.1);
-    border-color: rgba(76, 201, 143, 0.3);
+    background: rgba(127, 176, 105, 0.1);
+    border-color: rgba(127, 176, 105, 0.3);
   }
   .badge-cache-miss {
     color: var(--cache-miss);
-    background: rgba(216, 167, 92, 0.12);
-    border-color: rgba(216, 167, 92, 0.34);
+    background: rgba(217, 164, 65, 0.12);
+    border-color: rgba(217, 164, 65, 0.34);
   }
 
   .rich-a {
@@ -341,7 +342,7 @@
   }
   .input.error {
     border-color: var(--prosecute-500);
-    box-shadow: 0 0 0 3px rgba(217, 72, 59, 0.14);
+    box-shadow: 0 0 0 3px rgba(201, 106, 90, 0.14);
   }
 
   /* --- skeleton (loading) --- */
