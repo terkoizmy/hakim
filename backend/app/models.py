@@ -138,6 +138,7 @@ class CreateTrialResponse(BaseModel):
 
 class JournalItem(BaseModel):
     memo_id: str
+    trial_id: str
     ticker: str
     company_name: str
     verdict_category: VerdictCategory

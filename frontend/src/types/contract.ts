@@ -288,6 +288,8 @@ export interface CreateTrialResponse {
 /** GET /api/journal?limit=&offset= → 200 */
 export interface JournalItem {
   memo_id: string;
+  /** trial_id asal memo — dikirim backend sejak kontrak 1.2.1 (untuk /price-series). */
+  trial_id?: string;
   ticker: string;
   company_name: string;
   verdict_category: VerdictCategory;

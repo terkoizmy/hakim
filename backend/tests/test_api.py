@@ -125,6 +125,10 @@ def test_full_flow_memo_journal_postmortem(app_env):
         jbody = jr.json()
         assert jbody["total"] >= 1
         assert any(item["memo_id"] == memo["memo_id"] for item in jbody["items"])
+        # journal items carry trial_id so the FE can call the price-series
+        # endpoint (0 credits) without the postmortem
+        item = next(i for i in jbody["items"] if i["memo_id"] == memo["memo_id"])
+        assert item["trial_id"] == trial_id
 
         # postmortem
         pr = client.get(f"/api/journal/{memo['memo_id']}/postmortem")

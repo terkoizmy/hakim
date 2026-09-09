@@ -307,51 +307,121 @@
 .docket-grid { display: grid; grid-template-columns: 1fr; gap: var(--sp-5); align-items: start; }
 .docket-grid.has-recent { grid-template-columns: minmax(0, 1fr) 280px; }
 
-.docket-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: var(--sp-3);
-  transition: opacity var(--dur-fast);
-}
-.docket-list.is-loading { opacity: 0.55; }
-.docket-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  position: relative;
-  text-align: left;
-  padding: var(--sp-4);
-  cursor: pointer;
-  transition: border-color var(--dur-fast), transform var(--dur-fast), box-shadow var(--dur-fast);
-}
-.docket-card:hover { border-color: var(--brass-500); transform: translateY(-2px); box-shadow: var(--shadow-3); }
-.docket-card:disabled { opacity: 0.6; cursor: wait; transform: none; }
-.docket-ticker {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--brass-200);
-}
-.docket-card:hover .docket-ticker { color: var(--brass-100); }
-.docket-name {
-  font-size: 12.5px;
+/* ---- Tabel screener (ala pasar) ---- */
+.screen-table-wrap { overflow-x: auto; padding: 0; transition: opacity var(--dur-fast); }
+.screen-table-wrap.is-loading { opacity: 0.55; }
+.screen-table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 680px; }
+.screen-table th {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--text-2);
+  text-align: left;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line-1);
+  white-space: nowrap;
+}
+.screen-table th:first-child, .screen-table td:first-child { padding-left: 16px; }
+.screen-table th.num { text-align: right; }
+.screen-table td { padding: 11px 12px; border-bottom: 1px solid var(--line-0); vertical-align: middle; white-space: nowrap; }
+.screen-table td:last-child { padding-right: 16px; }
+.screen-table .badge { font-size: 9.5px; padding: 3px 8px; letter-spacing: 0.06em; }
+.screen-table tbody tr:last-child td { border-bottom: none; }
+.screen-row { cursor: pointer; transition: background var(--dur-fast); }
+.screen-row:hover { background: rgba(236, 224, 200, 0.04); }
+.screen-ticker { font-weight: 700; letter-spacing: 0.1em; color: var(--brass-200); font-size: 14px; }
+.screen-row:hover .screen-ticker { color: var(--brass-100); }
+.screen-name {
+  color: var(--text-1);
+  max-width: 210px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100%;
 }
-.docket-go {
-  position: absolute;
-  top: var(--sp-3);
-  right: var(--sp-3);
-  color: var(--text-3);
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: opacity var(--dur-fast), transform var(--dur-fast), color var(--dur-fast);
+.screen-go { color: var(--text-3); width: 34px; opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-fast), transform var(--dur-fast), color var(--dur-fast); }
+.screen-row:hover .screen-go { opacity: 1; transform: translateX(0); color: var(--brass-300); }
+.screen-empty { padding: var(--sp-5) 16px !important; }
+
+/* ---- Halaman detail emiten ---- */
+.detail { display: flex; flex-direction: column; gap: var(--sp-6); }
+.detail-crumb-link {
+  font-size: 13px;
+  color: var(--text-2);
+  transition: color var(--dur-fast);
 }
-.docket-card:hover .docket-go { opacity: 1; transform: translateX(0); color: var(--brass-300); }
+.detail-crumb-link:hover { color: var(--brass-300); }
+.detail-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+}
+.detail-head-main { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.detail-ticker {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  color: var(--brass-100);
+}
+.detail-namewrap { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.detail-name { font-size: 16px; color: var(--text-0); font-weight: 500; }
+.detail-pricenote { margin: 0; }
+.detail-pricenote strong { color: var(--text-0); }
+.detail-head-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.detail-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+}
+.detail-chart-head .section-title { margin: 0; }
+.detail-chart-empty {
+  padding: var(--sp-6) var(--sp-4);
+  border: 1px dashed var(--line-1);
+  border-radius: var(--radius-md);
+  text-align: center;
+  margin: 0;
+}
+.detail-history { display: flex; flex-direction: column; gap: var(--sp-3); }
+.detail-history .docket-toolbar-title { margin: 0; }
+.detail-links { display: flex; gap: var(--sp-3); justify-content: flex-end; white-space: nowrap; }
+.detail-link {
+  font-size: 12.5px;
+  color: var(--brass-300);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.detail-link:hover { color: var(--brass-100); border-color: var(--brass-500); }
+.detail-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--text-2);
+  font-size: 13.5px;
+}
+.detail-empty svg { color: var(--brass-400); flex-shrink: 0; }
+.detail-empty p { margin: 0; }
+
+/* ---- Grafik harga (SVG) ---- */
+.price-chart { display: block; width: 100%; height: auto; }
+.price-chart-line { fill: none; stroke: var(--brass-400); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.price-chart-ref { stroke: var(--line-1); stroke-width: 1; stroke-dasharray: 3 4; }
+.price-chart-lbl { fill: var(--text-2); font-size: 10px; font-family: var(--font-mono); }
+.price-chart-lbl--end { fill: var(--brass-200); font-weight: 600; }
+.price-chart-dot { fill: var(--brass-300); stroke: var(--bg-1); stroke-width: 1.5; }
 
 .recent-panel { display: flex; flex-direction: column; gap: var(--sp-2); }
 .recent-head { display: flex; align-items: center; gap: 8px; color: var(--brass-300); margin-bottom: var(--sp-2); }

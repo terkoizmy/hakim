@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import { VerdictBadge } from './JournalPage';
@@ -33,20 +33,37 @@ export default function HomePage() {
   const [query, setQuery] = useState('');
   const [docketLoading, setDocketLoading] = useState(false);
   const [recent, setRecent] = useState<JournalItem[]>([]);
+  const [journal, setJournal] = useState<JournalItem[]>([]);
 
-  // Sidang terakhir untuk kolom samping.
+  // Jurnal: agregat per ticker untuk tabel screener + kolom samping.
   useEffect(() => {
     let alive = true;
     api
-      .fetchJournal(4, 0)
+      .fetchJournal(50, 0)
       .then((res) => {
-        if (alive) setRecent(res.items.slice(0, 4));
+        if (!alive) return;
+        setJournal(res.items);
+        setRecent(res.items.slice(0, 4));
       })
       .catch(() => undefined); // jurnal kosong / backend belum jalan — biarkan kolom tersembunyi
     return () => {
       alive = false;
     };
   }, []);
+
+  // Riwayat per ticker: [{ticker → riwayat terurut terbaru dulu}]
+  const historyByTicker = useMemo(() => {
+    const m = new Map<string, JournalItem[]>();
+    for (const j of journal) {
+      const list = m.get(j.ticker) ?? [];
+      list.push(j);
+      m.set(j.ticker, list);
+    }
+    for (const list of m.values()) {
+      list.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    }
+    return m;
+  }, [journal]);
 
   // Daftar emiten: dari backend bila tersedia; gagal → pakai daftar contoh.
   useEffect(() => {
@@ -197,7 +214,9 @@ export default function HomePage() {
             <div className="docket-toolbar-title">
               <h2 className="section-title">Daftar Perkara</h2>
               <span className="muted small">
-                {docketFallback ? 'contoh ticker — backend daftar emiten belum tersedia' : `${docket.length} emiten terdaftar`}
+                {docketFallback
+                  ? 'contoh ticker — backend daftar emiten belum tersedia'
+                  : `${docket.length} emiten terdaftar · klik baris untuk membuka berkas`}
               </span>
             </div>
             <label className="docket-search">
@@ -214,26 +233,55 @@ export default function HomePage() {
           </div>
 
           <div className={`docket-grid ${showRecent ? 'has-recent' : ''}`}>
-            <div className={`docket-list ${docketLoading ? 'is-loading' : ''}`}>
-              {docket.map((t) => (
-                <button
-                  key={t.ticker}
-                  type="button"
-                  className="docket-card card"
-                  onClick={() => startTrial(t.ticker)}
-                  disabled={submitting}
-                  title={`Mulai sidang untuk ${t.ticker}`}
-                >
-                  <span className="docket-ticker mono">{t.ticker}</span>
-                  <span className="docket-name">{t.company_name || 'Emiten IDX'}</span>
-                  <span className="docket-go" aria-hidden="true">
-                    <ArrowRightIcon size={14} />
-                  </span>
-                </button>
-              ))}
-              {docket.length === 0 && !docketLoading && (
-                <p className="muted small">Tidak ada emiten yang cocok dengan “{query}”.</p>
-              )}
+            <div className={`screen-table-wrap card ${docketLoading ? 'is-loading' : ''}`}>
+              <table className="screen-table">
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Emiten</th>
+                    <th>Putusan Terakhir</th>
+                    <th className="num">Jml Sidang</th>
+                    <th className="num">Terakhir Diadili</th>
+                    <th className="num">Harga Saat Sidang</th>
+                    <th aria-label="" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {docket.map((t) => {
+                    const hist = historyByTicker.get(t.ticker);
+                    const last = hist?.[0];
+                    return (
+                      <tr
+                        key={t.ticker}
+                        className="screen-row"
+                        onClick={() => navigate(`/ticker/${t.ticker}`)}
+                        title={`Buka detail ${t.ticker}`}
+                      >
+                        <td className="screen-ticker mono">{t.ticker}</td>
+                        <td className="screen-name">{t.company_name || 'Emiten IDX'}</td>
+                        <td>{last ? <VerdictBadge category={last.verdict_category} /> : <span className="muted tiny">Belum diadili</span>}</td>
+                        <td className="num mono">{hist ? hist.length : '—'}</td>
+                        <td className="num small muted">{last ? fmtDate(last.created_at) : '—'}</td>
+                        <td className="num mono">
+                          {last?.price_at_trial != null
+                            ? `Rp ${last.price_at_trial.toLocaleString('id-ID')}`
+                            : '—'}
+                        </td>
+                        <td className="screen-go" aria-hidden="true">
+                          <ArrowRightIcon size={14} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {docket.length === 0 && !docketLoading && (
+                    <tr>
+                      <td colSpan={7} className="muted small screen-empty">
+                        Tidak ada emiten yang cocok dengan “{query}”.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
             {showRecent && (
@@ -315,4 +363,10 @@ export default function HomePage() {
       </section>
     </div>
   );
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' });
 }

@@ -199,7 +199,7 @@ class Database:
         try:
             total = conn.execute("SELECT COUNT(*) AS c FROM memos").fetchone()["c"]
             rows = conn.execute(
-                "SELECT memo_id, ticker, company_name, memo_json, created_at, price_at_trial "
+                "SELECT memo_id, trial_id, ticker, company_name, memo_json, created_at, price_at_trial "
                 "FROM memos ORDER BY created_at DESC LIMIT ? OFFSET ?",
                 (limit, offset),
             ).fetchall()
@@ -209,6 +209,7 @@ class Database:
                 items.append(
                     {
                         "memo_id": row["memo_id"],
+                        "trial_id": row["trial_id"],
                         "ticker": row["ticker"],
                         "company_name": row["company_name"],
                         "verdict_category": memo["verdict"]["category"],
