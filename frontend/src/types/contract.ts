@@ -292,7 +292,8 @@ export interface JournalItem {
   company_name: string;
   verdict_category: VerdictCategory;
   info_richness: DataRichness;
-  price_at_trial: number;
+  /** Bisa null bila harga saat sidang tidak tersedia (mis. mode fixture). */
+  price_at_trial: number | null;
   created_at: string;
 }
 
@@ -304,12 +305,12 @@ export interface JournalResponse {
 /** GET /api/journal/{memo_id}/postmortem → 200 */
 export interface PostmortemResponse {
   memo: MemoJSON;
-  /** Harga pada saat memo ditulis (dari memo/data saat itu). */
-  price_at_trial: number;
-  /** Harga saat ini. */
-  price_now: number;
-  /** Persen perubahan, mis. -5.95 berarti turun 5,95%. */
-  change_pct: number;
+  /** Harga pada saat memo ditulis (dari memo/data saat itu). Bisa null di mode fixture. */
+  price_at_trial: number | null;
+  /** Harga saat ini. Bisa null bila data harga tidak tersedia. */
+  price_now: number | null;
+  /** Persen perubahan, mis. -5.95 berarti turun 5,95%. Bisa null bila harga tidak tersedia. */
+  change_pct: number | null;
   /** Jumlah hari antara memo dibuat dan sekarang. */
   days_elapsed: number;
 }

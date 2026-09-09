@@ -263,9 +263,12 @@ function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[num
             </div>
           )}
           <div className="ev-chip-wrap">
-            {analyst.evidence.map((ev) => (
+            {analyst.evidence.slice(0, 3).map((ev) => (
               <EvidenceChip key={ev.evidence_id} evidence={ev} />
             ))}
+            {analyst.evidence.length > 3 && (
+              <span className="ev-more tiny muted">+{analyst.evidence.length - 3} bukti lainnya</span>
+            )}
           </div>
         </div>
       )}
@@ -279,9 +282,12 @@ function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[num
             {analyst.dataRichness && <RichBadge richness={analyst.dataRichness} />}
           </div>
           <div className="ev-chip-wrap">
-            {analyst.evidence.map((ev) => (
+            {analyst.evidence.slice(0, 3).map((ev) => (
               <EvidenceChip key={ev.evidence_id} evidence={ev} />
             ))}
+            {analyst.evidence.length > 3 && (
+              <span className="ev-more tiny muted">+{analyst.evidence.length - 3} bukti lainnya</span>
+            )}
           </div>
           {analyst.summaryMd && (
             <details className="summary-fold">
@@ -410,13 +416,35 @@ function RoundBlock({
         <span className="round-pill mono">RONDE {round} · {roundLabel}</span>
         <span className="round-marker-line" />
       </div>
-      <div className="round-grid">
+      <div className="debate-flow">
         <UtteranceCard side="prosecution" utterance={prosecution} state={state} />
         <UtteranceCard side="defense" utterance={defense} state={state} />
       </div>
     </div>
   );
 }
+
+/** Buang baris pertama argument_md bila duplikat judul (artefak template fallback backend).
+ *  Baris pertama boleh ber-suffix "(ronde N)" — dianggap sama dengan judul. */
+function stripTitleEcho(title: string, md: string): string {
+  const cleanTitle = title.trim().toLowerCase();
+  if (!cleanTitle || !md.trim()) return md;
+  const lines = md.trimStart().split('\n');
+  const first = (lines[0] ?? '')
+    .replace(/^#+\s*/, '')
+    .replace(/\*/g, '')
+    .replace(/\s*\((?:ronde|putaran|round)[^)]*\)\s*$/i, '')
+    .trim();
+  if (first.toLowerCase() === cleanTitle) {
+    return lines.slice(1).join('\n').trimStart();
+  }
+  return md;
+}
+
+const SPEAKER_LABEL: Record<DebateSide, string> = {
+  prosecution: 'JAKSA PENUNTUT · tesis bear',
+  defense: 'PEMBELA · tesis bull',
+};
 
 function UtteranceCard({
   side,
@@ -429,28 +457,36 @@ function UtteranceCard({
 }) {
   if (!utterance) {
     return (
-      <div className={`utt utt-${side} utt-empty`}>
-        <span className="status-dot working" /> menunggu …
+      <div className={`debate-turn ${side === 'defense' ? 'defense' : ''}`}>
+        <div className="speaker-chip speaker-chip-empty">
+          {side === 'defense' ? 'Pembela sedang menyiapkan pembelaan' : 'Jaksa sedang menyiapkan dakwaan'}
+          <span className="dotty"><i /><i /><i /></span>
+        </div>
       </div>
     );
   }
 
   return (
-    <article className={`utt anim-scale utt-${side}`}>
-      <header className="utt-head">
-        <h4>{utterance.title}</h4>
-        <span className="utt-time mono tiny">{formatTime(utterance.ts)}</span>
-      </header>
-      <Markdown source={utterance.argument_md} className="md md-sm" />
-      {utterance.cites.length > 0 && (
-        <div className="utt-cites">
-          {utterance.cites.map((c) => (
-            <EvidenceRef key={c} evidenceId={c} state={state} />
-          ))}
+    <div className={`debate-turn ${side === 'defense' ? 'defense' : ''} anim-in`}>
+      <article className={`utt anim-scale utt-${side}`}>
+        <div className="utt-speaker-row">
+          <span className={`speaker-chip speaker-${side}`}>{SPEAKER_LABEL[side]}</span>
+          {utterance.rebuts && <span className="utt-rebut tiny">↩ membalas argumen lawan</span>}
+          <span className="utt-time mono tiny">{formatTime(utterance.ts)}</span>
         </div>
-      )}
-      {utterance.rebuts && <span className="utt-rebut tiny">↩ membalas argumen lawan</span>}
-    </article>
+        <header className="utt-head">
+          <h4>{utterance.title}</h4>
+        </header>
+        <Markdown source={stripTitleEcho(utterance.title, utterance.argument_md)} className="md md-sm" />
+        {utterance.cites.length > 0 && (
+          <div className="utt-cites">
+            {utterance.cites.map((c) => (
+              <EvidenceRef key={c} evidenceId={c} state={state} />
+            ))}
+          </div>
+        )}
+      </article>
+    </div>
   );
 }
 

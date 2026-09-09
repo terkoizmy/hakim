@@ -39,23 +39,35 @@ export default function HomePage() {
     <div className="home">
       <section className="hero">
         <div className="container hero-inner">
-          <div className="hero-badge anim-in">
-            <GavelIcon size={14} />
-            Multi-Agent · Data Sectors · Bahasa Indonesia
+          <div className="hero-copy">
+            <div className="hero-badge anim-in">
+              <GavelIcon size={14} />
+              Multi-Agent · Data Sectors · Bahasa Indonesia
+            </div>
+
+            <h1 className="hero-title anim-in">
+              Sebelum beli,
+              <br />
+              <span className="hero-title-accent">aduli dulu.</span>
+            </h1>
+            <p className="hero-sub anim-in-slow">
+              Lima analis menggali bukti dari data Sectors, jaksa <em>bear</em> berhadapan dengan pembela{' '}
+              <em>bull</em> selama dua ronde, lalu hakim mengetuk putusan.{' '}
+              <strong>Hasilnya: memorandum riset yang jujur, bersitasi, dan sepenuhnya milik Anda.</strong>
+            </p>
+
+            <ul className="hero-points anim-in-slow" style={{ animationDelay: '90ms' }}>
+              <li>Debat adversarial ditayangkan langsung — bukan kotak hitam.</li>
+              <li>Tiap angka bersitasi ke endpoint data, lengkap dengan peringkat kekayaan informasi A/B/C.</li>
+              <li>Semua putusan terarsip di jurnal, bisa di-post-mortem kapan pun.</li>
+            </ul>
           </div>
 
-          <h1 className="hero-title anim-in">
-            Sebelum beli,
-            <br />
-            <span className="hero-title-accent">aduli dulu.</span>
-          </h1>
-          <p className="hero-sub anim-in-slow">
-            Tiga &plusmn; menit: lima analis memeriksa bukti dari data Sectors, jaksa (bear) berhadapan dengan
-            pembela (bull), dan hakim ketua mengetuk putusan —{' '}
-            <strong>memorandum riset yang jujur, bersitasi, sepenuhnya milik Anda.</strong>
-          </p>
-
           <div className="ticker-panel anim-scale" style={{ animationDelay: '120ms' }}>
+            <div className="docket-head">
+              <span className="docket-stamp mono">BERKAS PERKARA</span>
+              <span className="tiny muted">Sidang &plusmn; 3 menit</span>
+            </div>
             <div className="ticker-input-row">
               <div className="ticker-field">
                 <span className="ticker-field-label">Kode saham IDX</span>
@@ -66,7 +78,7 @@ export default function HomePage() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') startTrial();
                   }}
-                  placeholder="Contoh: BBCA"
+                  placeholder="BBCA"
                   inputMode="text"
                   aria-label="Kode saham IDX (4 huruf)"
                   autoFocus

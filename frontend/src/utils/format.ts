@@ -38,8 +38,11 @@ export function formatPct(value: number, digits = 2): string {
 }
 
 export function formatDate(iso: string): string {
+  if (!iso) return '—';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : dateFmt.format(d);
+  // Tanggal epoch/placeholder (mis. 1970) dianggap "tidak ada data".
+  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1990) return '—';
+  return dateFmt.format(d);
 }
 
 export function formatDateTime(iso: string): string {

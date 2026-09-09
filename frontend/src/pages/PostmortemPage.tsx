@@ -6,7 +6,7 @@ import { formatPct, formatRupiah } from '../utils/format';
 import { MemoView } from './MemoPage';
 import { VerdictBadge } from './JournalPage';
 import { RichBadge } from './CourtroomPage';
-import { AlertIcon, ArrowDownIcon, ArrowUpIcon, BookIcon } from '../components/icons';
+import { AlertIcon, ArrowDownIcon, ArrowUpIcon, BookIcon, ScaleIcon } from '../components/icons';
 
 export default function PostmortemPage() {
   const { memoId } = useParams<{ memoId: string }>();
@@ -60,7 +60,8 @@ export default function PostmortemPage() {
   }
 
   const { memo, price_at_trial, price_now, change_pct, days_elapsed } = data;
-  const up = change_pct >= 0;
+  const up = (change_pct ?? 0) >= 0;
+  const hasPrice = change_pct != null && price_now != null;
 
   return (
     <div className="postmortem">
@@ -85,23 +86,45 @@ export default function PostmortemPage() {
 
         {/* Kartu perubahan harga */}
         <section className="pm-price card card-pad anim-in-slow">
-          <div className="pm-price-main">
-            <div className="pm-change-ic">
-              {up ? <ArrowUpIcon size={26} /> : <ArrowDownIcon size={26} />}
-            </div>
-            <div>
-              <div className="tiny muted">Pergerakan sejak memorandum</div>
-              <div className={`pm-change-pct mono ${up ? 'up' : 'down'}`}>{formatPct(change_pct)}</div>
-              <div className="muted small">
-                Sisi pembeli vs pembeli — perkiraan, bukan nasihat.
+          {hasPrice ? (
+            <>
+              <div className="pm-price-main">
+                <div className="pm-change-ic">
+                  {up ? <ArrowUpIcon size={26} /> : <ArrowDownIcon size={26} />}
+                </div>
+                <div>
+                  <div className="tiny muted">Pergerakan sejak memorandum</div>
+                  <div className={`pm-change-pct mono ${up ? 'up' : 'down'}`}>{formatPct(change_pct!)}</div>
+                  <div className="muted small">
+                    Sisi pembeli vs pembeli — perkiraan, bukan nasihat.
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="pm-price-cols">
-            <PriceCol label="Harga saat sidang" value={formatRupiah(price_at_trial)} />
-            <PriceCol label="Harga hari ini" value={formatRupiah(price_now)} tone={up ? 'up' : 'down'} />
-            <PriceCol label="Hari berlalu" value={`${days_elapsed} hari`} />
-          </div>
+              <div className="pm-price-cols">
+                <PriceCol label="Harga saat sidang" value={price_at_trial != null ? formatRupiah(price_at_trial) : '—'} />
+                <PriceCol label="Harga hari ini" value={formatRupiah(price_now!)} tone={up ? 'up' : 'down'} />
+                <PriceCol label="Hari berlalu" value={`${days_elapsed} hari`} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="pm-price-main">
+                <div className="pm-change-ic pm-change-ic--muted"><ScaleIcon size={22} /></div>
+                <div>
+                  <div className="tiny muted">Pergerakan sejak memorandum</div>
+                  <div className="pm-change-pct mono">Belum tersedia</div>
+                  <div className="muted small">
+                    Data harga saat ini belum dapat diambil — bukan kesalahan memo.
+                  </div>
+                </div>
+              </div>
+              <div className="pm-price-cols">
+                <PriceCol label="Harga saat sidang" value={price_at_trial != null ? formatRupiah(price_at_trial) : '—'} />
+                <PriceCol label="Harga hari ini" value="—" />
+                <PriceCol label="Hari berlalu" value={`${days_elapsed} hari`} />
+              </div>
+            </>
+          )}
         </section>
 
         {/* Ringkasan keputusan */}

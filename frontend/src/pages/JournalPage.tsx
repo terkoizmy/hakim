@@ -137,7 +137,7 @@ export default function JournalPage() {
                     </td>
                     <td><VerdictBadge category={it.verdict_category} /></td>
                     <td><RichBadge richness={it.info_richness} /></td>
-                    <td className="num mono">{it.price_at_trial.toLocaleString('id-ID')}</td>
+                    <td className="num mono">{it.price_at_trial == null ? '—' : it.price_at_trial.toLocaleString('id-ID')}</td>
                     <td className="small muted">{formatDate(it.created_at)}</td>
                     <td className="row-jump">
                       <Link to={`/journal/${it.memo_id}/postmortem`} className="btn btn-soft btn-sm" aria-label={`Post-mortem ${it.ticker}`}>
