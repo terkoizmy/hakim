@@ -244,7 +244,7 @@ function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[num
   if (!analyst) return null;
   const status = analyst.status;
   const Icon = ANALYST_ICONS[meta.id];
-  const evShown = analyst.evidence.slice(0, 3);
+  const evShown = analyst.evidence.slice(0, 6);
 
   return (
     <article
@@ -354,22 +354,33 @@ export function CacheBadge({ cache }: { cache: 'hit' | 'miss' }) {
   );
 }
 
+/** Chip bukti: ringkas satu baris (EV_1 + judul); diklik → detail + pill fakta terbuka. */
 function EvidenceChip({ evidence }: { evidence: AgentEvidencePayload }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="ev-chip anim-scale">
-      <div className="ev-chip-head">
-        <LinkIcon size={12} />
+    <button
+      type="button"
+      className={`ev-chip anim-scale ${open ? 'open' : ''}`}
+      onClick={() => setOpen((v) => !v)}
+      aria-expanded={open}
+      title={open ? 'Tutup detail bukti' : 'Buka detail bukti'}
+    >
+      <span className="ev-chip-row">
+        <LinkIcon size={11} />
         <span className="ev-chip-id mono">{evidence.evidence_id}</span>
-      </div>
-      <p className="ev-chip-headline">{evidence.headline}</p>
-      <div className="ev-facts">
-        {evidence.facts.map((f) => (
-          <span key={f.label} className="ev-fact mono">
-            <b>{formatFactValue(f.value, f.unit)}</b> {f.label}
-          </span>
-        ))}
-      </div>
-    </div>
+        <span className="ev-chip-headline">{evidence.headline}</span>
+        <ArrowDownIcon size={11} className="ev-caret" />
+      </span>
+      {open && (
+        <span className="ev-facts">
+          {evidence.facts.map((f) => (
+            <span key={f.label} className="ev-fact mono">
+              <b>{formatFactValue(f.value, f.unit)}</b> {f.label}
+            </span>
+          ))}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -394,7 +405,7 @@ function DebatePanel({
     <section className="debate">
       <div className="deck-head">
         <h2 className="section-title">Perdebatan — Jaksa vs Pembela</h2>
-        <span className="muted small">Dua ronde adversarial di atas bukti yang sama</span>
+        <span className="muted small">Dua ronde singkat, bukti yang sama</span>
       </div>
 
       <div className="debate-podium">
@@ -402,14 +413,14 @@ function DebatePanel({
           <ScaleIcon size={16} />
           <div>
             <b>Jaksa</b>
-            <span className="tiny muted">Tesis bear · jalur kegagalan</span>
+            <span className="tiny muted">tesis bear</span>
           </div>
         </div>
         <div className="podium-mid tiny mono">VS</div>
         <div className="podium defender">
           <div className="podium-txt">
             <b>Pembela</b>
-            <span className="podium-txt tiny muted">Tesis bull · tahan banting</span>
+            <span className="podium-txt tiny muted">tesis bull</span>
           </div>
           <ScaleIcon size={16} />
         </div>
@@ -441,13 +452,12 @@ function RoundBlock({
 }) {
   const prosecution = debate.find((d) => d.round === round && d.side === 'prosecution');
   const defense = debate.find((d) => d.round === round && d.side === 'defense');
-  const roundLabel = round === 1 ? 'Putaran pertama' : 'Putaran kedua';
 
   return (
     <div className="round-block">
       <div className="round-marker anim-fade">
         <span className="round-marker-line" />
-        <span className="round-pill mono">RONDE {round} · {roundLabel}</span>
+        <span className="round-pill mono">RONDE {round}</span>
         <span className="round-marker-line" />
       </div>
       <div className="debate-flow">
@@ -476,8 +486,8 @@ function stripTitleEcho(title: string, md: string): string {
 }
 
 const SPEAKER_LABEL: Record<DebateSide, string> = {
-  prosecution: 'JAKSA PENUNTUT · tesis bear',
-  defense: 'PEMBELA · tesis bull',
+  prosecution: 'JAKSA · bear',
+  defense: 'PEMBELA · bull',
 };
 
 function UtteranceCard({
@@ -505,7 +515,7 @@ function UtteranceCard({
       <article className={`utt anim-scale utt-${side}`}>
         <div className="utt-speaker-row">
           <span className={`speaker-chip speaker-${side}`}>{SPEAKER_LABEL[side]}</span>
-          {utterance.rebuts && <span className="utt-rebut tiny">↩ membalas argumen lawan</span>}
+          {utterance.rebuts && <span className="utt-rebut tiny">↩ balasan</span>}
           <span className="utt-time mono tiny">{formatTime(utterance.ts)}</span>
         </div>
         <header className="utt-head">

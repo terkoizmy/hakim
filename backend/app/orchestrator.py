@@ -219,19 +219,26 @@ async def _utterance(
 ) -> dict[str, Any]:
     if ctx.llm.available:
         try:
-            system = (
-                "Kamu adalah Jaksa (penuntut, sisi bear) dalam sidang saham IDX. "
-                "Bangun argumen penuntutan terkuat (inversi Munger: jalur kegagalan). "
-                "Sitasi bukti dengan evidence_id. Bahasa Indonesia."
-                if side == "prosecution"
-                else (
-                    "Kamu adalah Pembela (sisi bull) dalam sidang saham IDX. "
-                    "Bangun argumen pembelaan terkuat. Sitasi bukti dengan evidence_id. "
-                    "Bahasa Indonesia."
+            if side == "prosecution":
+                role = (
+                    "Kamu adalah Jaksa (penuntut, sisi bear) dalam sidang saham IDX. "
+                    "Bangun argumen penuntutan terkuat (inversi Munger: jalur kegagalan)."
                 )
+            else:
+                role = (
+                    "Kamu adalah Pembela (sisi bull) dalam sidang saham IDX. "
+                    "Bangun argumen pembelaan terkuat."
+                )
+            system = (
+                role
+                + " Sitasi bukti dengan evidence_id. Bahasa Indonesia. "
+                + "Batas ketat: judul (title) maksimal 6 kata. "
+                + "argument_md SANGAT ringkas: maksimal 3 kalimat pendek ATAU maksimal 3 bullet — "
+                + "tanpa basa-basi pembuka/penutup, tanpa mengulang judul di dalam argument_md. "
+                + "Selalu sitasi evidence_id."
             )
             user = _debate_user_prompt(ctx, summaries, evidence_pool, side, round_no, rebuts_id)
-            content = await ctx.llm.chat(ctx.settings.model_debate, [{"role": "system", "content": system}, {"role": "user", "content": user}], json_mode=True, max_tokens=3000)
+            content = await ctx.llm.chat(ctx.settings.model_debate, [{"role": "system", "content": system}, {"role": "user", "content": user}], json_mode=True, max_tokens=900)
             data = _parse_json(content)
             return {
                 "round": round_no,
@@ -269,7 +276,10 @@ def _debate_user_prompt(
     )
     if rebuts_id:
         parts.append(f"\nBalas argumen sebelumnya (id {rebuts_id}).")
-    parts.append('\nKeluarkan JSON: {"title": "...", "argument_md": "...", "cites": ["ev_..."]}')
+    parts.append(
+        '\nKeluarkan JSON: {"title": "...", "argument_md": "...", "cites": ["ev_..."]} '
+        "(argument_md maksimal 3 kalimat/bullet)"
+    )
     return "\n".join(parts)
 
 

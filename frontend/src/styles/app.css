@@ -759,18 +759,28 @@
 
 .ev-chip-wrap { display: flex; flex-direction: column; gap: var(--sp-2); }
 .ev-chip {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  font: inherit; color: inherit;
   border: 1px solid var(--line-0);
   border-left: 2px solid rgba(var(--agent), 0.45);
   border-radius: var(--radius-sm);
-  padding: 8px 11px;
+  padding: 6px 9px;
   background: var(--bg-2);
   transition: border-color var(--dur-fast), background var(--dur-fast);
 }
 .ev-chip:hover { border-color: var(--line-1); border-left-color: rgba(var(--agent), 0.9); background: var(--bg-3); }
-.ev-chip-head { display: flex; align-items: center; gap: 6px; color: rgba(var(--agent), 1); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.9; }
-.ev-chip-id { font-weight: 600; }
-.ev-chip-headline { margin: 4px 0 6px; font-size: 12.5px; line-height: 1.45; color: var(--text-0); }
-.ev-facts { display: flex; flex-wrap: wrap; gap: 5px; }
+.ev-chip.open { border-left-color: rgba(var(--agent), 0.9); background: var(--bg-3); }
+.ev-chip-row { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.ev-chip-row > svg { flex: none; color: rgba(var(--agent), 1); }
+.ev-chip-id { flex: none; font-weight: 600; font-size: 10.5px; letter-spacing: 0.05em; color: rgba(var(--agent), 1); }
+.ev-chip-headline {
+  flex: 1; min-width: 0; font-size: 12px; line-height: 1.4; color: var(--text-0);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ev-chip.open .ev-chip-headline { white-space: normal; }
+.ev-caret { flex: none; color: var(--text-2); transition: transform var(--dur-fast) var(--ease-out); }
+.ev-chip.open .ev-caret { transform: rotate(180deg); }
+.ev-facts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .ev-fact { font-size: 10.5px; color: var(--text-1); background: var(--bg-0); border: 1px solid var(--line-0); padding: 2px 7px; border-radius: var(--radius-pill); }
 .ev-fact b { color: var(--brass-300); font-weight: 600; margin-right: 4px; }
 .ev-more { display: block; padding: 2px 2px 0; }
