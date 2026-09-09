@@ -4,6 +4,7 @@ import { useTrialStream } from '../hooks/useTrialStream';
 import {
   ERROR_LABEL,
   PHASE_LABEL,
+  VERDICT_LABEL,
   type AgentEvidencePayload,
   type DebateSide,
   type Phase,
@@ -322,10 +323,12 @@ function AnalystDeck({ state }: { state: TrialUiState }) {
 }
 
 function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[number]; analyst?: AnalystUi; index: number }) {
+  const [showAll, setShowAll] = useState(false);
   if (!analyst) return null;
   const status = analyst.status;
   const Icon = ANALYST_ICONS[meta.id];
-  const evShown = analyst.evidence.slice(0, 6);
+  const evShown = showAll ? analyst.evidence : analyst.evidence.slice(0, 3);
+  const evHidden = Math.max(0, analyst.evidence.length - 3);
 
   return (
     <article
@@ -409,6 +412,15 @@ function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[num
               <EvidenceChip key={ev.evidence_id} evidence={ev} />
             ))}
           </div>
+          {evHidden > 0 && (
+            <button
+              type="button"
+              className="w-full cursor-pointer rounded-[7px] border border-[#8a6f33] px-2.5 py-[7px] text-center font-mono text-[11px] text-brass-500 transition-colors duration-150 hover:bg-brass-500 hover:text-[#14120f]"
+              onClick={() => setShowAll((v) => !v)}
+            >
+              {showAll ? 'Tampilkan lebih sedikit' : `+${evHidden} bukti lainnya`}
+            </button>
+          )}
           <div className="mt-auto flex flex-col gap-2 border-t border-[#2a251e] pt-2.5">
             <div className="flex items-center justify-between gap-2">
               <span className="whitespace-nowrap text-[12px] text-text-2">
@@ -526,42 +538,63 @@ function DebatePanel({
         </div>
       )}
 
-      <div className="relative grid grid-cols-1 gap-[14px] min-[900px]:grid-cols-2">
-        <span className="absolute -top-[14px] left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-bg-1 px-3 py-1 font-mono text-[11px] tracking-[1px] text-brass-500">
-          RONDE {rounds[rounds.length - 1] ?? 1} / 2
-        </span>
-        <div
-          className="flex flex-col gap-[14px] rounded-[14px] border border-t-2 bg-bg-2 p-5"
-          style={{ borderColor: LINE, borderTopColor: '#c96a5a', borderTopStyle: 'solid', borderTopWidth: 2 }}
-        >
-          <div className="flex items-center gap-3">
-            <span className="font-display text-[18px] font-medium">Jaksa</span>
-            <span className="rounded-[6px] border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] px-[9px] py-[3px] font-mono text-[11px] uppercase tracking-[1px] text-prosecute-400">
-              Tesis bear
-            </span>
+      <div className="flex flex-col gap-9">
+        {rounds.map((round) => (
+          <div key={round}>
+            <div className="mb-4 flex justify-center">
+              <span className="whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-bg-1 px-3 py-1 font-mono text-[11px] tracking-[1px] text-brass-500">
+                RONDE {round} / 2
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-[14px] min-[900px]:grid-cols-2">
+              <PodiumSide side="prosecution" round={round} debate={debate} state={state} />
+              <PodiumSide side="defense" round={round} debate={debate} state={state} />
+            </div>
           </div>
-          {rounds.map((round) => {
-            const u = debate.find((d) => d.round === round && d.side === 'prosecution');
-            return u ? <UtteranceCard key={round} side="prosecution" utterance={u} state={state} /> : null;
-          })}
-        </div>
-        <div
-          className="flex flex-col gap-[14px] rounded-[14px] border border-t-2 bg-bg-2 p-5"
-          style={{ borderColor: LINE, borderTopColor: '#7fb069', borderTopStyle: 'solid', borderTopWidth: 2 }}
-        >
-          <div className="flex items-center gap-3">
-            <span className="font-display text-[18px] font-medium">Pembela</span>
-            <span className="rounded-[6px] border border-[rgba(127,176,105,0.4)] bg-[rgba(127,176,105,0.06)] px-[9px] py-[3px] font-mono text-[11px] uppercase tracking-[1px] text-defend-400">
-              Tesis bull
-            </span>
-          </div>
-          {rounds.map((round) => {
-            const u = debate.find((d) => d.round === round && d.side === 'defense');
-            return u ? <UtteranceCard key={round} side="defense" utterance={u} state={state} /> : null;
-          })}
-        </div>
+        ))}
       </div>
     </section>
+  );
+}
+
+/** Satu sisi podium untuk satu ronde (kartu Jaksa / Pembela). */
+function PodiumSide({
+  side,
+  round,
+  debate,
+  state,
+}: {
+  side: DebateSide;
+  round: number;
+  debate: TrialUiState['debate'];
+  state: TrialUiState;
+}) {
+  const isDefense = side === 'defense';
+  const u = debate.find((d) => d.round === round && d.side === side);
+  return (
+    <div
+      className="flex flex-col gap-[14px] rounded-[14px] border border-t-2 bg-bg-2 p-5"
+      style={{
+        borderColor: LINE,
+        borderTopColor: isDefense ? '#7fb069' : '#c96a5a',
+        borderTopStyle: 'solid',
+        borderTopWidth: 2,
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <span className="font-display text-[18px] font-medium">{isDefense ? 'Pembela' : 'Jaksa'}</span>
+        <span
+          className={`rounded-[6px] border px-[9px] py-[3px] font-mono text-[11px] uppercase tracking-[1px] ${
+            isDefense
+              ? 'border-[rgba(127,176,105,0.4)] bg-[rgba(127,176,105,0.06)] text-defend-400'
+              : 'border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] text-prosecute-400'
+          }`}
+        >
+          {isDefense ? 'Tesis bull' : 'Tesis bear'}
+        </span>
+      </div>
+      <UtteranceCard side={side} utterance={u} state={state} />
+    </div>
   );
 }
 
@@ -673,15 +706,48 @@ function VerdictPanel({ stream }: { stream: ReturnType<typeof useTrialStream> })
             </span>
           </div>
         </div>
-        <div className="relative max-w-[70ch]">
-          <Markdown
-            source={memoMd}
-            className={`md font-display text-[clamp(17px,2.4vw,21px)] leading-[1.7] ${
-              streaming ? 'text-text-1' : 'text-text-0'
-            }`}
-          />
-          {streaming && (
-            <span className="ml-0.5 inline-block h-[1.1em] w-[2px] animate-blink bg-brass-500 align-text-bottom" />
+        <div className="relative grid grid-cols-1 gap-8 min-[1000px]:grid-cols-[minmax(0,1fr)_230px]">
+          <div className="max-w-[70ch]">
+            <Markdown
+              source={memoMd}
+              className={`md font-display text-[clamp(17px,2.4vw,21px)] leading-[1.7] ${
+                streaming ? 'text-text-1' : 'text-text-0'
+              }`}
+            />
+            {streaming && (
+              <span className="ml-0.5 inline-block h-[1.1em] w-[2px] animate-blink bg-brass-500 align-text-bottom" />
+            )}
+          </div>
+          {stream.memo ? (
+            <aside className="flex h-fit flex-col gap-3.5 rounded-[10px] border border-[#2a251e] bg-bg-3 p-5">
+              <span className="font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">Hasil putusan</span>
+              <span className="font-display text-[19px] font-medium leading-snug">
+                {VERDICT_LABEL[stream.memo.verdict.category]}
+              </span>
+              <div>
+                <div className="mb-1.5 flex items-center justify-between font-mono text-[11px] text-text-3">
+                  <span>Konfidensi</span>
+                  <span className="tabular-nums">{Math.round(stream.memo.verdict.confidence * 100)}%</span>
+                </div>
+                <div className="h-[6px] overflow-hidden rounded-pill bg-[#2a251e]">
+                  <div
+                    className="h-full rounded-pill bg-brass-500"
+                    style={{ width: `${Math.round(stream.memo.verdict.confidence * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <span className="text-[12px] leading-[1.5] text-text-2">
+                {stream.memo.key_facts.length} fakta kunci · {stream.memo.citations.length} sitasi
+              </span>
+            </aside>
+          ) : (
+            <aside className="flex h-fit flex-col gap-2 rounded-[10px] border border-dashed border-line-2 p-5">
+              <span className="font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">Hasil putusan</span>
+              <span className="inline-flex items-center text-[12.5px] text-text-2">
+                Hakim sedang merangkum…
+                <Dots />
+              </span>
+            </aside>
           )}
         </div>
       </div>
