@@ -7,6 +7,8 @@ import type {
   JournalResponse,
   MemoJSON,
   PostmortemResponse,
+  PriceSeriesResponse,
+  TickersResponse,
 } from '../types/contract';
 import { config } from '../config';
 import { ApiError, type RestClient } from './types';
@@ -55,5 +57,17 @@ export const restClient: RestClient = {
 
   fetchHealth() {
     return request<HealthResponse>('/api/health');
+  },
+
+  fetchPriceSeries(trialId) {
+    return request<PriceSeriesResponse>(
+      `/api/trials/${encodeURIComponent(trialId)}/price-series`,
+    );
+  },
+
+  listTickers(q, limit = 50, offset = 0) {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (q) params.set('q', q);
+    return request<TickersResponse>(`/api/tickers?${params.toString()}`);
   },
 };

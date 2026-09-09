@@ -9,6 +9,8 @@ import type {
   JournalResponse,
   MemoJSON,
   PostmortemResponse,
+  PriceSeriesResponse,
+  TickersResponse,
   TrialEvent,
 } from '../types/contract';
 
@@ -53,4 +55,8 @@ export interface RestClient {
   fetchJournal(limit?: number, offset?: number): Promise<JournalResponse>;
   fetchPostmortem(memoId: string): Promise<PostmortemResponse>;
   fetchHealth(): Promise<HealthResponse>;
+  /** Kontrak 1.1.0 — null bila series tidak tersedia (HTTP 200 + points null). */
+  fetchPriceSeries(trialId: string): Promise<PriceSeriesResponse>;
+  /** Kontrak 1.2.0 — daftar emiten untuk dashboard. */
+  listTickers(q?: string, limit?: number, offset?: number): Promise<TickersResponse>;
 }

@@ -115,6 +115,7 @@ export const POSTMORTEMS: Record<string, PostmortemResponse> = {
     price_now: 10875,
     change_pct: +6.1,
     days_elapsed: 26,
+    price_series: null,
   },
   mm_goto_0003: {
     memo: makeMemo({ memoId: 'mm_goto_0003', trialId: 'tr_mock_goto01', ticker: 'GOTO', companyName: 'PT GoTo Gojek Tokopedia Tbk', createdAt: T2, infoRichness: 'C', verdictCategory: 'perlu_kehati_hatian', confidence: 0.62, priceAtTrial: 68 }),
@@ -122,6 +123,7 @@ export const POSTMORTEMS: Record<string, PostmortemResponse> = {
     price_now: 62,
     change_pct: -8.82,
     days_elapsed: 20,
+    price_series: null,
   },
   mm_brms_0002: {
     memo: makeMemo({ memoId: 'mm_brms_0002', trialId: 'tr_mock_brms01', ticker: 'BRMS', companyName: 'PT Bumi Resources Minerals Tbk', createdAt: T3, infoRichness: 'B', verdictCategory: 'red_flag_berat', confidence: 0.84, priceAtTrial: 182 }),
@@ -129,6 +131,7 @@ export const POSTMORTEMS: Record<string, PostmortemResponse> = {
     price_now: 150,
     change_pct: -17.58,
     days_elapsed: 38,
+    price_series: null,
   },
   mm_cuan_0007: {
     memo: makeMemo({ memoId: 'mm_cuan_0007', trialId: 'tr_mock_cuan01', ticker: 'CUAN', companyName: 'PT Petrindo Jaya Kreator Tbk', createdAt: T1, infoRichness: 'B', verdictCategory: 'layak_diteliti_lanjut', confidence: 0.71, priceAtTrial: 12350 }),
@@ -136,5 +139,6 @@ export const POSTMORTEMS: Record<string, PostmortemResponse> = {
     price_now: 13100,
     change_pct: +6.07,
     days_elapsed: 43,
+    price_series: null,
   },
 };

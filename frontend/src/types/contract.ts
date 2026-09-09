@@ -313,6 +313,35 @@ export interface PostmortemResponse {
   change_pct: number | null;
   /** Jumlah hari antara memo dibuat dan sekarang. */
   days_elapsed: number;
+  /** Kontrak 1.1.0 — snapshot harga ascending (2–52 titik); null bila data tidak cukup. */
+  price_series: PricePoint[] | null;
+}
+
+/** Kontrak 1.1.0 — satu titik harga (daily_transaction snapshot). */
+export interface PricePoint {
+  date: string;
+  close: number;
+  volume: number | null;
+  change_pct: number | null;
+}
+
+/** GET /api/trials/{trial_id}/price-series → 200 (points bisa null bila < 2 titik). */
+export interface PriceSeriesResponse {
+  trial_id: string;
+  ticker: string;
+  points: PricePoint[] | null;
+}
+
+/** Kontrak 1.2.0 — item daftar emiten (dashboard "Berkas Perkara"). */
+export interface TickerListItem {
+  ticker: string;
+  company_name: string;
+}
+
+/** GET /api/tickers?q=&limit=&offset= → 200 */
+export interface TickersResponse {
+  items: TickerListItem[];
+  total: number;
 }
 
 /** GET /api/health → 200 */

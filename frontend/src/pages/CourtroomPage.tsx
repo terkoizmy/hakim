@@ -58,6 +58,15 @@ export default function CourtroomPage() {
   const ticker = stream.trial?.ticker;
   const company = stream.trial?.company_name;
 
+  function skipToMemo() {
+    if (stream.memo) {
+      navigate(`/memo/${trialId}`);
+      return;
+    }
+    const el = document.getElementById('verdict-anchor');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
     <div className="court">
       {/* Kepala perkara */}
@@ -129,6 +138,19 @@ export default function CourtroomPage() {
           </>
         )}
       </div>
+
+      {/* Pintu keluar: penonton tidak boleh terjebak menonton */}
+      {!stream.memo && !stream.error && stream.trial && (
+        <button
+          type="button"
+          className="skip-memo-btn"
+          onClick={skipToMemo}
+          title={stream.memoText ? 'Lompat ke putusan yang sedang diketik' : 'Putusan belum dimulai — sidang masih berjalan'}
+        >
+          <BookIcon size={15} /> Skip ke Memo
+          {stream.memoText ? <span className="skip-dot live" /> : <span className="skip-dot wait" />}
+        </button>
+      )}
     </div>
   );
 }
@@ -513,7 +535,7 @@ export function findEvidence(state: TrialUiState, evidenceId: string): AgentEvid
 function VerdictPanel({ stream }: { stream: ReturnType<typeof useTrialStream> }) {
   const streaming = !stream.memo;
   return (
-    <section className="verdict card anim-in">
+    <section id="verdict-anchor" className="verdict card anim-in">
       <div className="verdict-head">
         <span className="case-seal judge"><GavelIcon size={16} /></span>
         <div>
