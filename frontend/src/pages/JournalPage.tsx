@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api';
-import { VERDICT_LABEL, type JournalItem, type VerdictCategory } from '../types/contract';
+import { type JournalItem, type VerdictCategory } from '../types/contract';
 import { formatDate } from '../utils/format';
 import { RichBadge } from './CourtroomPage';
 import { AlertIcon, BookIcon, GavelIcon } from '../components/icons';
@@ -20,14 +20,30 @@ const TD = 'border-b border-line-0 px-4 py-3 align-middle';
 const CHIP =
   'inline-flex cursor-pointer items-center rounded-pill px-3.5 py-1.5 text-[12.5px] font-semibold transition-all';
 
+/** Label sentence case sesuai mock (VERDICT_LABEL versi Title Case dipakai panel putusan). */
+const VERDICT_BADGE_LABEL: Record<VerdictCategory, string> = {
+  layak_diteliti_lanjut: 'Layak diteliti lanjut',
+  perlu_kehati_hatian: 'Perlu kehati-hatian',
+  red_flag_berat: 'Red flag berat',
+};
+
+/** Badge putusan gaya mock — radius 6px, dot 6px, label sentence case. */
 export function VerdictBadge({ category }: { category: VerdictCategory }) {
-  const cls =
+  const style =
     category === 'layak_diteliti_lanjut'
-      ? 'badge-defend'
+      ? { color: '#8fc07c', border: 'rgba(127,176,105,0.4)', bg: 'rgba(127,176,105,0.06)', dot: '#7fb069' }
       : category === 'perlu_kehati_hatian'
-        ? 'badge-brass'
-        : 'badge-prosecute';
-  return <span className={`badge ${cls}`}>{VERDICT_LABEL[category]}</span>;
+        ? { color: '#d9a441', border: 'rgba(217,164,65,0.4)', bg: 'rgba(217,164,65,0.06)', dot: '#d9a441' }
+        : { color: '#c96a5a', border: 'rgba(201,106,90,0.4)', bg: 'rgba(201,106,90,0.06)', dot: '#c96a5a' };
+  return (
+    <span
+      className="inline-flex items-center gap-[7px] whitespace-nowrap rounded-[6px] px-[10px] py-[5px] font-mono text-[11.5px] tracking-[0.3px]"
+      style={{ color: style.color, borderColor: style.border, background: style.bg, borderStyle: 'solid', borderWidth: 1 }}
+    >
+      <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: style.dot }} aria-hidden="true" />
+      {VERDICT_BADGE_LABEL[category]}
+    </span>
+  );
 }
 
 export default function JournalPage() {
