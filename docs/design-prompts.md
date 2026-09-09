@@ -3,6 +3,16 @@
 Cara pakai: tempel **blok GLOBAL** + **blok halaman** yang mau didesain.
 Semua copy harus Bahasa Indonesia.
 
+**Status (9 Sep 2026):**
+- ✅ Halaman 1 (Landing `/`) — SUDAH didesain & diimplementasikan di
+  `frontend/src/pages/HomePage.tsx`. Jadikan itu **referensi gaya**;
+  jangan didesain ulang.
+- ⬜ Sisanya (2–7) menunggu redesign — prioritaskan 4 (ruang sidang) dan
+  5 (memorandum).
+- Karena migrasi Tailwind sudah selesai, implementasi langsung di repo:
+  baca `docs/OPENDESIGN-FE-DOC.md` untuk aturan teknis, konvensi class,
+  dan batasan file yang boleh diubah.
+
 ---
 
 ## GLOBAL — Design System (tempel di setiap prompt)
