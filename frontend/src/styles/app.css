@@ -178,43 +178,14 @@
   letter-spacing: -0.01em;
   margin-top: var(--sp-5);
 }
-.hero-title-accent {
-  color: transparent;
-  background: linear-gradient(100deg, var(--brass-200), var(--brass-400) 55%, #8f6a2f);
-  -webkit-background-clip: text;
-  background-clip: text;
-}
 .hero-sub {
   font-size: 16.5px;
   line-height: 1.7;
   color: var(--text-1);
   margin: var(--sp-5) 0 var(--sp-5);
+  max-width: 46ch;
 }
-.hero-sub strong { color: var(--text-0); }
-.hero-sub em { color: var(--text-0); font-style: italic; }
-
-.hero-points {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  font-size: 14px;
-  color: var(--text-1);
-}
-.hero-points li { position: relative; padding-left: 20px; line-height: 1.55; }
-.hero-points li::before {
-  content: "";
-  position: absolute;
-  left: 2px;
-  top: 8px;
-  width: 6px;
-  height: 6px;
-  background: var(--brass-400);
-  transform: rotate(45deg);
-  border-radius: 1px;
-}
+.hero-note { margin-top: var(--sp-4); }
 
 .ticker-panel {
   width: 100%;

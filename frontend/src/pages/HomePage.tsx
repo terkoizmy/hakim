@@ -1,15 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../api';
-import {
-  AlertIcon,
-  ArrowRightIcon,
-  BookIcon,
-  BuildingIcon,
-  GavelIcon,
-  ScaleIcon,
-  SparkIcon,
-} from '../components/icons';
+import { AlertIcon, BookIcon, BuildingIcon, ScaleIcon, SparkIcon } from '../components/icons';
 
 const TICKER_RE = /^[A-Za-z]{4}$/;
 
@@ -48,42 +40,25 @@ export default function HomePage() {
       <section className="hero">
         <div className="container hero-inner">
           <div className="hero-copy">
-            <div className="hero-badge anim-in">
-              <GavelIcon size={14} />
-              Multi-Agent · Data Sectors · Bahasa Indonesia
-            </div>
-
-            <h1 className="hero-title anim-in">
-              Sebelum beli,
-              <br />
-              <span className="hero-title-accent">aduli dulu.</span>
-            </h1>
-            <p className="hero-sub anim-in-slow">
-              Lima analis menggali bukti dari data Sectors, jaksa <em>bear</em> berhadapan dengan
-              pembela <em>bull</em> selama dua ronde, lalu hakim mengetuk putusan.{' '}
-              <strong>Hasilnya: memorandum riset yang jujur, bersitasi, dan sepenuhnya milik Anda.</strong>
+            <h1 className="hero-title">Sebelum beli, aduli dulu.</h1>
+            <p className="hero-sub">
+              Lima analis menggali bukti dari data Sectors. Jaksa dan pembela berdebat dua ronde,
+              lalu hakim menuliskan putusannya &mdash; terbuka dari awal sampai akhir.
             </p>
 
-            <ul className="hero-points anim-in-slow" style={{ animationDelay: '90ms' }}>
-              <li>Debat adversarial ditayangkan langsung — bukan kotak hitam.</li>
-              <li>Tiap angka bersitasi ke endpoint data, lengkap dengan peringkat kekayaan informasi A/B/C.</li>
-              <li>Semua putusan terarsip di jurnal, bisa di-post-mortem kapan pun.</li>
-            </ul>
-
-            <div className="hero-cta-row anim-in-slow" style={{ animationDelay: '140ms' }}>
-              <Link to="/dashboard" className="btn btn-ghost">
-                Lihat Daftar Perkara <ArrowRightIcon size={15} />
-              </Link>
-              <Link to="/journal" className="btn btn-ghost">
-                Jurnal Sidang
-              </Link>
+            <div className="hero-cta-row">
+              <Link to="/dashboard" className="btn btn-ghost">Lihat daftar perkara</Link>
+              <Link to="/journal" className="btn btn-ghost">Jurnal sidang</Link>
             </div>
+            <p className="tiny muted hero-note">
+              Tiap angka bersitasi ke sumber datanya. Bukan rekomendasi investasi.
+            </p>
           </div>
 
-          <div className="ticker-panel anim-scale" style={{ animationDelay: '120ms' }}>
+          <div className="ticker-panel">
             <div className="docket-head">
               <span className="docket-stamp mono">SIDANG KILAT</span>
-              <span className="tiny muted">Sidang &plusmn; 3 menit</span>
+              <span className="tiny muted">&plusmn; 3 menit</span>
             </div>
             <div className="ticker-input-row">
               <div className="ticker-field">
@@ -107,20 +82,14 @@ export default function HomePage() {
                 onClick={() => startTrial(ticker)}
                 disabled={!validTicker || submitting}
               >
-                {submitting ? (
-                  <span className="spinner-glow" />
-                ) : (
-                  <>
-                    Mulai Sidang <ArrowRightIcon size={18} />
-                  </>
-                )}
+                {submitting ? <span className="spinner-glow" /> : 'Mulai sidang'}
               </button>
             </div>
 
             {error && (
               <div className="ticker-error" role="alert">
                 <AlertIcon size={16} />
-                <span>{error} — pastikan 4 huruf kode emiten IDX.</span>
+                <span>{error} &mdash; pastikan 4 huruf kode emiten IDX.</span>
               </div>
             )}
             {!validTicker && value.length === 4 && (
@@ -139,46 +108,37 @@ export default function HomePage() {
       <section className="howto">
         <div className="container">
           <div className="howto-head">
-            <h2 className="section-title">Bagaimana sidang berjalan</h2>
+            <h2 className="section-title">Alur sidang</h2>
           </div>
           <div className="howto-grid">
-            <div className="howto-card card card-pad anim-in">
+            <div className="howto-card card card-pad">
               <span className="howto-icon"><BuildingIcon size={20} /></span>
-              <h3>1 · Pengumpulan bukti</h3>
+              <h3>Bukti dikumpulkan</h3>
               <p>
-                Lima analis — fundamental, harga, smart money, insider, anti-gorengan —{' '}<strong>memakai alat
-                (tools) ke data Sectors</strong>{' '}dan merangkum bukti, setiap angka bersitasi.
+                Lima analis meneliti fundamental, harga, arus dana, insider, dan cek gorengan
+                &mdash; semuanya dari data Sectors.
               </p>
             </div>
-            <div className="howto-card card card-pad anim-in" style={{ animationDelay: '70ms' }}>
+            <div className="howto-card card card-pad">
               <span className="howto-icon"><ScaleIcon size={20} /></span>
-              <h3>2 · Jaksa vs pembela</h3>
-              <p>
-                Dua ronde perdebatan adversarial: jalur kegagalan Munger dihadapi tesis parit Buffett.{' '}
-                <strong>Debat terlihat langsung, bukan kotak hitam.</strong>
-              </p>
+              <h3>Dua pihak berdebat</h3>
+              <p>Jaksa mencari jalur kegagalan, pembela menahannya. Dua ronde, tayang langsung.</p>
             </div>
-            <div className="howto-card card card-pad anim-in" style={{ animationDelay: '140ms' }}>
+            <div className="howto-card card card-pad">
               <span className="howto-icon"><SparkIcon size={20} /></span>
-              <h3>3 · Putusan komite</h3>
-              <p>
-                Hakim ketua merumuskan <strong>memorandum riset</strong>: kategori layak diteliti / perlu
-                kehati-hatian / red flag, plus daftar pertanyaan yang harus Anda jawab sendiri.
-              </p>
+              <h3>Hakim memutus</h3>
+              <p>Kategori riset, alasannya, dan pertanyaan verifikasi yang Anda jawab sendiri.</p>
             </div>
           </div>
 
-          <div className="journal-cta card card-pad anim-in" style={{ animationDelay: '180ms' }}>
+          <div className="journal-cta card card-pad">
             <span className="howto-icon"><BookIcon size={20} /></span>
             <div className="journal-cta-text">
-              <h3>Semua sidang tersimpan di Jurnal</h3>
-              <p className="muted">
-                Bandingkan memorandum lama dengan pergerakan harga hari ini — komite yang bisa
-                dipertanggungjawabkan.
-              </p>
+              <h3>Semua putusan terarsip</h3>
+              <p className="muted">Bandingkan memorandum lama dengan harga hari ini.</p>
             </div>
             <button className="btn btn-ghost" onClick={() => navigate('/journal')}>
-              Buka Jurnal Sidang <ArrowRightIcon size={16} />
+              Buka jurnal
             </button>
           </div>
         </div>
