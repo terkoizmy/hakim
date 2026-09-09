@@ -68,13 +68,13 @@ def extract_fundamental(data: dict[str, Any], symbol: str) -> list[Evidence]:
     fpe = _num(val.get("forward_pe"))
     peer_avg = _num(val.get("historical_valuation", {}).get("2025", {}).get("pe_peer_avg"))
     if fpe is not None:
-        facts = [EvidenceFact("forward_pe", fpe, "x")]
+        facts = [EvidenceFact("forward_pe", round(float(fpe), 2), "x")]
         if peer_avg is not None:
-            facts.append(EvidenceFact("pe_peer_avg", peer_avg, "x"))
+            facts.append(EvidenceFact("pe_peer_avg", round(float(peer_avg), 2), "x"))
         evs.append(Evidence(
             evidence_id="",
             source_endpoint=_endpoint("company/report", symbol, "sections=valuation"),
-            headline=f"Forward PE {fpe}x vs peer {peer_avg or 'n/a'}x",
+            headline=f"Forward PE {round(float(fpe), 2)}x vs peer {round(float(peer_avg), 2) if peer_avg is not None else 'n/a'}x",
             facts=facts,
         ))
 
@@ -118,11 +118,14 @@ def extract_fundamental(data: dict[str, Any], symbol: str) -> list[Evidence]:
         ))
 
     if peers:
-        best = min(peers, key=lambda p: p.get("pe_ttm") or 1e18)
+        rated = [p for p in peers if p.get("pe_ttm") is not None]
+        best = min(rated, key=lambda p: p.get("pe_ttm")) if rated else peers[0]
+        peer_sym = str(best.get("symbol", "")).removesuffix(".JK")
+        peer_pe = round(float(best["pe_ttm"]), 2) if best.get("pe_ttm") is not None else None
         evs.append(Evidence(
             evidence_id="",
             source_endpoint=_endpoint("company/report", symbol, "sections=peers"),
-            headline=f"Valuasi vs {len(peers)} peer subsector (contoh {best.get('symbol')} PE {best.get('pe_ttm')}x)",
+            headline=f"Valuasi vs {len(peers)} peer subsector (contoh {peer_sym} PE {peer_pe if peer_pe is not None else 'n/a'}x)",
             facts=[EvidenceFact("n_peers", len(peers), "emiten")],
         ))
 

@@ -236,9 +236,10 @@ class SectorsClient:
 
     async def company_report(self, symbol: str, sections: str) -> SectorsResponse:
         """Company report with EXPLICIT sections (never the 8-section default)."""
-        return await self._get(
+        resp = await self._get(
             "company_report", symbol, {"sections": sections}, tool="company_report"
         )
+        return self._normalized(resp, symbol, self._norm_company_report)
 
     async def revenue_segments(self, symbol: str) -> SectorsResponse:
         resp = await self._get("revenue_segments", symbol, {}, tool="revenue_segments")
@@ -320,6 +321,77 @@ class SectorsClient:
         if isinstance(payload, list):
             return {"symbol": symbol, "quarterly": payload}
         return payload
+
+    @staticmethod
+    def _norm_company_report(payload: Any, symbol: str) -> dict[str, Any]:
+        """Reshape the live v2 company report into the fixture/evidence shape.
+
+        Live-verified (2026-09-09, cached BBRI payload):
+        - `peers` is a LIST of {peers_data: {companies: [...]}} (fixture: {"peers": [...]})
+        - `financials.historical_financials` / `historical_financial_ratio` and
+          `valuation.historical_valuation` are LISTS of year-keyed entries
+          (fixture: dicts keyed by year string)
+        - `valuation` carries `last_close_price`, not `close_price`
+        Shape-detective: dict/list shapes pass through untouched, so fixture
+        payloads and already-normalized cache hits are idempotent no-ops.
+        """
+        if not isinstance(payload, dict):
+            return payload  # type: ignore[return-value]
+
+        out = dict(payload)
+
+        # peers: [{peers_data: {companies: [...]}}] -> {"peers": [companies]}
+        peers = out.get("peers")
+        if isinstance(peers, list):
+            companies: list[dict[str, Any]] = []
+            for entry in peers:
+                if isinstance(entry, dict) and isinstance(entry.get("peers_data"), dict):
+                    companies.extend(entry["peers_data"].get("companies") or [])
+            out["peers"] = {"peers": companies}
+
+        fin = out.get("financials")
+        if isinstance(fin, dict):
+            fin = dict(fin)
+            hist = fin.get("historical_financials")
+            ratios = fin.get("historical_financial_ratio")
+            if isinstance(hist, list):
+                by_year: dict[str, dict[str, Any]] = {}
+                for row in hist:
+                    if isinstance(row, dict) and row.get("year") is not None:
+                        by_year[str(row["year"])] = dict(row)
+                # live keeps ROE/margins in a separate ratios list — merge them
+                # into the same year entries the evidence parser reads.
+                if isinstance(ratios, list):
+                    for row in ratios:
+                        if not isinstance(row, dict) or row.get("year") is None:
+                            continue
+                        target = by_year.setdefault(str(row["year"]), {"year": row["year"]})
+                        prof = row.get("profitability")
+                        if isinstance(prof, dict):
+                            for k in ("roe", "net_profit_margin", "roa", "net_interest_margin"):
+                                if target.get(k) is None and prof.get(k) is not None:
+                                    target[k] = prof[k]
+                fin["historical_financials"] = by_year
+            fin["historical_financial_ratio"] = (
+                {str(r.get("year")): r for r in ratios if isinstance(r, dict) and r.get("year") is not None}
+                if isinstance(ratios, list)
+                else ratios
+            )
+            out["financials"] = fin
+
+        val = out.get("valuation")
+        if isinstance(val, dict):
+            val = dict(val)
+            if "close_price" not in val and val.get("last_close_price") is not None:
+                val["close_price"] = val["last_close_price"]
+            hv = val.get("historical_valuation")
+            if isinstance(hv, list):
+                val["historical_valuation"] = {
+                    str(r.get("year")): r for r in hv if isinstance(r, dict) and r.get("year") is not None
+                }
+            out["valuation"] = val
+
+        return out
 
     @staticmethod
     def _norm_segments(payload: Any, symbol: str) -> dict[str, Any]:
