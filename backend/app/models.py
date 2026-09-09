@@ -173,6 +173,16 @@ class PostmortemResponse(BaseModel):
     price_series: Optional[list[PricePoint]] = None
 
 
+class TickerItem(BaseModel):
+    ticker: str
+    company_name: str
+
+
+class TickerListResponse(BaseModel):
+    items: list[TickerItem]
+    total: int
+
+
 class HealthResponse(BaseModel):
     status: str
     sectors_mode: str

@@ -341,3 +341,34 @@ class Database:
             conn.commit()
         finally:
             conn.close()
+
+    def list_tickers(
+        self, q: str = "", limit: int = 50, offset: int = 0
+    ) -> tuple[list[dict[str, str]], int]:
+        """Search the ticker registry (case-insensitive substring on symbol or
+        company_name). Returns (items, total_after_filter) — `total` counts only
+        rows matching `q`, not the whole registry (CONTRACT 1.2.0)."""
+        conn = self._connect()
+        try:
+            if q:
+                like = f"%{q}%"
+                total = conn.execute(
+                    "SELECT COUNT(*) AS c FROM tickers WHERE symbol LIKE ? OR company_name LIKE ?",
+                    (like, like),
+                ).fetchone()["c"]
+                rows = conn.execute(
+                    "SELECT symbol, company_name FROM tickers "
+                    "WHERE symbol LIKE ? OR company_name LIKE ? "
+                    "ORDER BY symbol LIMIT ? OFFSET ?",
+                    (like, like, limit, offset),
+                ).fetchall()
+            else:
+                total = conn.execute("SELECT COUNT(*) AS c FROM tickers").fetchone()["c"]
+                rows = conn.execute(
+                    "SELECT symbol, company_name FROM tickers ORDER BY symbol LIMIT ? OFFSET ?",
+                    (limit, offset),
+                ).fetchall()
+            items = [{"ticker": r["symbol"], "company_name": r["company_name"]} for r in rows]
+            return items, total
+        finally:
+            conn.close()

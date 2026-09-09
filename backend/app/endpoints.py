@@ -27,6 +27,7 @@ from .models import (
     JournalResponse,
     PostmortemResponse,
     PriceSeriesResponse,
+    TickerListResponse,
 )
 from .orchestrator import TERMINAL_EVENTS, TrialContext, TrialFailed, run_trial
 from .price_series import build_price_series
@@ -158,6 +159,23 @@ def build_router(
         except Exception as exc:
             logger.warning("price-series fallback gagal untuk %s: %s", ticker, exc)
             return None
+
+    # ---------------------------------------------------------------- tickers
+
+    @router.get("/api/tickers", response_model=TickerListResponse)
+    async def tickers(q: str = "", limit: int = 50, offset: int = 0) -> TickerListResponse:
+        """Listed-companies registry for the dashboard (CONTRACT 1.2.0).
+
+        Ensures the registry is populated first (0 credits in fixture mode;
+        live mode refreshes at most once a day). `q` is a case-insensitive
+        substring match on ticker OR company_name; `total` counts only rows
+        matching `q`.
+        """
+        await sectors.listed_companies()
+        items, total = db.list_tickers(
+            q=q.strip(), limit=min(limit, 200), offset=max(offset, 0)
+        )
+        return TickerListResponse(items=items, total=total)
 
     # ----------------------------------------------------------------- health
 

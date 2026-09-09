@@ -33,6 +33,13 @@ FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 # depend on "today". Live cache keys keep the full query string.
 _FIXTURE_STRIP_PARAMS = {"start", "end"}
 
+# Listed-companies registry (CONTRACT 1.2.0): cached 1 day, refreshed only
+# when empty/expired. Live refresh paginates the screener (max 200/page).
+LISTED_COMPANIES_CACHE_KEY = "listed_companies"
+LISTED_COMPANIES_TTL_DAYS = 1
+SCREENER_PAGE_SIZE = 200
+SCREENER_MAX_PAGES = 10
+
 
 class SectorsError(Exception):
     """Non-retryable Sectors failure (maps to trial_failed error_code sectors_error)."""
@@ -265,12 +272,17 @@ class SectorsClient:
         return await self._get("corporate_actions", symbol, {}, tool="corporate_actions")
 
     async def screener(
-        self, where: str, order_by: str = "symbol", limit: int = 50
+        self, where: str, order_by: str = "symbol", limit: int = 50, offset: int = 0
     ) -> SectorsResponse:
-        """Structured screener — `where`, never `q=`."""
-        return await self._get(
-            "screener", None, {"where": where, "order_by": order_by, "limit": limit}, tool="screener"
-        )
+        """Structured screener — `where`, never `q=`.
+
+        `offset` is only added to the params when non-zero so existing cache
+        keys (and fixture lookups) stay unchanged.
+        """
+        params: dict[str, Any] = {"where": where, "order_by": order_by, "limit": limit}
+        if offset:
+            params["offset"] = offset
+        return await self._get("screener", None, params, tool="screener")
 
     # ------------------------------------------------------- ticker registry
 
@@ -304,6 +316,55 @@ class SectorsClient:
                 self.db.upsert_tickers([(sym, name)])
                 return name
         raise TickerNotFound(sym)
+
+    async def listed_companies(self) -> list[dict[str, str]]:
+        """Full listed-companies registry [{symbol, company_name}].
+
+        Served from a 1-day cache. On a cold cache it is fetched once and
+        mirrored into the tickers table, so GET /api/tickers and the
+        POST /api/trials validation share the same registry:
+          - fixture: GENERIC._listed_companies (0 HTTP)
+          - live: paginated screener (1 credit/page, first refresh only)
+        """
+        cached = self.db.cache_get(LISTED_COMPANIES_CACHE_KEY)
+        if cached is not None:
+            return cached.get("results", [])
+
+        if self.settings.sectors_mode == "fixture":
+            table = self._fixtures.get("GENERIC", {})
+            rows = table.get("_listed_companies", [])
+        else:
+            rows = await self._fetch_all_listed()
+
+        results = [
+            {
+                "symbol": self.normalize_symbol(row.get("symbol", "")),
+                "company_name": row.get("company_name", ""),
+            }
+            for row in rows
+            if row.get("symbol")
+        ]
+        self.db.cache_set(
+            LISTED_COMPANIES_CACHE_KEY, {"results": results}, LISTED_COMPANIES_TTL_DAYS
+        )
+        self.db.upsert_tickers([(r["symbol"], r["company_name"]) for r in results])
+        return results
+
+    async def _fetch_all_listed(self) -> list[dict[str, Any]]:
+        """Paginate the screener to fetch the full listed-companies registry."""
+        rows: list[dict[str, Any]] = []
+        offset = 0
+        for _ in range(SCREENER_MAX_PAGES):
+            resp = await self.screener(
+                where="symbol != ''", order_by="symbol", limit=SCREENER_PAGE_SIZE, offset=offset
+            )
+            page = resp.payload.get("results", [])
+            rows.extend(page)
+            total = resp.payload.get("pagination", {}).get("total_count", 0)
+            offset += len(page)
+            if not page or offset >= total:
+                break
+        return rows
 
     @staticmethod
     def normalize_symbol(symbol: str) -> str:
