@@ -6,6 +6,7 @@ import {
   PHASE_LABEL,
   VERDICT_LABEL,
   type AgentEvidencePayload,
+  type AgentId,
   type DebateSide,
   type Phase,
 } from '../types/contract';
@@ -97,6 +98,7 @@ export default function CourtroomPage() {
   const stream = useTrialStream(trialId);
   const navigate = useNavigate();
   const [elapsed, setElapsed] = useState(0);
+  const [summaryId, setSummaryId] = useState<AgentId | null>(null);
 
   useEffect(() => {
     const id = window.setInterval(() => setElapsed((s) => s + 1), 1000);
@@ -196,7 +198,7 @@ export default function CourtroomPage() {
           <TrialErrorPanel error={stream.error} onRetry={() => navigate('/')} />
         ) : (
           <>
-            <AnalystDeck state={stream} />
+            <AnalystDeck state={stream} onOpenSummary={setSummaryId} />
             {(stream.debate.length > 0 || stream.phase === 'debate' || stream.phase === 'verdict') && (
               <DebatePanel debate={stream.debate} rounds={stream.roundsSeen} state={stream} phase={stream.phase} />
             )}
@@ -206,6 +208,18 @@ export default function CourtroomPage() {
           </>
         )}
       </div>
+
+      {/* Modal kesimpulan analis (satu untuk semua kartu) */}
+      {(() => {
+        const summaryMeta = ANALYST_META.find((m) => m.id === summaryId);
+        return summaryMeta ? (
+          <SummaryModal
+            meta={summaryMeta}
+            analyst={stream.analysts[summaryMeta.id]}
+            onClose={() => setSummaryId(null)}
+          />
+        ) : null;
+      })()}
 
       {/* Pintu keluar: penonton tidak boleh terjebak menonton */}
       {!stream.memo && !stream.error && stream.trial && (
@@ -309,20 +323,36 @@ function PhaseStepper({
 }
 
 /* ---------------- dek analis (setara .analysts/.analyst mock) ---------------- */
-function AnalystDeck({ state }: { state: TrialUiState }) {
+function AnalystDeck({ state, onOpenSummary }: { state: TrialUiState; onOpenSummary: (id: AgentId) => void }) {
   return (
     <section>
       <SecHead kicker="Panel" title="Lima analis" note="Klik baris bukti untuk membuka detail" />
       <div className="grid grid-cols-[repeat(auto-fill,minmax(215px,1fr))] gap-[14px] min-[1100px]:grid-cols-5">
         {ANALYST_META.map((meta, i) => (
-          <AnalystCard key={meta.id} meta={meta} analyst={state.analysts[meta.id]} index={i} />
+          <AnalystCard
+            key={meta.id}
+            meta={meta}
+            analyst={state.analysts[meta.id]}
+            index={i}
+            onOpenSummary={() => onOpenSummary(meta.id)}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[number]; analyst?: AnalystUi; index: number }) {
+function AnalystCard({
+  meta,
+  analyst,
+  index,
+  onOpenSummary,
+}: {
+  meta: (typeof ANALYST_META)[number];
+  analyst?: AnalystUi;
+  index: number;
+  onOpenSummary: () => void;
+}) {
   const [showAll, setShowAll] = useState(false);
   if (!analyst) return null;
   const status = analyst.status;
@@ -429,12 +459,13 @@ function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[num
               {analyst.dataRichness && <RichBadge richness={analyst.dataRichness} />}
             </div>
             {analyst.summaryMd && (
-              <details className="group">
-                <summary className="w-full cursor-pointer select-none list-none text-center font-mono text-[11px] text-brass-500 transition-colors duration-150 hover:border-brass-500 hover:bg-brass-500 hover:text-[#14120f] rounded-[7px] border border-[#8a6f33] px-2.5 py-[7px] [&::-webkit-details-marker]:hidden">
-                  Baca kesimpulan
-                </summary>
-                <Markdown source={analyst.summaryMd} className="md md-sm mt-2" />
-              </details>
+              <button
+                type="button"
+                className="w-full cursor-pointer rounded-[7px] border border-[#8a6f33] px-2.5 py-[7px] text-center font-mono text-[11px] text-brass-500 transition-colors duration-150 hover:bg-brass-500 hover:text-[#14120f]"
+                onClick={onOpenSummary}
+              >
+                Baca kesimpulan
+              </button>
             )}
           </div>
         </div>
@@ -447,13 +478,84 @@ export function RichBadge({ richness }: { richness: 'A' | 'B' | 'C' }) {
   const label = richness === 'A' ? 'Data kaya' : richness === 'B' ? 'Data cukup' : 'Data minim';
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-[rgba(201,162,74,0.06)] px-2.5 py-[5px] font-mono text-[11.5px] tracking-[0.3px] text-[#e0c27a]"
+      className="inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-[rgba(201,162,74,0.06)] px-[5px] font-mono text-[11.5px] tracking-[0.3px] text-[#e0c27a]"
       data-rich={richness}
       title={`Kekayaan informasi: ${label}`}
     >
       <span className="size-[6px] rounded-full bg-brass-500" />
       Info {richness}
     </span>
+  );
+}
+
+/** Modal kesimpulan analis — terbuka dari tombol "Baca kesimpulan" kartu.
+ *  Tutup: klik backdrop, tombol ✕, atau Escape. */
+function SummaryModal({
+  meta,
+  analyst,
+  onClose,
+}: {
+  meta: (typeof ANALYST_META)[number];
+  analyst?: AnalystUi;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const Icon = ANALYST_ICONS[meta.id];
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] grid place-items-center p-5"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Kesimpulan ${meta.name}`}
+    >
+      <div
+        className="anim-fade absolute inset-0 bg-[rgba(10,9,7,0.72)] backdrop-blur-[3px]"
+        onClick={onClose}
+      />
+      <div
+        className="anim-scale relative flex max-h-[80vh] w-full max-w-[560px] flex-col overflow-y-auto rounded-[14px] border border-[#3a332a] bg-bg-2 p-6 shadow-2"
+        data-agent={meta.id}
+      >
+        <div className="mb-4 flex items-center gap-3">
+          <span
+            className="grid size-[38px] shrink-0 place-items-center rounded-[9px] text-[#14120f]"
+            style={{ background: 'rgba(var(--agent),1)' }}
+          >
+            {Icon ? <Icon size={20} /> : meta.monogram}
+          </span>
+          <div className="flex min-w-0 flex-col">
+            <span className="font-display text-[17px] font-medium leading-tight">{meta.name}</span>
+            <span className="font-mono text-[11px] tracking-[0.5px] text-text-3">{meta.tagline}</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto grid size-8 shrink-0 cursor-pointer place-items-center rounded-[7px] border border-line-1 text-[14px] text-text-2 transition-colors duration-150 hover:border-[#3a332a] hover:bg-[#1a1713] hover:text-text-0"
+            aria-label="Tutup"
+          >
+            ✕
+          </button>
+        </div>
+        {analyst?.summaryMd ? (
+          <Markdown source={analyst.summaryMd} className="md md-sm" />
+        ) : (
+          <p className="text-[13px] text-text-2">Kesimpulan belum tersedia.</p>
+        )}
+      </div>
+    </div>
   );
 }
 
