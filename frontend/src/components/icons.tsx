@@ -127,14 +127,6 @@ export const CheckIcon = (p: IconProps) =>
     p,
   );
 
-export const XIcon = (p: IconProps) =>
-  base(
-    <>
-      <path d="M6 6l12 12M18 6L6 18" />
-    </>,
-    p,
-  );
-
 export const AlertIcon = (p: IconProps) =>
   base(
     <>
@@ -188,15 +180,6 @@ export const RadioIcon = (p: IconProps) =>
     p,
   );
 
-export const ClockIcon = (p: IconProps) =>
-  base(
-    <>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 7.5V12l3 2" />
-    </>,
-    p,
-  );
-
 export const SearchIcon = (p: IconProps) =>
   base(
     <>
@@ -230,14 +213,6 @@ export const SparkIcon = (p: IconProps) =>
     <>
       <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
       <path d="M12 8l.9 3.1L16 12l-3.1.9L12 16l-.9-3.1L8 12l3.1-.9L12 8z" />
-    </>,
-    p,
-  );
-
-export const MenuIcon = (p: IconProps) =>
-  base(
-    <>
-      <path d="M4 7h16M4 12h16M4 17h16" />
     </>,
     p,
   );

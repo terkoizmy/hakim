@@ -40,7 +40,7 @@ export default function PriceChart({ points, endLabel }: Props) {
 
   return (
     <svg
-      className="price-chart"
+      className="block h-auto w-full"
       viewBox={`0 0 ${W} ${H}`}
       role="img"
       aria-label={`Grafik harga ${first.date} sampai ${last.date}`}
@@ -54,27 +54,66 @@ export default function PriceChart({ points, endLabel }: Props) {
       </defs>
 
       {/* garis referensi min & max */}
-      <line className="price-chart-ref" x1={PAD_X} y1={y(max)} x2={W - PAD_X} y2={y(max)} />
-      <line className="price-chart-ref" x1={PAD_X} y1={y(min)} x2={W - PAD_X} y2={y(min)} />
-      <text className="price-chart-lbl" x={PAD_X + 2} y={y(max) - 5}>
+      <line
+        className="stroke-line-1"
+        strokeWidth={1}
+        strokeDasharray="3 4"
+        x1={PAD_X}
+        y1={y(max)}
+        x2={W - PAD_X}
+        y2={y(max)}
+      />
+      <line
+        className="stroke-line-1"
+        strokeWidth={1}
+        strokeDasharray="3 4"
+        x1={PAD_X}
+        y1={y(min)}
+        x2={W - PAD_X}
+        y2={y(min)}
+      />
+      <text className="fill-text-2 font-mono text-[10px]" x={PAD_X + 2} y={y(max) - 5}>
         {fmt(max)}
       </text>
-      <text className="price-chart-lbl" x={PAD_X + 2} y={y(min) - 5}>
+      <text className="fill-text-2 font-mono text-[10px]" x={PAD_X + 2} y={y(min) - 5}>
         {fmt(min)}
       </text>
 
       <path d={area} fill="url(#pc-fill)" />
-      <path d={line} className="price-chart-line" />
+      <path
+        d={line}
+        fill="none"
+        stroke="var(--brass-400)"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
 
-      <circle className="price-chart-dot" cx={lastX} cy={lastY} r="3.5" />
-      <text className="price-chart-lbl price-chart-lbl--end" x={lastX - 4} y={lastY - 9} textAnchor="end">
+      <circle
+        className="fill-brass-300 stroke-bg-1"
+        strokeWidth={1.5}
+        cx={lastX}
+        cy={lastY}
+        r="3.5"
+      />
+      <text
+        className="fill-brass-200 font-mono text-[10px] font-semibold"
+        x={lastX - 4}
+        y={lastY - 9}
+        textAnchor="end"
+      >
         {fmt(last.close)}
       </text>
 
-      <text className="price-chart-lbl" x={PAD_X} y={H - 8}>
+      <text className="fill-text-2 font-mono text-[10px]" x={PAD_X} y={H - 8}>
         {fmtDate(first.date)}
       </text>
-      <text className="price-chart-lbl price-chart-lbl--end" x={lastX} y={H - 8} textAnchor="end">
+      <text
+        className="fill-brass-200 font-mono text-[10px] font-semibold"
+        x={lastX}
+        y={H - 8}
+        textAnchor="end"
+      >
         {endLabel ?? fmtDate(last.date)}
       </text>
     </svg>

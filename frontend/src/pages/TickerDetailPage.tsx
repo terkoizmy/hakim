@@ -7,6 +7,12 @@ import { RichBadge } from './CourtroomPage';
 import { AlertIcon, BookIcon, GavelIcon } from '../components/icons';
 import type { JournalItem, PriceSeriesResponse } from '../types/contract';
 
+/** Kelas dasar sel tabel screener (dari .screen-table th/td). */
+const TH_CLS =
+  'whitespace-nowrap border-b border-line-1 px-3 py-[11px] text-left text-[10.5px] font-semibold uppercase tracking-[0.12em] text-text-2 first:pl-4';
+const TD_CLS =
+  'whitespace-nowrap border-b border-line-0 px-3 py-[11px] align-middle first:pl-4 last:pr-4';
+
 /**
  * Halaman detail emiten (/ticker/:ticker) — ala screener:
  * header besar, grafik harga (snapshot sidang terakhir, 0 kredit),
@@ -105,20 +111,22 @@ export default function TickerDetailPage() {
   const hasHistory = history !== null && history.length > 0;
 
   return (
-    <div className="pad-page detail">
+    <div className="flex flex-col gap-6 pb-14 pt-8">
       <div className="container">
-        <nav className="detail-crumb">
-          <Link to="/" className="detail-crumb-link">
+        <nav>
+          <Link to="/" className="text-[13px] text-text-2 transition-colors hover:text-brass-300">
             &larr; Daftar Perkara
           </Link>
         </nav>
 
         {/* Header emiten — ala screener */}
-        <header className="detail-head">
-          <div className="detail-head-main">
-            <h1 className="detail-ticker mono">{ticker}</h1>
-            <div className="detail-namewrap">
-              <span className="detail-name">{companyName ?? 'Emiten IDX'}</span>
+        <header className="flex flex-wrap items-end justify-between gap-5">
+          <div className="flex min-w-0 flex-col gap-2">
+            <h1 className="font-mono text-[44px] font-bold leading-none tracking-[0.08em] text-brass-100">
+              {ticker}
+            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-base font-medium text-text-0">{companyName ?? 'Emiten IDX'}</span>
               {latest && (
                 <>
                   <VerdictBadge category={latest.verdict_category} />
@@ -127,15 +135,17 @@ export default function TickerDetailPage() {
               )}
             </div>
             {latest && (
-              <p className="detail-pricenote muted small">
+              <p className="muted small">
                 Harga saat putusan terakhir:{' '}
-                <strong className="mono">Rp {latest.price_at_trial?.toLocaleString('id-ID')}</strong>
+                <strong className="font-mono text-text-0">
+                  Rp {latest.price_at_trial?.toLocaleString('id-ID')}
+                </strong>
                 {' · '}
                 {fmtDateTime(latest.created_at)}
               </p>
             )}
           </div>
-          <div className="detail-head-cta">
+          <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
             <button
               className="btn btn-primary btn-lg"
               onClick={startTrial}
@@ -155,15 +165,15 @@ export default function TickerDetailPage() {
         </header>
 
         {error && (
-          <div className="ticker-error" role="alert">
+          <div className="mt-4 flex items-center gap-2 text-[13.5px] text-prosecute-300" role="alert">
             <AlertIcon size={16} />
             <span>{error}</span>
           </div>
         )}
 
         {/* Grafik harga — snapshot dari sidang terakhir */}
-        <section className="card card-pad detail-chart">
-          <div className="detail-chart-head">
+        <section className="card card-pad">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="section-title">Perjalanan harga</h2>
             <span className="tiny muted">
               {latest
@@ -174,14 +184,16 @@ export default function TickerDetailPage() {
           {series ? (
             <PriceChart points={series.points} />
           ) : seriesMissing ? (
-            <p className="detail-chart-empty muted">
+            <p className="muted rounded-md border border-dashed border-line-1 px-4 py-6 text-center">
               Seri harga belum tersedia untuk sidang ini — buka sidang baru untuk mengambil
               snapshot terkini.
             </p>
           ) : hasHistory ? (
-            <p className="detail-chart-empty muted">Memuat seri harga…</p>
+            <p className="muted rounded-md border border-dashed border-line-1 px-4 py-6 text-center">
+              Memuat seri harga…
+            </p>
           ) : (
-            <p className="detail-chart-empty muted">
+            <p className="muted rounded-md border border-dashed border-line-1 px-4 py-6 text-center">
               Belum ada grafik — {ticker} belum pernah diadili. Klik <strong>Buka Sidang</strong>{' '}
               untuk mengumpulkan bukti pertama.
             </p>
@@ -189,8 +201,8 @@ export default function TickerDetailPage() {
         </section>
 
         {/* Riwayat persidangan */}
-        <section className="detail-history">
-          <div className="docket-toolbar-title">
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
             <h2 className="section-title">Riwayat Persidangan</h2>
             {hasHistory && (
               <span className="muted small">
@@ -200,39 +212,39 @@ export default function TickerDetailPage() {
           </div>
 
           {hasHistory ? (
-            <div className="screen-table-wrap card">
-              <table className="screen-table">
+            <div className="card overflow-x-auto">
+              <table className="w-full min-w-[680px] border-collapse text-[13.5px]">
                 <thead>
                   <tr>
-                    <th>Tanggal</th>
-                    <th>Putusan</th>
-                    <th>Kekayaan Data</th>
-                    <th className="num">Harga Saat Sidang</th>
-                    <th className="num">Arsip</th>
+                    <th className={TH_CLS}>Tanggal</th>
+                    <th className={TH_CLS}>Putusan</th>
+                    <th className={TH_CLS}>Kekayaan Data</th>
+                    <th className={`${TH_CLS} text-right`}>Harga Saat Sidang</th>
+                    <th className={`${TH_CLS} text-right`}>Arsip</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history!.map((j) => (
-                    <tr key={j.memo_id}>
-                      <td className="mono small">{fmtDateTime(j.created_at)}</td>
-                      <td>
+                    <tr key={j.memo_id} className="[&:last-child>td]:border-b-0">
+                      <td className={`${TD_CLS} small font-mono`}>{fmtDateTime(j.created_at)}</td>
+                      <td className={TD_CLS}>
                         <VerdictBadge category={j.verdict_category} />
                       </td>
-                      <td>
+                      <td className={TD_CLS}>
                         <RichBadge richness={j.info_richness} />
                       </td>
-                      <td className="num mono">
+                      <td className={`${TD_CLS} text-right font-mono`}>
                         {j.price_at_trial != null
                           ? `Rp ${j.price_at_trial.toLocaleString('id-ID')}`
                           : '—'}
                       </td>
-                      <td className="num detail-links">
-                        <Link to={`/memo/${j.memo_id}`} className="detail-link">
+                      <td className={`${TD_CLS} flex justify-end gap-3`}>
+                        <Link to={`/memo/${j.memo_id}`} className="border-b border-transparent text-[12.5px] text-brass-300 transition-colors hover:border-brass-500 hover:text-brass-100">
                           Memo
                         </Link>
                         <Link
                           to={`/journal/${j.memo_id}/postmortem`}
-                          className="detail-link"
+                          className="border-b border-transparent text-[12.5px] text-brass-300 transition-colors hover:border-brass-500 hover:text-brass-100"
                           title="Post-mortem: harga sejak putusan"
                         >
                           Post-mortem
@@ -244,8 +256,8 @@ export default function TickerDetailPage() {
               </table>
             </div>
           ) : (
-            <div className="detail-empty card card-pad">
-              <BookIcon size={20} />
+            <div className="card card-pad flex items-center gap-3 text-[13.5px] text-text-2">
+              <BookIcon size={20} className="flex-none text-brass-400" />
               <p>
                 {history === null
                   ? 'Memuat riwayat…'

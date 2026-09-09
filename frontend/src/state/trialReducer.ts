@@ -205,9 +205,4 @@ export function trialReducer(state: TrialUiState, action: TrialAction): TrialUiS
   }
 }
 
-export function getAnalystStatusSummary(state: TrialUiState) {
-  const total = ANALYST_IDS.length;
-  return { done: state.completedCount, total };
-}
-
 export type { AgentId, DebateSide, CacheStatus };

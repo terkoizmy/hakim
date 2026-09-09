@@ -57,11 +57,3 @@ export function formatTime(iso: string): string {
     : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-/** Konfidensi 0..1 → persen. */
-export function formatConfidence(value: number): string {
-  return Math.round(value * 100) + '%';
-}
-
-export function plural(n: number, one: string, many: string): string {
-  return n === 1 ? one : many;
-}
