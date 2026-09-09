@@ -243,55 +243,64 @@ function AnalystDeck({ state }: { state: TrialUiState }) {
 function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[number]; analyst?: AnalystUi; index: number }) {
   if (!analyst) return null;
   const status = analyst.status;
-  const statusLabel =
-    status === 'queued' ? 'Menunggu giliran' : status === 'working' ? 'Menyelidiki data' : 'Sidang selesai';
+  const Icon = ANALYST_ICONS[meta.id];
+  const evShown = analyst.evidence.slice(0, 3);
 
   return (
     <article
       className={`acard card card-pad anim-in status-${status}`}
+      data-agent={meta.id}
       style={{ animationDelay: `${Math.min(index * 60, 300)}ms` }}
     >
       <header className="acard-head">
         <span className={`avatar avatar-${meta.icon} ${status}`}>
-          {status === 'queued' ? <span className="avatar-question">?</span> : meta.monogram}
+          {status === 'queued' ? <span className="avatar-question">?</span> : Icon ? <Icon size={20} /> : meta.monogram}
         </span>
         <div className="acard-title">
           <h3>{analyst.displayName}</h3>
           <p className="tiny muted">{meta.tagline}</p>
         </div>
-        <span className={`status-dot ${status === 'done' ? 'done' : status === 'working' ? 'working' : 'idle'}`} />
       </header>
 
       {status === 'queued' && (
         <div className="acard-body">
-          <div className="queued-hint tiny muted">Analis menunggu giliran sidang.</div>
+          <div className="queued-hint tiny muted">
+            <span className="status-dot idle" /> Analis menunggu giliran sidang.
+          </div>
         </div>
       )}
 
       {status === 'working' && (
         <div className="acard-body">
           <div className="acard-live tiny">
-            <span className="acard-live-label">{statusLabel}</span>
+            <span className="acard-live-label">
+              Menyelidiki data
+              <span className="dotty"><i /><i /><i /></span>
+            </span>
             <span className="acard-live-model mono">via {analyst.model}</span>
           </div>
+          <div className="acard-live-bar" aria-hidden="true" />
           {analyst.toolCalls.length > 0 && (
             <div className="tool-list">
               {analyst.toolCalls.map((tc, i) => (
                 <div key={i} className="tool-row anim-fade" style={{ animationDelay: `${Math.min(i * 90, 400)}ms` }}>
+                  <span className="tool-dot" aria-hidden="true" />
                   <span className="tool-name mono">{tc.tool}</span>
                   <CacheBadge cache={tc.cache} />
                 </div>
               ))}
             </div>
           )}
-          <div className="ev-chip-wrap">
-            {analyst.evidence.slice(0, 3).map((ev) => (
-              <EvidenceChip key={ev.evidence_id} evidence={ev} />
-            ))}
-            {analyst.evidence.length > 3 && (
-              <span className="ev-more tiny muted">+{analyst.evidence.length - 3} bukti lainnya</span>
-            )}
-          </div>
+          {evShown.length > 0 && (
+            <div className="ev-chip-wrap">
+              {evShown.map((ev) => (
+                <EvidenceChip key={ev.evidence_id} evidence={ev} />
+              ))}
+              {analyst.evidence.length > 3 && (
+                <span className="ev-more tiny muted">+{analyst.evidence.length - 3} bukti lainnya</span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -300,11 +309,14 @@ function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[num
           <div className="acard-done-row">
             <span className="acard-done-label">
               <CheckIcon size={13} /> Ringkasan
+              <span className="acard-ev-count mono tiny muted">
+                {analyst.evidence.length} bukti
+              </span>
             </span>
             {analyst.dataRichness && <RichBadge richness={analyst.dataRichness} />}
           </div>
           <div className="ev-chip-wrap">
-            {analyst.evidence.slice(0, 3).map((ev) => (
+            {evShown.map((ev) => (
               <EvidenceChip key={ev.evidence_id} evidence={ev} />
             ))}
             {analyst.evidence.length > 3 && (
