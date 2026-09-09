@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type FC, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FC, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTrialStream } from '../hooks/useTrialStream';
 import {
@@ -9,23 +9,18 @@ import {
   type Phase,
 } from '../types/contract';
 import { ANALYST_META } from '../utils/analysts';
-import { formatTime } from '../utils/format';
 import { Markdown } from '../utils/md';
 import { isMockMode } from '../api';
 import type { AnalystUi, TrialUiState } from '../state/trialReducer';
 import {
   AlertIcon,
-  ArrowDownIcon,
-  ArrowRightIcon,
   BookIcon,
   BoltIcon,
   BuildingIcon,
   ChartIcon,
-  CheckIcon,
   DatabaseIcon,
   FingerprintIcon,
   GavelIcon,
-  RadioIcon,
   RefreshIcon,
   ShieldAlertIcon,
   SparkIcon,
@@ -37,23 +32,34 @@ const PHASE_STEPS: { phase: Phase }[] = [
   { phase: 'verdict' },
 ];
 
-/* ---- segel lingkaran (setara .case-seal mock) ---- */
-const SEAL_BASE = 'grid size-11 shrink-0 place-items-center rounded-full border';
-const SEAL_TONE = {
-  brass: 'border-[rgba(201,162,74,0.4)] bg-[rgba(201,162,74,0.08)] text-brass-300',
-  done: 'border-[rgba(127,176,105,0.45)] bg-[rgba(127,176,105,0.1)] text-defend-300',
-  error: 'border-[rgba(201,106,90,0.45)] bg-[rgba(201,106,90,0.1)] text-prosecute-300',
-} as const;
+/* Warna hairline mock (solid, bukan rgba) — dipakai presisi di halaman sidang. */
+const LINE = '#3a332a';
 
-/** Kepala seksi: kicker mono + judul (setara .sec-head mock). */
-function SecHead({ kicker, title, aside }: { kicker: string; title: string; aside?: ReactNode }) {
+/** Segel lingkaran mock: 52px (casebar) / 46px (hakim), border brass-dim + radial hangat. */
+function Seal({ size, children, className = '' }: { size: number; children: ReactNode; className?: string }) {
   return (
-    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <span
+      className={`grid shrink-0 place-items-center rounded-full border border-[#8a6f33] text-brass-400 ${className}`}
+      style={{
+        width: size,
+        height: size,
+        background: 'radial-gradient(circle at 30% 30%, rgba(201,162,74,0.12), transparent 70%)',
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Kepala seksi mock: kicker mono kuningan + judul display 22px + catatan mono kanan. */
+function SecHead({ kicker, title, note }: { kicker: string; title: string; note?: string }) {
+  return (
+    <div className="mt-11 mb-[18px] flex flex-wrap items-baseline justify-between gap-4">
       <div>
-        <div className="mb-1.5 font-mono text-[10.5px] uppercase tracking-[0.18em] text-brass-500">{kicker}</div>
-        <h2 className="text-[19px] font-semibold leading-tight">{title}</h2>
+        <div className="mb-1 font-mono text-[11px] uppercase tracking-[1.5px] text-brass-500">{kicker}</div>
+        <h2 className="font-display text-[22px] font-medium leading-tight">{title}</h2>
       </div>
-      {aside && <div className="muted small pb-0.5">{aside}</div>}
+      {note && <span className="font-mono text-[12px] text-text-3">{note}</span>}
     </div>
   );
 }
@@ -69,9 +75,20 @@ function Dots() {
   );
 }
 
-/** Segel 44px lingkaran. */
-function CaseSeal({ tone = 'brass', children }: { tone?: keyof typeof SEAL_TONE; children: ReactNode }) {
-  return <span className={`${SEAL_BASE} ${SEAL_TONE[tone]}`}>{children}</span>;
+/** Badge status sidang di case-sub (setara .b-live / varian selesai-gagal). */
+function TrialStatusBadge({ streaming, error }: { streaming: boolean; error: boolean }) {
+  const label = error ? 'Sidang gagal' : streaming ? 'Sidang berlangsung' : 'Sidang selesai';
+  const tone = error || streaming
+    ? 'border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] text-prosecute-400'
+    : 'border-[rgba(127,176,105,0.4)] bg-[rgba(127,176,105,0.06)] text-defend-400';
+  return (
+    <span className={`inline-flex items-center gap-[7px] whitespace-nowrap rounded-[6px] border px-2.5 py-[5px] font-mono text-[11.5px] tracking-[0.3px] ${tone}`}>
+      <span
+        className={`size-[6px] rounded-full ${error ? 'bg-prosecute-400' : streaming ? 'animate-pulse-dot bg-prosecute-400' : 'bg-defend-400'}`}
+      />
+      {label}
+    </span>
+  );
 }
 
 export default function CourtroomPage() {
@@ -92,6 +109,7 @@ export default function CourtroomPage() {
 
   const ticker = stream.trial?.ticker;
   const company = stream.trial?.company_name;
+  const streaming = !stream.terminal && !stream.error && !!stream.trial;
 
   function skipToMemo() {
     if (stream.memo) {
@@ -103,75 +121,66 @@ export default function CourtroomPage() {
   }
 
   return (
-    <div className="pt-6 pb-18">
-      {/* Case bar: crumb + identitas perkara + strip statistik terbagi */}
+    <div className="pt-[34px] pb-[72px]">
       <div className="container">
-        <div className="crumb mb-5 flex items-center gap-2 font-mono text-[12px] uppercase tracking-[0.08em] text-text-3">
-          <Link to="/dashboard" className="text-brass-400 transition-colors hover:text-brass-200">Daftar Perkara</Link>
-          <span className="text-text-3">/</span>
-          <Link to={`/ticker/${ticker ?? ''}`} className="text-brass-400 transition-colors hover:text-brass-200">{ticker ?? '…'}</Link>
-          <span className="text-text-3">/</span>
-          <span className="text-text-2">Sidang Berlangsung</span>
+        {/* ---------- CASE BAR ---------- */}
+        <div className="crumb mb-5 flex items-center font-mono text-[12px] uppercase tracking-[1px] text-text-3">
+          <Link to="/dashboard" className="text-brass-500 transition-colors hover:text-brass-300">Daftar Perkara</Link>
+          <span className="mx-[6px] text-text-3">/</span>
+          <Link to={`/ticker/${ticker ?? ''}`} className="text-brass-500 transition-colors hover:text-brass-300">{ticker ?? '…'}</Link>
+          <span className="mx-[6px] text-text-3">/</span>
+          <span>Sidang Berlangsung</span>
         </div>
 
-        <div className="anim-in flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
-          <div className="flex min-w-[280px] items-center gap-4">
-            <CaseSeal tone={stream.terminal ? 'done' : stream.error ? 'error' : 'brass'}>
-              {stream.error ? <AlertIcon size={18} /> : <GavelIcon size={18} />}
-            </CaseSeal>
-            <div>
-              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
-                <h1 className="font-mono text-[clamp(30px,4.5vw,44px)] font-semibold leading-none tracking-[0.02em] text-text-0">
-                  {ticker ?? '…'}
-                  {ticker && <span className="text-brass-500">.</span>}
-                </h1>
-                {company && <span className="badge badge-brass">{company}</span>}
-                {isMockMode && <span className="badge badge-neutral">fixture</span>}
-                {!stream.error && stream.trial && !stream.terminal && (
-                  <span className="inline-flex items-center gap-1.5 rounded-pill border border-[rgba(201,162,74,0.32)] bg-[rgba(201,162,74,0.07)] px-2.5 py-[3px] font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-brass-300">
-                    <span className="size-[6px] animate-pulse-dot rounded-full bg-brass-400" /> live
-                  </span>
-                )}
-              </div>
-              <div
-                className="mt-2.5 font-mono text-[11px] uppercase tracking-[0.14em] text-text-3"
+        <div className="anim-in flex flex-wrap items-center gap-5">
+          <Seal size={52} className={stream.error ? '!border-[rgba(201,106,90,0.5)] !text-prosecute-300' : ''}>
+            {stream.error ? <AlertIcon size={24} /> : <GavelIcon size={24} />}
+          </Seal>
+          <div className="flex min-w-[260px] flex-col">
+            <div className="font-mono text-[clamp(30px,4.5vw,44px)] font-medium leading-none tracking-[2px] text-text-0">
+              {ticker ?? '…'}
+              {ticker && <span className="ml-[7px] text-brass-500">.</span>}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2.5">
+              {company && <span className="font-display text-[16px] text-text-2">{company}</span>}
+              {stream.trial && <TrialStatusBadge streaming={streaming} error={stream.error != null} />}
+              {isMockMode && (
+                <span className="rounded-[6px] border border-line-1 px-2.5 py-[5px] font-mono text-[11.5px] text-text-2">fixture</span>
+              )}
+              <span
+                className="font-mono text-[12px] tracking-[0.5px] text-text-3"
                 title={stream.trial ? `Komite: ${stream.trial.models.analyst} · ${stream.trial.models.debate} · ${stream.trial.models.judge}` : undefined}
               >
-                {stream.trial ? (
-                  <>
-                    Perkara No. <span className="text-text-2">{stream.trial.trial_id}</span>
-                    <span className="mx-2 text-line-2">·</span>
-                    Komite {company ? company.split(' ')[0] : ticker}
-                  </>
-                ) : (
-                  'Menghubungi ruang sidang…'
-                )}
-              </div>
+                {stream.trial ? `PERKARA No. ${stream.trial.trial_id}` : 'Menghubungi ruang sidang…'}
+              </span>
             </div>
-          </div>
-
-          <div className="flex divide-x divide-line-1 overflow-hidden rounded-[10px] border border-line-1 bg-bg-2/70">
-            <Stat label="Bukti" value={String(evidenceTotal)} />
-            <Stat label="Analis" value={`${stream.completedCount}/5`} />
-            <Stat
-              label="Data"
-              value={
-                <>
-                  <span className="text-[color:var(--cache-hit)]">{stream.toolCallsByCache.hit}</span>
-                  <span className="mx-0.5 text-text-3">/</span>
-                  <span className="text-[color:var(--cache-miss)]">{stream.toolCallsByCache.miss}</span>
-                </>
-              }
-            />
-            <Stat label="Durasi" value={mmss(elapsed)} />
           </div>
         </div>
 
+        {/* ---------- STATS BAND ---------- */}
+        <div className="mt-6 flex flex-wrap overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2">
+          <Stat label="Bukti">
+            {evidenceTotal} <small>EV</small>
+          </Stat>
+          <Stat label="Analis">
+            {stream.completedCount} <small>/ 5 selesai</small>
+          </Stat>
+          <Stat label="Data">
+            <span className="text-[color:var(--defend-400)]">{stream.toolCallsByCache.hit}</span>
+            <span className="text-text-2"> / </span>
+            <span className="text-prosecute-400">{stream.toolCallsByCache.miss}</span> <small>hit/miss</small>
+          </Stat>
+          <Stat label="Durasi" last>
+            {mmss(elapsed)} <small>menit</small>
+          </Stat>
+        </div>
+
+        {/* ---------- STEPPER ---------- */}
         <PhaseStepper phase={stream.phase} round={stream.round} terminal={stream.terminal} error={stream.error != null} />
 
         {stream.reconnecting && (
           <div
-            className="anim-fade my-4 flex items-center gap-2.5 rounded-[10px] border border-[rgba(201,162,74,0.34)] bg-[rgba(201,162,74,0.08)] px-4 py-2.5 text-[13.5px] text-brass-200"
+            className="anim-fade mt-4 flex items-center gap-2.5 rounded-[6px] border border-[rgba(201,162,74,0.34)] bg-[rgba(201,162,74,0.08)] px-4 py-2.5 text-[13.5px] text-brass-200"
             role="status"
           >
             <RefreshIcon size={16} className="animate-spin-slow" />
@@ -181,9 +190,7 @@ export default function CourtroomPage() {
             </span>
           </div>
         )}
-      </div>
 
-      <div className="container mt-4">
         {stream.error ? (
           <TrialErrorPanel error={stream.error} onRetry={() => navigate('/')} />
         ) : (
@@ -192,8 +199,8 @@ export default function CourtroomPage() {
             {(stream.debate.length > 0 || stream.phase === 'debate' || stream.phase === 'verdict') && (
               <DebatePanel debate={stream.debate} rounds={stream.roundsSeen} state={stream} phase={stream.phase} />
             )}
-            {stream.memoText && <VerdictPanel stream={stream} />}
-            {stream.memo && <MemoReadyBanner trialId={trialId!} />}
+            {(stream.memoText || stream.memo) && <VerdictPanel stream={stream} />}
+            {stream.memo && <MemoReadyBanner trialId={trialId!} ticker={ticker} />}
             {!stream.trial && <ConnectingSkeleton />}
           </>
         )}
@@ -219,12 +226,16 @@ export default function CourtroomPage() {
   );
 }
 
-/* ---------------- strip statistik (sel terbagi, setara .stat mock) ---------------- */
-function Stat({ label, value }: { label: string; value: ReactNode }) {
+/* ---------------- stats band (setara .stats/.stat mock) ---------------- */
+function Stat({ label, last, children }: { label: string; last?: boolean; children: ReactNode }) {
   return (
-    <div className="flex min-w-[84px] flex-col gap-[1px] px-4 py-2.5">
-      <span className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-text-3">{label}</span>
-      <span className="font-mono text-[20px] font-semibold leading-tight text-text-0">{value}</span>
+    <div
+      className={`flex min-w-[150px] flex-1 flex-col gap-1 px-5 py-4 ${last ? '' : 'border-r border-[#2a251e]'}`}
+    >
+      <span className="font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">{label}</span>
+      <span className="font-mono text-[20px] font-medium tabular-nums text-text-0 [&_small]:text-[12px] [&_small]:font-normal [&_small]:text-text-2">
+        {children}
+      </span>
     </div>
   );
 }
@@ -235,7 +246,7 @@ function mmss(t: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-/* ---------------- stepper fase: node bernomor + rel (setara .stepper mock) ---------------- */
+/* ---------------- stepper (setara .stepper mock: node-row + rel di bawah) ---------------- */
 function PhaseStepper({
   phase,
   round,
@@ -248,70 +259,60 @@ function PhaseStepper({
   error: boolean;
 }) {
   const phaseIndex = phase ? PHASE_STEPS.findIndex((s) => s.phase === phase) : -1;
-  const showRound = phase === 'debate' && !terminal;
 
   return (
-    <div className="my-7 flex items-center gap-2.5 overflow-x-auto" aria-label="Fase sidang">
+    <div className="mt-[30px] flex items-start" aria-label="Fase sidang">
       {PHASE_STEPS.map((step, i) => {
         const isDone = (phaseIndex > i || (terminal && !error)) && phase !== null;
         const isActive = phase === step.phase && !terminal;
-        const nodeTone = isDone
-          ? 'border-[rgba(127,176,105,0.45)] bg-[rgba(127,176,105,0.12)] text-defend-300'
-          : isActive
-            ? error
-              ? 'border-[rgba(201,106,90,0.5)] bg-[rgba(201,106,90,0.12)] text-prosecute-300'
-              : 'border-transparent bg-[linear-gradient(180deg,var(--brass-300),var(--brass-500))] text-[#1c1407] shadow-[0_0_0_4px_var(--brass-glow-soft)]'
-            : 'border-line-2 bg-bg-2 text-text-3';
-        const labelTone = isDone
-          ? 'text-text-2'
-          : isActive
-            ? error
-              ? 'text-prosecute-300'
-              : 'text-brass-200'
-            : 'text-text-3';
+        const lit = isDone || isActive;
         return (
-          <Fragment key={step.phase}>
-            <div className="flex shrink-0 items-center gap-2.5">
+          <div key={step.phase} className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="flex items-center gap-3">
               <span
-                className={`grid size-6 place-items-center rounded-pill border font-mono text-[11px] font-bold transition-all duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${nodeTone}`}
+                className={`grid size-6 shrink-0 place-items-center rounded-full border font-mono text-[11px] transition-all duration-300 ${
+                  lit
+                    ? error && isActive
+                      ? 'border-prosecute-400 bg-prosecute-400 text-[#14120f]'
+                      : 'border-brass-500 bg-brass-500 text-[#14120f]'
+                    : 'border-[#3a332a] bg-bg-2 text-text-3'
+                } ${isActive && !error ? 'shadow-[0_0_0_4px_rgba(201,162,74,0.18)]' : ''}`}
               >
                 {i + 1}
               </span>
-              <span className={`whitespace-nowrap text-[13px] font-semibold transition-colors duration-[280ms] ${labelTone}`}>
+              <span
+                className={`whitespace-nowrap font-mono text-[11.5px] uppercase tracking-[0.5px] transition-colors duration-300 ${
+                  lit ? (error && isActive ? 'text-prosecute-300' : 'text-text-0') : 'text-text-3'
+                }`}
+              >
                 {PHASE_LABEL[step.phase]}
               </span>
-              {step.phase === 'debate' && (showRound || isActive) && (
-                <span className="whitespace-nowrap rounded-pill border border-line-1 bg-bg-2 px-2.5 py-[3px] font-mono text-[10.5px] font-semibold tracking-[0.1em] text-brass-300">
+              {step.phase === 'debate' && (phase === 'debate' || isDone) && !error && (
+                <span className="self-start whitespace-nowrap rounded-pill border border-[#8a6f33] px-2 py-[2px] font-mono text-[10.5px] text-brass-500">
                   RONDE {round ?? 1}/2
                 </span>
               )}
             </div>
-            {i < PHASE_STEPS.length - 1 && (
-              <div className="h-[2px] w-[64px] shrink-0 overflow-hidden rounded-[2px] bg-line-1 min-[720px]:w-[92px]">
-                <div
-                  className={`h-full w-full origin-left bg-brass-500 transition-transform duration-[520ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                    isDone ? 'scale-x-100' : 'scale-x-0'
-                  }`}
-                />
-              </div>
-            )}
-          </Fragment>
+            <div className="relative h-[2px] w-full overflow-hidden bg-[#3a332a]">
+              <div
+                className={`h-full w-full origin-left transition-transform duration-500 ease-out ${
+                  lit ? 'scale-x-100' : 'scale-x-0'
+                } ${error && isActive ? 'bg-prosecute-400' : 'bg-brass-500'}`}
+              />
+            </div>
+          </div>
         );
       })}
     </div>
   );
 }
 
-/* ---------------- dek analis ---------------- */
+/* ---------------- dek analis (setara .analysts/.analyst mock) ---------------- */
 function AnalystDeck({ state }: { state: TrialUiState }) {
   return (
-    <section className="mb-9">
-      <SecHead
-        kicker="Pemeriksaan bukti"
-        title="Panel Analis"
-        aside="Bukti dari data Sectors — tiap angka bersitasi"
-      />
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(215px,1fr))] gap-4 min-[1100px]:grid-cols-5">
+    <section>
+      <SecHead kicker="Panel" title="Lima analis" note="Klik baris bukti untuk membuka detail" />
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(215px,1fr))] gap-[14px] min-[1100px]:grid-cols-5">
         {ANALYST_META.map((meta, i) => (
           <AnalystCard key={meta.id} meta={meta} analyst={state.analysts[meta.id]} index={i} />
         ))}
@@ -326,76 +327,60 @@ function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[num
   const Icon = ANALYST_ICONS[meta.id];
   const evShown = analyst.evidence.slice(0, 6);
 
-  const cardTone =
-    status === 'working'
-      ? 'animate-acard-pulse border-[color:rgba(var(--agent),0.4)]'
-      : status === 'done'
-        ? 'border-line-1'
-        : 'border-dashed border-line-2 opacity-60';
-
   return (
     <article
-      className={`anim-in relative flex flex-col gap-3 overflow-hidden rounded-[14px] border border-t-2 bg-bg-2 p-3.5 transition-[border-color,box-shadow,transform,opacity] duration-[280ms] ${cardTone}`}
+      className={`anim-in flex flex-col gap-3 rounded-[14px] border border-t-2 bg-bg-2 p-4 transition-colors duration-300 ${
+        status === 'queued' ? 'border-dashed' : ''
+      }`}
       data-agent={meta.id}
       style={{
         animationDelay: `${Math.min(index * 60, 300)}ms`,
-        borderTopColor: 'rgba(var(--agent),0.65)',
+        borderColor: LINE,
+        borderTopColor: 'rgba(var(--agent),1)',
+        borderTopStyle: 'solid',
+        borderTopWidth: 2,
       }}
     >
       <header className="flex items-center gap-2.5">
         <span
-          className="grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[#14120f] transition-shadow duration-[280ms]"
-          style={{
-            background: 'rgba(var(--agent),1)',
-            boxShadow: status === 'working' ? '0 0 0 4px rgba(var(--agent),0.14)' : 'none',
-          }}
+          className="grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[#14120f]"
+          style={{ background: 'rgba(var(--agent),1)' }}
         >
-          {status === 'queued' ? <span className="font-bold">?</span> : Icon ? <Icon size={18} /> : meta.monogram}
+          {status === 'queued' ? <span className="text-[13px] font-bold">?</span> : Icon ? <Icon size={18} /> : meta.monogram}
         </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[14.5px] font-semibold leading-[1.25]">{analyst.displayName}</h3>
-          <p className="tiny muted truncate">{meta.tagline}</p>
+        <div className="flex min-w-0 flex-col">
+          <span className="text-[13px] font-semibold leading-[1.2] text-text-0">{meta.name}</span>
+          <span className="text-[11px] leading-[1.3] text-text-3">{meta.tagline}</span>
         </div>
         <span
-          className={`status-dot !size-[9px] ${
-            status === 'working' ? 'working' : status === 'done' ? 'done' : 'idle'
+          className={`ml-auto size-[9px] shrink-0 rounded-full ${
+            status === 'working'
+              ? 'animate-pulse-dot bg-[#d9a441]'
+              : status === 'done'
+                ? 'bg-[#7fb069]'
+                : 'bg-text-3'
           }`}
           aria-hidden="true"
         />
       </header>
 
       {status === 'queued' && (
-        <div className="flex flex-1 flex-col gap-3">
-          <div className="tiny muted flex items-center gap-2 pb-1">Analis menunggu giliran sidang.</div>
+        <div className="flex flex-1 items-start">
+          <span className="text-[12px] text-text-3">Menunggu giliran…</span>
         </div>
       )}
 
       {status === 'working' && (
-        <div className="flex flex-1 flex-col gap-3">
-          <div className="tiny flex items-center justify-between gap-2">
-            <span className="inline-flex items-center font-semibold text-brass-300">
-              Menyelidiki data
-              <Dots />
-            </span>
-            <span className="font-mono text-[11px] text-text-3">via {analyst.model}</span>
-          </div>
-          <div
-            className="relative -mt-1 mb-0.5 h-[3px] overflow-hidden rounded-[2px] bg-[color:rgba(var(--agent),0.14)] after:absolute after:inset-y-0 after:left-0 after:w-[42%] after:animate-livebar after:rounded-[2px] after:bg-[linear-gradient(90deg,transparent,rgba(var(--agent),0.8),transparent)] after:content-['']"
-            aria-hidden="true"
-          />
+        <div className="flex flex-1 flex-col gap-2">
           {analyst.toolCalls.length > 0 && (
-            <div className="flex flex-col gap-[5px]">
+            <div className="flex flex-col gap-1.5">
               {analyst.toolCalls.map((tc, i) => (
                 <div
                   key={i}
-                  className="anim-fade flex items-center gap-2 rounded-sm border border-line-0 bg-bg-3 px-[9px] py-[5px] text-[11.5px]"
+                  className="anim-fade flex items-center gap-2 rounded-[8px] border border-[#2a251e] px-[9px] py-[5px] text-[11px]"
                   style={{ animationDelay: `${Math.min(i * 90, 400)}ms` }}
                 >
-                  <span
-                    className="size-[5px] shrink-0 rounded-pill bg-[color:rgba(var(--agent),0.8)]"
-                    aria-hidden="true"
-                  />
-                  <span className="font-mono flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-text-1">
+                  <span className="font-mono flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-text-2">
                     {tc.tool}
                   </span>
                   <CacheBadge cache={tc.cache} />
@@ -408,45 +393,38 @@ function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[num
               {evShown.map((ev) => (
                 <EvidenceChip key={ev.evidence_id} evidence={ev} />
               ))}
-              {analyst.evidence.length > 3 && (
-                <span className="tiny muted block px-0.5 pt-0.5">+{analyst.evidence.length - 3} bukti lainnya</span>
-              )}
             </div>
           )}
+          <span className="mt-auto inline-flex items-center text-[12px] text-text-2">
+            Menyelidiki…
+            <Dots />
+          </span>
         </div>
       )}
 
       {status === 'done' && (
-        <div className="flex flex-1 flex-col gap-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11.5px] font-semibold text-defend-300">
-              <CheckIcon size={13} /> Ringkasan
-              <span className="font-mono text-[11px] font-medium tracking-[0.02em] text-text-2">
-                {analyst.evidence.length} bukti
-              </span>
-            </span>
-            {analyst.dataRichness && <RichBadge richness={analyst.dataRichness} />}
-          </div>
+        <div className="flex flex-1 flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             {evShown.map((ev) => (
               <EvidenceChip key={ev.evidence_id} evidence={ev} />
             ))}
-            {analyst.evidence.length > 3 && (
-              <span className="tiny muted block px-0.5 pt-0.5">+{analyst.evidence.length - 3} bukti lainnya</span>
+          </div>
+          <div className="mt-auto flex flex-col gap-2 border-t border-[#2a251e] pt-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="whitespace-nowrap text-[12px] text-text-2">
+                Ringkasan — <b className="font-semibold text-text-0">{analyst.evidence.length} bukti</b>
+              </span>
+              {analyst.dataRichness && <RichBadge richness={analyst.dataRichness} />}
+            </div>
+            {analyst.summaryMd && (
+              <details className="group">
+                <summary className="w-full cursor-pointer select-none list-none text-center font-mono text-[11px] text-brass-500 transition-colors duration-150 hover:border-brass-500 hover:bg-brass-500 hover:text-[#14120f] rounded-[7px] border border-[#8a6f33] px-2.5 py-[7px] [&::-webkit-details-marker]:hidden">
+                  Baca kesimpulan
+                </summary>
+                <Markdown source={analyst.summaryMd} className="md md-sm mt-2" />
+              </details>
             )}
           </div>
-          {analyst.summaryMd && (
-            <details className="group">
-              <summary className="tiny inline-flex cursor-pointer select-none list-none items-center gap-1.5 rounded-pill border border-line-0 px-[11px] py-[5px] font-medium text-text-2 transition-colors duration-[160ms] hover:border-[rgba(201,162,74,0.35)] hover:bg-[rgba(201,162,74,0.06)] hover:text-brass-200 [&::-webkit-details-marker]:hidden">
-                Baca kesimpulan{' '}
-                <ArrowDownIcon
-                  size={11}
-                  className="transition-transform duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-open:rotate-180"
-                />
-              </summary>
-              <Markdown source={analyst.summaryMd} className="md md-sm mt-2 border-t border-line-0 pt-2" />
-            </details>
-          )}
         </div>
       )}
     </article>
@@ -456,7 +434,12 @@ function AnalystCard({ meta, analyst, index }: { meta: (typeof ANALYST_META)[num
 export function RichBadge({ richness }: { richness: 'A' | 'B' | 'C' }) {
   const label = richness === 'A' ? 'Data kaya' : richness === 'B' ? 'Data cukup' : 'Data minim';
   return (
-    <span className="badge badge-rich" data-rich={richness} title={`Kekayaan informasi: ${label}`}>
+    <span
+      className="inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-[rgba(201,162,74,0.06)] px-2.5 py-[5px] font-mono text-[11.5px] tracking-[0.3px] text-[#e0c27a]"
+      data-rich={richness}
+      title={`Kekayaan informasi: ${label}`}
+    >
+      <span className="size-[6px] rounded-full bg-brass-500" />
       Info {richness}
     </span>
   );
@@ -470,43 +453,42 @@ export function CacheBadge({ cache }: { cache: 'hit' | 'miss' }) {
   );
 }
 
-/** Baris bukti (setara .ev mock): id aksen + judul ellipsis + pil hitungan; diklik → pil fakta. */
+/** Baris bukti (setara .ev mock): id kuningan + judul ellipsis + pil nilai fakta. */
 function EvidenceChip({ evidence }: { evidence: AgentEvidencePayload }) {
   const [open, setOpen] = useState(false);
+  const first = evidence.facts[0];
+  const pillValue = first
+    ? formatFactValue(first.value, first.unit)
+    : String(evidence.facts.length);
   return (
     <button
       type="button"
-      className={`anim-scale block w-full cursor-pointer rounded-sm border border-line-0 bg-bg-3 px-[9px] py-[7px] text-left transition-colors duration-[160ms] hover:border-line-1 hover:bg-bg-4 ${
-        open ? 'border-line-1 bg-bg-4' : ''
+      className={`anim-scale block w-full cursor-pointer rounded-[8px] border border-[#2a251e] px-[9px] py-[7px] text-left transition-colors duration-150 hover:border-[#3a332a] hover:bg-[#1a1713] ${
+        open ? 'border-[#3a332a] bg-[#1a1713]' : ''
       }`}
       onClick={() => setOpen((v) => !v)}
       aria-expanded={open}
       title={open ? 'Tutup detail bukti' : 'Buka detail bukti'}
     >
-      <span className="flex min-w-0 items-center gap-[7px]">
-        <span className="font-mono shrink-0 text-[10.5px] font-semibold tracking-[0.05em] text-[color:rgba(var(--agent),1)]">
-          {evidence.evidence_id}
-        </span>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="shrink-0 font-mono text-[10.5px] text-brass-500">{evidence.evidence_id}</span>
         <span
-          className={`min-w-0 flex-1 overflow-hidden text-ellipsis text-xs leading-[1.4] text-text-1 ${
+          className={`min-w-0 flex-1 overflow-hidden text-ellipsis text-[12.5px] leading-[1.35] text-text-2 ${
             open ? 'whitespace-normal' : 'whitespace-nowrap'
           }`}
         >
           {evidence.headline}
         </span>
-        <span
-          className="shrink-0 rounded-pill border px-[7px] py-[1px] font-mono text-[10px] text-[color:rgba(var(--agent),1)]"
-          style={{ borderColor: 'rgba(var(--agent),0.35)', background: 'rgba(var(--agent),0.08)' }}
-        >
-          {evidence.facts.length}
+        <span className="shrink-0 rounded-[5px] border border-[#2a251e] px-[6px] py-[1px] font-mono text-[10px] text-text-3">
+          {pillValue}
         </span>
       </span>
-      {open && (
+      {open && evidence.facts.length > 0 && (
         <span className="mt-[7px] flex flex-wrap gap-[5px]">
           {evidence.facts.map((f) => (
             <span
               key={f.label}
-              className="rounded-pill border border-line-0 bg-bg-0 px-[7px] py-0.5 font-mono text-[10.5px] text-text-1"
+              className="rounded-[5px] border border-[#2a251e] bg-[#1a1713] px-[7px] py-0.5 font-mono text-[10.5px] text-text-2"
             >
               <b className="mr-1 font-semibold text-brass-300">{formatFactValue(f.value, f.unit)}</b> {f.label}
             </span>
@@ -535,8 +517,8 @@ function DebatePanel({
   phase: Phase | null;
 }) {
   return (
-    <section className="mb-9">
-      <SecHead kicker="Persidangan" title="Jaksa vs Pembela" aside="Dua ronde singkat, bukti yang sama" />
+    <section>
+      <SecHead kicker="Perdebatan" title="Jaksa vs Pembela" note="Tayang langsung · bukan kotak hitam" />
 
       {debate.length === 0 && phase === 'debate' && (
         <div className="flex items-center gap-2.5 py-4 text-[13.5px] text-text-1">
@@ -544,15 +526,18 @@ function DebatePanel({
         </div>
       )}
 
-      <div className="relative grid grid-cols-1 gap-5 min-[900px]:grid-cols-2">
-        <span className="absolute -top-[14px] left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-pill border border-[rgba(201,162,74,0.4)] bg-bg-1 px-4 py-1 font-mono text-[10.5px] font-bold tracking-[0.14em] text-brass-300">
-          RONDE {rounds[rounds.length - 1] ?? 1}/2
+      <div className="relative grid grid-cols-1 gap-[14px] min-[900px]:grid-cols-2">
+        <span className="absolute -top-[14px] left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-bg-1 px-3 py-1 font-mono text-[11px] tracking-[1px] text-brass-500">
+          RONDE {rounds[rounds.length - 1] ?? 1} / 2
         </span>
-        <div className="flex flex-col gap-4 rounded-[14px] border border-line-1 border-t-2 border-t-prosecute-400 bg-bg-2 px-5 pb-5 pt-6">
+        <div
+          className="flex flex-col gap-[14px] rounded-[14px] border border-t-2 bg-bg-2 p-5"
+          style={{ borderColor: LINE, borderTopColor: '#c96a5a', borderTopStyle: 'solid', borderTopWidth: 2 }}
+        >
           <div className="flex items-center gap-3">
-            <span className="font-display text-[17px] font-semibold text-prosecute-100">Jaksa</span>
-            <span className="mono rounded-pill border border-[rgba(201,106,90,0.38)] bg-[rgba(201,106,90,0.1)] px-2 py-0.5 text-[10.5px] uppercase tracking-[0.08em] text-prosecute-300">
-              bear
+            <span className="font-display text-[18px] font-medium">Jaksa</span>
+            <span className="rounded-[6px] border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] px-[9px] py-[3px] font-mono text-[11px] uppercase tracking-[1px] text-prosecute-400">
+              Tesis bear
             </span>
           </div>
           {rounds.map((round) => {
@@ -560,11 +545,14 @@ function DebatePanel({
             return u ? <UtteranceCard key={round} side="prosecution" utterance={u} state={state} /> : null;
           })}
         </div>
-        <div className="flex flex-col gap-4 rounded-[14px] border border-line-1 border-t-2 border-t-defend-400 bg-bg-2 px-5 pb-5 pt-6">
+        <div
+          className="flex flex-col gap-[14px] rounded-[14px] border border-t-2 bg-bg-2 p-5"
+          style={{ borderColor: LINE, borderTopColor: '#7fb069', borderTopStyle: 'solid', borderTopWidth: 2 }}
+        >
           <div className="flex items-center gap-3">
-            <span className="font-display text-[17px] font-semibold text-defend-100">Pembela</span>
-            <span className="mono rounded-pill border border-[rgba(127,176,105,0.38)] bg-[rgba(127,176,105,0.1)] px-2 py-0.5 text-[10.5px] uppercase tracking-[0.08em] text-defend-300">
-              bull
+            <span className="font-display text-[18px] font-medium">Pembela</span>
+            <span className="rounded-[6px] border border-[rgba(127,176,105,0.4)] bg-[rgba(127,176,105,0.06)] px-[9px] py-[3px] font-mono text-[11px] uppercase tracking-[1px] text-defend-400">
+              Tesis bull
             </span>
           </div>
           {rounds.map((round) => {
@@ -594,11 +582,6 @@ function stripTitleEcho(title: string, md: string): string {
   return md;
 }
 
-const SPEAKER_LABEL: Record<DebateSide, string> = {
-  prosecution: 'JAKSA',
-  defense: 'PEMBELA',
-};
-
 function UtteranceCard({
   side,
   utterance,
@@ -611,7 +594,7 @@ function UtteranceCard({
   const isDefense = side === 'defense';
   if (!utterance) {
     return (
-      <div className="inline-flex items-center gap-2 rounded-md border border-dashed border-line-2 px-4 py-3 text-[12.5px] text-text-3">
+      <div className="inline-flex items-center gap-2 rounded-[6px] border border-dashed border-line-2 px-3 py-2 text-[12.5px] text-text-3">
         {isDefense ? 'Pembela sedang menyiapkan pembelaan' : 'Jaksa sedang menyiapkan dakwaan'}
         <Dots />
       </div>
@@ -619,27 +602,24 @@ function UtteranceCard({
   }
 
   return (
-    <article className="anim-scale">
-      <div className="mb-2 flex flex-wrap items-center gap-2.5">
-        <span
-          className={`whitespace-nowrap font-mono text-[10.5px] font-bold tracking-[0.12em] ${
-            isDefense ? 'text-defend-300' : 'text-prosecute-300'
-          }`}
-        >
-          {SPEAKER_LABEL[side]}
-        </span>
-        <span className="mono text-[10.5px] uppercase tracking-[0.08em] text-text-3">
-          {isDefense ? 'bull' : 'bear'}
-        </span>
-        {utterance.rebuts && <span className="tiny font-medium text-text-3">↩ balasan</span>}
-        <span className="font-mono text-[11px] text-text-3">{formatTime(utterance.ts)}</span>
+    <article className="anim-scale flex flex-col gap-2">
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-[6px] border border-line-1 px-2 py-[3px] font-mono text-[10.5px]">
+        <span className="font-medium text-text-0">{isDefense ? 'PEMBELA' : 'JAKSA'}</span>
+        <span className="text-text-3">·</span>
+        <span className={isDefense ? 'text-defend-400' : 'text-prosecute-400'}>{isDefense ? 'bull' : 'bear'}</span>
+        {utterance.rebuts && (
+          <>
+            <span className="text-text-3">·</span>
+            <span className="text-brass-400">↩ balasan</span>
+          </>
+        )}
+      </span>
+      <h4 className="text-[15px] font-semibold leading-[1.4] text-text-0">{utterance.title}</h4>
+      <div className="text-[13.5px] leading-[1.6] text-text-2">
+        <Markdown source={stripTitleEcho(utterance.title, utterance.argument_md)} className="md" />
       </div>
-      <h4 className={`mb-1.5 text-[15px] font-semibold leading-[1.3] ${isDefense ? 'text-defend-100' : 'text-prosecute-100'}`}>
-        {utterance.title}
-      </h4>
-      <Markdown source={stripTitleEcho(utterance.title, utterance.argument_md)} className="md md-sm text-[13.5px]" />
       {utterance.cites.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <div className="mt-0.5 flex flex-wrap gap-2">
           {utterance.cites.map((c) => (
             <EvidenceRef key={c} evidenceId={c} state={state} />
           ))}
@@ -653,7 +633,7 @@ function EvidenceRef({ evidenceId, state }: { evidenceId: string; state: TrialUi
   const evidence = findEvidence(state, evidenceId);
   return (
     <span
-      className="cursor-default rounded-pill border border-line-1 px-2 py-[2px] font-mono text-[10.5px] text-brass-300 transition-colors duration-[160ms] hover:border-brass-500 hover:bg-brass-500 hover:text-bg-1"
+      className="cursor-default rounded-[6px] border border-[#8a6f33] px-[9px] py-[3px] font-mono text-[11px] text-brass-500 transition-colors duration-150 hover:border-brass-500 hover:bg-brass-500 hover:text-[#14120f]"
       title={evidence?.headline ?? evidenceId}
     >
       {evidenceId}
@@ -669,64 +649,64 @@ export function findEvidence(state: TrialUiState, evidenceId: string): AgentEvid
   return undefined;
 }
 
-/* ---------------- putusan (streaming hakim, setara .judge mock) ---------------- */
+/* ---------------- putusan (setara .verdict/.judge mock) ---------------- */
 function VerdictPanel({ stream }: { stream: ReturnType<typeof useTrialStream> }) {
-  const streaming = !stream.memo;
+  const streaming = !stream.memo && !stream.memoText;
   const ticker = stream.trial?.ticker ?? '';
+  const memoMd = stream.memoText || stream.memo?.verdict.rationale_md || ' ';
   return (
-    <section
-      id="verdict-anchor"
-      className="anim-in relative mb-9 rounded-[14px] border border-line-1 bg-bg-2 px-6 py-7 min-[720px]:px-8"
-    >
-      <div
-        className="pointer-events-none absolute inset-0 rounded-[14px] bg-[radial-gradient(640px_220px_at_14%_0%,var(--brass-glow-soft),transparent_72%)]"
-        aria-hidden="true"
-      />
-      <div className="relative mb-5 flex flex-wrap items-center gap-4">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full border border-[rgba(201,162,74,0.4)] bg-[rgba(201,162,74,0.08)] text-brass-300">
-          <GavelIcon size={16} />
-        </span>
-        <div>
-          <h2 className="font-display text-[18px] font-semibold">Hakim</h2>
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-text-3">
-            Memorandum riset · Sidang {ticker}
-          </p>
-        </div>
-        <span className={`badge ml-auto ${streaming ? 'badge-brass' : 'badge-defend'}`}>
-          {streaming ? <><RadioIcon size={11} /> sidang berlangsung</> : <><CheckIcon size={11} /> memorandum final</>}
-        </span>
-      </div>
-      <div className="relative max-w-[760px]">
-        <Markdown
-          source={stream.memoText || ' '}
-          className={`md font-display text-[17px] leading-[1.7] min-[640px]:text-[19px] min-[900px]:text-[21px] ${
-            streaming ? 'text-text-1' : 'text-text-0'
-          }`}
+    <section id="verdict-anchor" className="verdict">
+      <SecHead kicker="Putusan" title="Memorandum hakim" note={streaming ? 'Mengetik langsung' : 'Final'} />
+      <div className="relative overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2 p-[30px]">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(600px_200px_at_80%_0%,rgba(201,162,74,0.05),transparent_60%)]"
+          aria-hidden="true"
         />
-        {streaming && (
-          <span className="ml-0.5 inline-block h-[1.05em] w-[2px] animate-blink bg-brass-400 align-[-3px]" />
-        )}
+        <div className="relative mb-[22px] flex items-center gap-3.5">
+          <Seal size={46}>
+            <GavelIcon size={20} />
+          </Seal>
+          <div className="flex flex-col">
+            <span className="font-display text-[17px] font-medium">Hakim</span>
+            <span className="font-mono text-[11px] tracking-[0.5px] text-text-3">
+              MEMORANDUM RISET · SIDANG {ticker}
+            </span>
+          </div>
+        </div>
+        <div className="relative max-w-[70ch]">
+          <Markdown
+            source={memoMd}
+            className={`md font-display text-[clamp(17px,2.4vw,21px)] leading-[1.7] ${
+              streaming ? 'text-text-1' : 'text-text-0'
+            }`}
+          />
+          {streaming && (
+            <span className="ml-0.5 inline-block h-[1.1em] w-[2px] animate-blink bg-brass-500 align-text-bottom" />
+          )}
+        </div>
       </div>
     </section>
   );
 }
 
-/* ---------------- memo siap → CTA ---------------- */
-function MemoReadyBanner({ trialId }: { trialId: string }) {
+/* ---------------- memo siap → CTA (setara .final-banner mock) ---------------- */
+function MemoReadyBanner({ trialId, ticker }: { trialId: string; ticker?: string }) {
   return (
     <div
-      className="anim-scale flex flex-wrap items-center gap-5 rounded-[14px] border border-[rgba(201,162,74,0.4)] bg-[linear-gradient(160deg,rgba(201,162,74,0.12),rgba(201,162,74,0.03))] px-6 py-6 shadow-brass"
+      className="anim-scale mt-5 flex flex-wrap items-center justify-between gap-4 rounded-[14px] border border-[#8a6f33] bg-[linear-gradient(180deg,rgba(201,162,74,0.08),rgba(201,162,74,0.02))] px-[22px] py-[18px]"
       role="status"
     >
-      <div className="grid size-[54px] place-items-center rounded-[14px] bg-[linear-gradient(180deg,var(--brass-300),var(--brass-500))] text-[#1c1407]">
-        <BookIcon size={22} />
+      <div className="flex items-center gap-3">
+        <BookIcon size={22} className="shrink-0 text-brass-500" />
+        <div className="flex flex-col">
+          <span className="font-display text-[17px] font-medium">Memorandum sidang telah final.</span>
+          <span className="text-[12.5px] text-text-2">
+            Putusan tercatat di arsip perkara {ticker ?? 'emiten'}.
+          </span>
+        </div>
       </div>
-      <div className="min-w-[220px] flex-1">
-        <h2 className="mb-1 text-[22px]">Memorandum sidang telah final.</h2>
-        <p className="muted small">Ringkasan eksekutif, fakta kunci, dua tesis, dan pertanyaan verifikasi — lengkap dengan sitasi data.</p>
-      </div>
-      <Link to={`/memo/${trialId}`} className="btn btn-primary btn-lg">
-        Baca memorandum <ArrowRightIcon size={18} />
+      <Link to={`/memo/${trialId}`} className="btn btn-primary">
+        <BookIcon size={16} /> Baca memorandum
       </Link>
     </div>
   );
@@ -742,13 +722,13 @@ function TrialErrorPanel({
 }) {
   return (
     <section
-      className="anim-scale mx-auto my-8 max-w-[620px] rounded-[14px] border border-[rgba(201,106,90,0.4)] bg-[linear-gradient(180deg,rgba(201,106,90,0.08),var(--bg-2))] px-8 py-8 text-center"
+      className="anim-scale mt-11 max-w-[620px] rounded-[14px] border border-[rgba(201,106,90,0.4)] bg-[linear-gradient(180deg,rgba(201,106,90,0.08),var(--bg-2))] px-8 py-8 text-center"
       role="alert"
     >
-      <div className="mx-auto mb-4 grid size-[52px] place-items-center rounded-pill border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.16)] text-prosecute-300">
+      <div className="mx-auto mb-4 grid size-[52px] place-items-center rounded-full border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.16)] text-prosecute-300">
         <AlertIcon size={22} />
       </div>
-      <h2 className="mb-3 text-2xl">Sidang gagal berjalan</h2>
+      <h2 className="mb-3 font-display text-2xl">Sidang gagal berjalan</h2>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <span className="badge badge-prosecute font-mono">{error.error_code}</span>
         <span className="muted small">
@@ -774,26 +754,26 @@ function ConnectingSkeleton() {
   return (
     <div aria-hidden="false" role="status">
       <div className="mb-6 flex items-center gap-4">
-        <CaseSeal>
-          <GavelIcon size={18} />
-        </CaseSeal>
+        <Seal size={52}>
+          <GavelIcon size={24} />
+        </Seal>
         <div className="flex flex-col gap-2">
           <span className="skeleton block" style={{ width: 260, height: 20 }} />
           <span className="skeleton block" style={{ width: 340, height: 12 }} />
         </div>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(215px,1fr))] gap-4 min-[1100px]:grid-cols-5">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(215px,1fr))] gap-[14px] min-[1100px]:grid-cols-5">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="rounded-[14px] border border-line-1 bg-bg-2 p-3.5" style={{ height: 120 }}>
-            <div className="flex items-center gap-3">
+          <div key={i} className="rounded-[14px] border border-[#3a332a] bg-bg-2 p-4" style={{ height: 120 }}>
+            <div className="flex items-center gap-2.5">
               <span className="skeleton block" style={{ width: 34, height: 34, borderRadius: 9 }} />
               <div className="flex flex-1 flex-col gap-2">
-                <span className="skeleton block" style={{ width: '65%', height: 14 }} />
+                <span className="skeleton block" style={{ width: '65%', height: 13 }} />
                 <span className="skeleton block" style={{ width: '85%', height: 10 }} />
               </div>
             </div>
-            <span className="skeleton block" style={{ width: '100%', height: 10, marginTop: 16 }} />
-            <span className="skeleton block" style={{ width: '80%', height: 10, marginTop: 8 }} />
+            <span className="skeleton mt-4 block" style={{ width: '100%', height: 10 }} />
+            <span className="skeleton mt-2 block" style={{ width: '80%', height: 10 }} />
           </div>
         ))}
       </div>

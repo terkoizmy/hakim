@@ -24,7 +24,7 @@ export default function AppShell() {
           >
             <GavelIcon size={22} className="text-brass-500" />
             <span>
-              SIDANG<em className="not-italic italic text-brass-500">.</em>
+              SIDANG<em className="italic text-brass-500">.</em>
             </span>
           </Link>
 
@@ -75,7 +75,8 @@ export default function AppShell() {
             </nav>
           </div>
           <div className="rounded-[10px] border border-line-0 bg-bg-2 px-5 py-[18px] text-[12.5px] leading-[1.7] text-text-3">
-            <strong className="font-medium text-text-2">Disclaimer.</strong> SIDANG adalah alat bantu riset, bukan
+            <strong className="font-medium text-text-2">Disclaimer GLOBAL No. 10.</strong> SIDANG adalah alat bantu
+            riset, bukan
             rekomendasi investasi. Seluruh putusan, kategori, dan konfidensi merupakan hasil analisis otomatis dari data
             arsip dan tidak menjamin akurasi prediksi. Harga yang tampil hanya berasal dari arsip sidang —{' '}
             <span className="text-[#d9a441]">tidak ada harga real-time</span>. Keputusan investasi sepenuhnya tanggung

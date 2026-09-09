@@ -3,6 +3,8 @@ import type { AgentId } from '../types/contract';
 
 export interface AnalystMeta {
   id: AgentId;
+  /** Nama pendek pada kartu (mock: "Fundamental", "Harga", …). */
+  name: string;
   /** Monogram pada avatar (1–2 huruf). */
   monogram: string;
   /** Satu baris tagline fungsi analis. */
@@ -12,9 +14,9 @@ export interface AnalystMeta {
 }
 
 export const ANALYST_META: AnalystMeta[] = [
-  { id: 'fundamental', monogram: 'FD', tagline: 'Esensi bisnis, parit & valuasi vs peers', icon: 'fundamental' },
-  { id: 'price', monogram: 'PR', tagline: 'Momentum, relatif indeks, likuiditas', icon: 'price' },
-  { id: 'smartmoney', monogram: 'SM', tagline: 'Arus broker institusi & asing', icon: 'smartmoney' },
-  { id: 'insider', monogram: 'IN', tagline: 'Transaksi direksi & pemegang besar', icon: 'insider' },
-  { id: 'antigorengan', monogram: 'AG', tagline: 'Suspensi, free float, aksi korporasi', icon: 'gorengan' },
+  { id: 'fundamental', name: 'Fundamental', monogram: 'FD', tagline: 'Laba & valuasi', icon: 'fundamental' },
+  { id: 'price', name: 'Harga', monogram: 'PR', tagline: 'Momentum & volume', icon: 'price' },
+  { id: 'smartmoney', name: 'Smart Money', monogram: 'SM', tagline: 'Arus institusi', icon: 'smartmoney' },
+  { id: 'insider', name: 'Insider', monogram: 'IN', tagline: 'Transaksi direksi', icon: 'insider' },
+  { id: 'antigorengan', name: 'Anti-Gorengan', monogram: 'AG', tagline: 'Deteksi manipulasi', icon: 'gorengan' },
 ];
