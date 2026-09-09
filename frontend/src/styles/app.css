@@ -305,7 +305,7 @@
 .docket-search .input::placeholder { color: var(--text-3); }
 
 .docket-grid { display: grid; grid-template-columns: 1fr; gap: var(--sp-5); align-items: start; }
-.docket-grid.has-recent { grid-template-columns: minmax(0, 1fr) 280px; }
+.docket-grid.has-recent { grid-template-columns: minmax(0, 1fr) 260px; }
 
 /* ---- Tabel screener (ala pasar) ---- */
 .screen-table-wrap { overflow-x: auto; padding: 0; transition: opacity var(--dur-fast); }
@@ -334,7 +334,7 @@
 .screen-row:hover .screen-ticker { color: var(--brass-100); }
 .screen-name {
   color: var(--text-1);
-  max-width: 210px;
+  max-width: 190px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -447,6 +447,45 @@
   .docket-grid.has-recent { grid-template-columns: 1fr; }
   .recent-panel { order: -1; }
 }
+
+/* ---- Halaman dashboard (berkas perkara) ---- */
+.dash { display: flex; flex-direction: column; gap: var(--sp-5); }
+.dash-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.dash-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-0);
+}
+.dash-sub { margin: 4px 0 0; }
+.dash .docket-search { margin-bottom: 2px; }
+.dash-fallback {
+  margin: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line-0);
+}
+
+/* ---- Landing: CTA di bawah hero-points ---- */
+.hero-cta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+.hero-cta-row .btn-ghost { border-color: var(--line-2); }
+.hero-cta-row .btn-ghost:first-child { border-color: rgba(217, 180, 109, 0.4); color: var(--brass-200); }
+.hero-cta-row .btn-ghost:first-child:hover { border-color: var(--brass-400); color: var(--brass-100); }
+.ticker-panel-foot { margin: var(--sp-3) 0 0; text-align: center; }
+.ticker-panel-foot a { color: var(--brass-300); text-decoration: none; border-bottom: 1px solid transparent; }
+.ticker-panel-foot a:hover { color: var(--brass-100); border-color: var(--brass-500); }
 
 .spinner-glow {
   width: 18px; height: 18px;

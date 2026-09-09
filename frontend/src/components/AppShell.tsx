@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { GavelIcon, BookIcon, RadioIcon, ScaleIcon } from './icons';
+import { GavelIcon, BookIcon, RadioIcon, ScaleIcon, SearchIcon } from './icons';
 import { isMockMode } from '../api';
 
 export default function AppShell() {
@@ -7,6 +7,7 @@ export default function AppShell() {
 
   const isCourt = pathname.startsWith('/trial/');
   const isMemo = pathname.startsWith('/memo/');
+  const isHome = pathname === '/';
 
   return (
     <div className="shell">
@@ -22,7 +23,13 @@ export default function AppShell() {
 
           <nav className="topnav" aria-label="Navigasi utama">
             <NavLink to="/" end className={({ isActive }) => 'navlink' + (isActive && !isCourt && !isMemo ? ' active' : '')}>
-              <ScaleIcon size={15} /> Sidang Baru
+              <ScaleIcon size={15} /> Beranda
+            </NavLink>
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) => 'navlink' + (isActive && !isCourt && !isMemo && !isHome ? ' active' : '')}
+            >
+              <SearchIcon size={15} /> Berkas Perkara
             </NavLink>
             <NavLink to="/journal" className={({ isActive }) => 'navlink' + (isActive ? ' active' : '')}>
               <BookIcon size={15} /> Jurnal Sidang

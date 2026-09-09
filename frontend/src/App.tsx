@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import AppShell from './components/AppShell';
 import HomePage from './pages/HomePage';
+import DashboardPage from './pages/DashboardPage';
 import CourtroomPage from './pages/CourtroomPage';
 import MemoPage from './pages/MemoPage';
 import JournalPage from './pages/JournalPage';
@@ -13,6 +14,7 @@ const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'dashboard', element: <DashboardPage /> },
       { path: 'trial/:trialId', element: <CourtroomPage /> },
       { path: 'memo/:trialId', element: <MemoPage /> },
       { path: 'journal', element: <JournalPage /> },
