@@ -1,0 +1,14 @@
+# Build
+dist/
+*.tsbuildinfo
+*.local
+
+# Node
+node_modules/
+
+# Vite
+.vite/
+
+# Smoke-test artifacts
+dev-smoke.out
+dev-smoke.err

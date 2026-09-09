@@ -1,0 +1,108 @@
+/* ============================================================
+   SIDANG — Design Tokens
+   Tema "ruang sidang" gelap & sinematik: arang hangat + kuningan.
+   ============================================================ */
+
+:root {
+  /* --- Latar (lapisan arang hangat) --- */
+  --bg-0: #090b0e;           /* latar terdalam (jendela/underlay) */
+  --bg-1: #0c0f13;           /* latar halaman */
+  --bg-2: #12161c;           /* permukaan kartu */
+  --bg-3: #181d25;           /* kartu terangkat / panel */
+  --bg-4: #212834;           /* hover / input aktif */
+  --bg-overlay: rgba(4, 6, 9, 0.72);
+
+  /* --- Garis (hairline) --- */
+  --line-0: rgba(236, 224, 200, 0.06);
+  --line-1: rgba(236, 224, 200, 0.11);
+  --line-2: rgba(236, 224, 200, 0.18);
+
+  /* --- Kuningan (aksen utama) --- */
+  --brass-100: #f7ecd7;
+  --brass-200: #eeddb9;
+  --brass-300: #e6cb93;
+  --brass-400: #dbb46d;
+  --brass-500: #c9a053;
+  --brass-600: #a87f3b;
+  --brass-700: #7d5c28;
+  --brass-glow: rgba(217, 180, 109, 0.32);
+  --brass-glow-soft: rgba(217, 180, 109, 0.14);
+
+  /* --- Warna peran & status --- */
+  --prosecute-100: #ffd9d4;
+  --prosecute-300: #ff9d8f;
+  --prosecute-400: #f06a5c;
+  --prosecute-500: #d9483b;
+  --prosecute-600: #a93327;
+  --prosecute-900: #2c0e0b;
+  --prosecute-950: #1d0a08;
+
+  --defend-100: #d3f5e3;
+  --defend-300: #8fe4b7;
+  --defend-400: #4cc98f;
+  --defend-500: #2fa877;
+  --defend-600: #1f8259;
+  --defend-900: #0a2418;
+  --defend-950: #07190f;
+
+  --accent-blue-300: #9ec8ff;
+  --accent-blue-500: #4f8fe8;
+  --accent-blue-600: #2f6ec2;
+
+  /* --- Status data richness: A / B / C --- */
+  --rich-a: var(--defend-400);
+  --rich-b: var(--brass-400);
+  --rich-c: var(--prosecute-400);
+
+  /* --- Cache hit / miss --- */
+  --cache-hit: #4cc98f;
+  --cache-miss: #d8a75c;
+
+  /* --- Teks (putih hangat) --- */
+  --text-0: #f0ead9;         /* primer */
+  --text-1: #c4bda9;         /* sekunder */
+  --text-2: #8b8575;         /* muted */
+  --text-3: #5d584c;         /* samar / placeholder */
+
+  /* --- Tipografi --- */
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  /* --- Radius --- */
+  --radius-xs: 4px;
+  --radius-sm: 7px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* --- Spasi (grid 4px) --- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+  --sp-9: 56px;
+  --sp-10: 72px;
+
+  /* --- Bayangan --- */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 6px 18px -6px rgba(0, 0, 0, 0.55);
+  --shadow-3: 0 18px 44px -14px rgba(0, 0, 0, 0.65);
+  --shadow-brass: 0 8px 30px -10px var(--brass-glow);
+
+  /* --- Gerak --- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 160ms;
+  --dur-med: 280ms;
+  --dur-slow: 520ms;
+
+  /* --- Layout --- */
+  --content-max: 1180px;
+  --shell-topbar-h: 64px;
+}
