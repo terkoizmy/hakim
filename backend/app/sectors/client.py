@@ -18,7 +18,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import httpx
 
@@ -29,9 +29,10 @@ logger = logging.getLogger(__name__)
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
-# Date params are excluded from the fixture lookup key so fixture files do not
-# depend on "today". Live cache keys keep the full query string.
-_FIXTURE_STRIP_PARAMS = {"start", "end"}
+# Date/top-changes params are excluded from the fixture lookup key so fixture
+# files do not depend on "today" or the credit-saving param pin. Live cache
+# keys keep the full query string.
+_FIXTURE_STRIP_PARAMS = {"start", "end", "classifications", "periods"}
 
 # Listed-companies registry (CONTRACT 1.2.0): cached 1 day, refreshed only
 # when empty/expired. Live refresh paginates the screener (max 200/page).
@@ -197,28 +198,34 @@ class SectorsClient:
         raise SectorsError(f"Sectors 429 setelah {max_retries} percobaan")
 
     @staticmethod
+    @staticmethod
     def _path_for(name: str, symbol: Optional[str]) -> str:
-        """Map a logical endpoint name to a REST v2 path."""
+        """Map a logical endpoint name to a REST v2 path.
+
+        Paths verified against docs.sectors.app (llms.txt, api-references v2)
+        on 2026-09-09. `index_daily` carries the index slug (ihsg/lq45/idx30)
+        as a PATH param, passed through the `symbol` slot.
+        """
         if name == "company_report":
             return f"/v2/company/report/{symbol}/"
         if name == "quarterly_financials":
             return f"/v2/financials/quarterly/{symbol}/"
         if name == "revenue_segments":
-            return f"/v2/company/segments/{symbol}/"
+            return f"/v2/company/get-segments/{symbol}/"
         if name == "daily_transaction":
-            return f"/v2/transaction/daily/{symbol}/"
+            return f"/v2/daily/{symbol}/"
         if name == "index_daily":
-            return "/v2/transaction/index-daily/"
+            return f"/v2/index-daily/{symbol}/"
         if name == "top_movers":
-            return "/v2/ranking/top-changes/"
+            return "/v2/companies/top-changes/"
         if name == "top_brokers":
-            return f"/v2/broker/top-buyers-sellers/{symbol}/"
+            return f"/v2/broker-summary/{symbol}/"
         if name == "foreign_flow":
             return f"/v2/foreign-flow/{symbol}/"
         if name == "filings":
-            return "/v2/news/filings/"
+            return "/v2/filings/"
         if name == "suspensions":
-            return "/v2/news/suspensions/"
+            return "/v2/suspensions/"
         if name == "corporate_actions":
             return f"/v2/company/corporate-actions/{symbol}/"
         if name == "screener":
@@ -233,43 +240,224 @@ class SectorsClient:
             "company_report", symbol, {"sections": sections}, tool="company_report"
         )
 
-    async def quarterly_financials(self, symbol: str, n_quarters: int = 4) -> SectorsResponse:
-        return await self._get(
-            "quarterly_financials", symbol, {"n_quarters": n_quarters}, tool="quarterly_financials"
-        )
-
     async def revenue_segments(self, symbol: str) -> SectorsResponse:
-        return await self._get("revenue_segments", symbol, {}, tool="revenue_segments")
+        resp = await self._get("revenue_segments", symbol, {}, tool="revenue_segments")
+        return self._normalized(resp, symbol, self._norm_segments)
 
     async def daily_transaction(self, symbol: str, start: str, end: str) -> SectorsResponse:
-        return await self._get(
+        resp = await self._get(
             "daily_transaction", symbol, {"start": start, "end": end}, tool="daily_transaction"
         )
+        return self._normalized(resp, symbol, self._norm_daily)
 
     async def index_daily(self, index: str, start: str, end: str) -> SectorsResponse:
-        return await self._get(
-            "index_daily", None, {"index": index, "start": start, "end": end}, tool="index_daily"
+        # Index slug (ihsg/lq45/idx30) travels in the `symbol` slot — it is a
+        # PATH param on /v2/index-daily/{index_code}/.
+        code = index.strip().lower()
+        resp = await self._get(
+            "index_daily", code, {"start": start, "end": end}, tool="index_daily"
         )
+        return self._normalized(resp, code, self._norm_index)
 
-    async def top_movers(self, start: str, end: str) -> SectorsResponse:
-        return await self._get("top_movers", None, {"start": start, "end": end}, tool="top_movers")
+    async def top_movers(self) -> SectorsResponse:
+        # /v2/companies/top-changes/ bills 1 credit per classification×period.
+        # Default (2 classifications × 5 periods) = 10 credits — pin both
+        # classifications to the 7-day period (2 credits). Both params are
+        # array-typed: httpx repeats them as query params.
+        resp = await self._get(
+            "top_movers",
+            None,
+            {"classifications": ["top_gainers", "top_losers"], "periods": ["7d"]},
+            tool="top_movers",
+        )
+        return self._normalized(resp, None, self._norm_movers)
 
     async def top_brokers(self, symbol: str, start: str, end: str) -> SectorsResponse:
-        return await self._get(
+        resp = await self._get(
             "top_brokers", symbol, {"start": start, "end": end}, tool="top_brokers"
         )
+        return self._normalized(resp, symbol, self._norm_brokers)
 
     async def foreign_flow(self, symbol: str) -> SectorsResponse:
-        return await self._get("foreign_flow", symbol, {}, tool="foreign_flow")
+        resp = await self._get("foreign_flow", symbol, {}, tool="foreign_flow")
+        return self._normalized(resp, symbol, self._norm_foreign_flow)
 
     async def filings(self, symbol: str) -> SectorsResponse:
-        return await self._get("filings", symbol, {"symbol": symbol}, tool="filings")
+        resp = await self._get("filings", symbol, {"symbol": symbol}, tool="filings")
+        return self._normalized(resp, symbol, self._norm_filings)
 
     async def suspensions(self, symbol: str) -> SectorsResponse:
-        return await self._get("suspensions", symbol, {"symbol": symbol}, tool="suspensions")
+        resp = await self._get("suspensions", symbol, {"symbol": symbol}, tool="suspensions")
+        return self._normalized(resp, symbol, self._norm_suspensions)
 
     async def corporate_actions(self, symbol: str) -> SectorsResponse:
-        return await self._get("corporate_actions", symbol, {}, tool="corporate_actions")
+        resp = await self._get("corporate_actions", symbol, {}, tool="corporate_actions")
+        return self._normalized(resp, symbol, self._norm_actions)
+
+    async def quarterly_financials(self, symbol: str, n_quarters: int = 4) -> SectorsResponse:
+        resp = await self._get(
+            "quarterly_financials", symbol, {"n_quarters": n_quarters}, tool="quarterly_financials"
+        )
+        return self._normalized(resp, symbol, self._norm_quarterly)
+
+    # ------------------------------------------------- payload normalization
+
+    @staticmethod
+    def _normalized(
+        resp: SectorsResponse, symbol: Optional[str], norm: Callable[[dict[str, Any], str], dict[str, Any]]
+    ) -> SectorsResponse:
+        """Map a live v2 payload into the fixture/evidence shape.
+
+        Every normalizer is shape-detective and idempotent: fixture payloads
+        (and already-normalized cache hits) pass through unchanged. The SQLite
+        cache stores the RAW live payload; normalization happens per read.
+        """
+        return SectorsResponse(payload=norm(resp.payload, symbol or ""), cache=resp.cache)
+
+    @staticmethod
+    def _norm_quarterly(payload: Any, symbol: str) -> dict[str, Any]:
+        # live: bare array [{symbol, financials_sector_metrics, ...}]
+        if isinstance(payload, list):
+            return {"symbol": symbol, "quarterly": payload}
+        return payload
+
+    @staticmethod
+    def _norm_segments(payload: Any, symbol: str) -> dict[str, Any]:
+        # live: {symbol, financial_year, revenue_breakdown: [...], summary}
+        if isinstance(payload, dict) and "segments" not in payload and "revenue_breakdown" in payload:
+            return {
+                "symbol": payload.get("symbol", symbol),
+                "financial_year": payload.get("financial_year"),
+                "segments": payload.get("revenue_breakdown", []),
+            }
+        return payload
+
+    @staticmethod
+    def _norm_daily(payload: Any, symbol: str) -> dict[str, Any]:
+        # live: bare array [{symbol, date, close, volume, ...}]
+        if isinstance(payload, list):
+            return {"symbol": symbol, "data": payload}
+        return payload
+
+    @staticmethod
+    def _norm_index(payload: Any, index_code: str) -> dict[str, Any]:
+        # live: bare array [{index_code, date, price}] — evidence reads `close`
+        if isinstance(payload, list):
+            return {
+                "index": index_code,
+                "data": [
+                    {"date": row.get("date"), "close": row.get("price", row.get("close"))}
+                    for row in payload
+                ],
+            }
+        return payload
+
+    @staticmethod
+    def _norm_movers(payload: Any, symbol: str) -> dict[str, Any]:
+        # live: {top_gainers: {7d: [{symbol, price_change, ...}]}, top_losers: {...}}
+        # price_change is a FRACTION (0.232 = +23.2%) — evidence reads change_pct.
+        if isinstance(payload, dict) and ("top_gainers" in payload or "top_losers" in payload):
+            rows: list[dict[str, Any]] = []
+            for cls in ("top_gainers", "top_losers"):
+                for period, items in (payload.get(cls) or {}).items():
+                    for it in items or []:
+                        change = it.get("price_change")
+                        rows.append(
+                            {
+                                "symbol": it.get("symbol", ""),
+                                "change_pct": round(float(change) * 100, 2) if change is not None else None,
+                                "last_close_price": it.get("last_close_price"),
+                                "period": period,
+                                "classification": cls,
+                            }
+                        )
+            return {"data": rows}
+        return payload
+
+    @staticmethod
+    def _norm_brokers(payload: Any, symbol: str) -> dict[str, Any]:
+        # live: {symbol, start, end, data: [{date, summary: [{broker_code, bval, sval, ...}]}]}
+        # evidence expects {top_buyers: [{broker_code, net_value}], top_sellers: [...]}
+        if (
+            isinstance(payload, dict)
+            and isinstance(payload.get("data"), list)
+            and "top_buyers" not in payload
+            and payload.get("data")
+            and isinstance(payload["data"][0], dict)
+            and "summary" in payload["data"][0]
+        ):
+            agg: dict[str, dict[str, float]] = {}
+            for day in payload["data"]:
+                for row in day.get("summary", []) or []:
+                    code = row.get("broker_code")
+                    if not code:
+                        continue
+                    a = agg.setdefault(code, {"bval": 0.0, "sval": 0.0})
+                    a["bval"] += float(row.get("bval") or 0)
+                    a["sval"] += float(row.get("sval") or 0)
+            buyers = sorted(
+                (
+                    {"broker_code": c, "net_value": v["bval"] - v["sval"]}
+                    for c, v in agg.items()
+                    if v["bval"] > v["sval"]
+                ),
+                key=lambda b: b["net_value"],
+                reverse=True,
+            )[:5]
+            sellers = sorted(
+                (
+                    {"broker_code": c, "net_value": v["sval"] - v["bval"]}
+                    for c, v in agg.items()
+                    if v["sval"] > v["bval"]
+                ),
+                key=lambda s: s["net_value"],
+                reverse=True,
+            )[:5]
+            return {"symbol": payload.get("symbol", symbol), "top_buyers": buyers, "top_sellers": sellers}
+        return payload
+
+    @staticmethod
+    def _norm_foreign_flow(payload: Any, symbol: str) -> dict[str, Any]:
+        # live: {symbol, start, end, data: [{date, net_foreign_inflow}]}
+        if isinstance(payload, dict) and "net_foreign_flow" not in payload and "data" in payload:
+            total = sum(float(row.get("net_foreign_inflow") or 0) for row in payload.get("data", []) or [])
+            return {"symbol": payload.get("symbol", symbol), "net_foreign_flow": total}
+        return payload
+
+    @staticmethod
+    def _norm_filings(payload: Any, symbol: str) -> dict[str, Any]:
+        # live: {results: [{..., transaction_type: buy/sell, timestamp}]} —
+        # evidence filters on `type` == buy/sell.
+        if isinstance(payload, dict) and "filings" not in payload and "results" in payload:
+            rows = []
+            for f in payload.get("results", []) or []:
+                row = dict(f)
+                row["type"] = row.get("transaction_type")
+                row["date"] = row.get("timestamp")
+                rows.append(row)
+            return {"symbol": payload.get("symbol", symbol), "filings": rows}
+        return payload
+
+    @staticmethod
+    def _norm_suspensions(payload: Any, symbol: str) -> dict[str, Any]:
+        # live: {results: [{symbol, suspension_date, reason, pdf_url}]}
+        if isinstance(payload, dict) and "suspensions" not in payload and "results" in payload:
+            rows = [{"date": r.get("suspension_date"), **r} for r in payload.get("results", []) or []]
+            return {"symbol": payload.get("symbol", symbol), "suspensions": rows}
+        return payload
+
+    @staticmethod
+    def _norm_actions(payload: Any, symbol: str) -> dict[str, Any]:
+        # live: {symbol, corporate_actions: {agm: [...], dividend: [...], ...}}
+        # evidence expects a flat list with `type` = category key.
+        if isinstance(payload, dict) and isinstance(payload.get("corporate_actions"), dict):
+            rows = [
+                {"type": cat, **(item or {})}
+                for cat, items in payload["corporate_actions"].items()
+                for item in (items or [])
+            ]
+            return {"symbol": payload.get("symbol", symbol), "corporate_actions": rows}
+        return payload
 
     async def screener(
         self, where: str, order_by: str = "symbol", limit: int = 50, offset: int = 0

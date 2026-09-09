@@ -230,71 +230,6 @@
       }
     ]
   },
-  "index_daily:index=IDXCOMPOSITE": {
-    "index": "IDXCOMPOSITE",
-    "data": [
-      {
-        "date": "2026-09-08",
-        "close": 7200,
-        "change_pct": 0.3
-      },
-      {
-        "date": "2026-09-01",
-        "close": 7178,
-        "change_pct": -0.1
-      },
-      {
-        "date": "2026-08-25",
-        "close": 7185,
-        "change_pct": 0.2
-      },
-      {
-        "date": "2026-08-18",
-        "close": 7171,
-        "change_pct": -0.3
-      },
-      {
-        "date": "2026-08-11",
-        "close": 7193,
-        "change_pct": 0.1
-      },
-      {
-        "date": "2026-08-04",
-        "close": 7186,
-        "change_pct": -0.2
-      },
-      {
-        "date": "2026-07-28",
-        "close": 7200,
-        "change_pct": 0.2
-      },
-      {
-        "date": "2026-07-21",
-        "close": 7186,
-        "change_pct": -0.1
-      },
-      {
-        "date": "2026-07-14",
-        "close": 7193,
-        "change_pct": 0.0
-      },
-      {
-        "date": "2026-07-07",
-        "close": 7193,
-        "change_pct": -0.2
-      },
-      {
-        "date": "2026-06-30",
-        "close": 7207,
-        "change_pct": 0.1
-      },
-      {
-        "date": "2026-06-16",
-        "close": 7200,
-        "change_pct": 0.0
-      }
-    ]
-  },
   "top_movers": {
     "data": [
       {
@@ -417,5 +352,70 @@
       },
       "message": ""
     }
+  },
+  "index_daily:__generic__": {
+    "index": "IDXCOMPOSITE",
+    "data": [
+      {
+        "date": "2026-09-08",
+        "close": 7200,
+        "change_pct": 0.3
+      },
+      {
+        "date": "2026-09-01",
+        "close": 7178,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-08-25",
+        "close": 7185,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-08-18",
+        "close": 7171,
+        "change_pct": -0.3
+      },
+      {
+        "date": "2026-08-11",
+        "close": 7193,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-08-04",
+        "close": 7186,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-07-28",
+        "close": 7200,
+        "change_pct": 0.2
+      },
+      {
+        "date": "2026-07-21",
+        "close": 7186,
+        "change_pct": -0.1
+      },
+      {
+        "date": "2026-07-14",
+        "close": 7193,
+        "change_pct": 0.0
+      },
+      {
+        "date": "2026-07-07",
+        "close": 7193,
+        "change_pct": -0.2
+      },
+      {
+        "date": "2026-06-30",
+        "close": 7207,
+        "change_pct": 0.1
+      },
+      {
+        "date": "2026-06-16",
+        "close": 7200,
+        "change_pct": 0.0
+      }
+    ]
   }
 }

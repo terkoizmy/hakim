@@ -184,18 +184,16 @@ def test_price_series_does_not_call_sectors_twice(tmp_path):
 
     def handler(request: httpx.Request) -> httpx.Response:
         url = str(request.url)
-        if "/v2/transaction/daily/" in url:
+        if "/v2/daily/" in url:
             daily_calls["n"] += 1
+            # raw live v2 shape: bare array — the client normalizes it
             return httpx.Response(
                 200,
-                json={
-                    "symbol": "BBCA",
-                    "data": [
-                        {"date": "2026-09-08", "close": 8400, "volume": 12000000, "change_pct": 0.5},
-                        {"date": "2026-09-01", "close": 8358, "volume": 9000000, "change_pct": -0.2},
-                        {"date": "2026-08-25", "close": 8375, "volume": 11000000, "change_pct": 0.3},
-                    ],
-                },
+                json=[
+                    {"symbol": "BBCA.JK", "date": "2026-09-08", "close": 8400, "volume": 12000000, "change_pct": 0.5},
+                    {"symbol": "BBCA.JK", "date": "2026-09-01", "close": 8358, "volume": 9000000, "change_pct": -0.2},
+                    {"symbol": "BBCA.JK", "date": "2026-08-25", "close": 8375, "volume": 11000000, "change_pct": 0.3},
+                ],
             )
         if "/v2/company/report/" in url:
             return httpx.Response(
@@ -211,18 +209,23 @@ def test_price_series_does_not_call_sectors_twice(tmp_path):
                 },
             )
         if "/v2/foreign-flow/" in url:
-            return httpx.Response(200, json={"net_foreign_flow": 1000000000})
-        if "/v2/news/filings/" in url:
+            # raw live v2 shape: {data: [{date, net_foreign_inflow}]}
+            return httpx.Response(
+                200,
+                json={"data": [{"date": "2026-09-08", "net_foreign_inflow": 1000000000}]},
+            )
+        if "/v2/filings/" in url:
+            # raw live v2 shape: {results: [{..., transaction_type}]}
             return httpx.Response(
                 200,
                 json={
-                    "filings": [
-                        {"type": "buy", "date": "2026-07-10", "name": "Direksi", "shares": 10000}
+                    "results": [
+                        {"transaction_type": "buy", "timestamp": "2026-07-10", "name": "Direksi", "shares": 10000}
                     ]
                 },
             )
-        if "/v2/news/suspensions/" in url:
-            return httpx.Response(200, json={"suspensions": []})
+        if "/v2/suspensions/" in url:
+            return httpx.Response(200, json={"results": []})
         return httpx.Response(200, json={})
 
     settings = Settings(

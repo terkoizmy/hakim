@@ -35,7 +35,7 @@ async def gather_fundamental(ctx: Any) -> GatherResult:
     qf = await ctx.sectors.quarterly_financials(ctx.ticker)
     tool_calls.append(ToolCall("quarterly_financials", f"/v2/financials/quarterly/{ctx.ticker}/", "n_quarters=4", qf.cache))
     rs = await ctx.sectors.revenue_segments(ctx.ticker)
-    tool_calls.append(ToolCall("revenue_segments", f"/v2/company/segments/{ctx.ticker}/", "", rs.cache))
+    tool_calls.append(ToolCall("revenue_segments", f"/v2/company/get-segments/{ctx.ticker}/", "", rs.cache))
     return GatherResult(
         data={"company_report": cr.payload, "quarterly_financials": qf.payload, "revenue_segments": rs.payload},
         tool_calls=tool_calls,
@@ -48,12 +48,11 @@ async def gather_price(ctx: Any) -> GatherResult:
     dt = await ctx.sectors.daily_transaction(ctx.ticker, start, end)
     # Keep the raw payload for the price-series snapshot (CONTRACT 1.1.0).
     ctx.shared["daily_transaction"] = dt.payload
-    tool_calls.append(ToolCall("daily_transaction", f"/v2/transaction/daily/{ctx.ticker}/", f"start={start}&end={end}", dt.cache))
-    idx = await ctx.sectors.index_daily("IDXCOMPOSITE", start, end)
-    tool_calls.append(ToolCall("index_daily", "/v2/transaction/index-daily/", f"index=IDXCOMPOSITE&start={start}&end={end}", idx.cache))
-    s, e = _dates(7)
-    tm = await ctx.sectors.top_movers(s, e)
-    tool_calls.append(ToolCall("top_movers", "/v2/ranking/top-changes/", f"start={s}&end={e}", tm.cache))
+    tool_calls.append(ToolCall("daily_transaction", f"/v2/daily/{ctx.ticker}/", f"start={start}&end={end}", dt.cache))
+    idx = await ctx.sectors.index_daily("IHSG", start, end)
+    tool_calls.append(ToolCall("index_daily", "/v2/index-daily/ihsg/", f"start={start}&end={end}", idx.cache))
+    tm = await ctx.sectors.top_movers()
+    tool_calls.append(ToolCall("top_movers", "/v2/companies/top-changes/", "classifications=both&periods=7d", tm.cache))
     return GatherResult(
         data={"daily_transaction": dt.payload, "index_daily": idx.payload, "top_movers": tm.payload},
         tool_calls=tool_calls,
@@ -64,7 +63,7 @@ async def gather_smartmoney(ctx: Any) -> GatherResult:
     tool_calls: list[ToolCall] = []
     start, end = _dates(30)
     tb = await ctx.sectors.top_brokers(ctx.ticker, start, end)
-    tool_calls.append(ToolCall("top_brokers", f"/v2/broker/top-buyers-sellers/{ctx.ticker}/", f"start={start}&end={end}", tb.cache))
+    tool_calls.append(ToolCall("top_brokers", f"/v2/broker-summary/{ctx.ticker}/", f"start={start}&end={end}", tb.cache))
     ff = await ctx.sectors.foreign_flow(ctx.ticker)
     tool_calls.append(ToolCall("foreign_flow", f"/v2/foreign-flow/{ctx.ticker}/", "period=30d", ff.cache))
     return GatherResult(
@@ -83,7 +82,7 @@ async def gather_insider(ctx: Any) -> GatherResult:
         cr_payload = cr.payload
         tool_calls.append(ToolCall("company_report", f"/v2/company/report/{ctx.ticker}/", "sections=management,ownership", cr.cache))
     fl = await ctx.sectors.filings(ctx.ticker)
-    tool_calls.append(ToolCall("filings", "/v2/news/filings/", f"symbol={ctx.ticker}", fl.cache))
+    tool_calls.append(ToolCall("filings", "/v2/filings/", f"symbol={ctx.ticker}", fl.cache))
     return GatherResult(
         data={"company_report": cr_payload, "filings": fl.payload},
         tool_calls=tool_calls,
@@ -93,7 +92,7 @@ async def gather_insider(ctx: Any) -> GatherResult:
 async def gather_antigorengan(ctx: Any) -> GatherResult:
     tool_calls: list[ToolCall] = []
     sp = await ctx.sectors.suspensions(ctx.ticker)
-    tool_calls.append(ToolCall("suspensions", "/v2/news/suspensions/", f"symbol={ctx.ticker}", sp.cache))
+    tool_calls.append(ToolCall("suspensions", "/v2/suspensions/", f"symbol={ctx.ticker}", sp.cache))
     ca = await ctx.sectors.corporate_actions(ctx.ticker)
     tool_calls.append(ToolCall("corporate_actions", f"/v2/company/corporate-actions/{ctx.ticker}/", "", ca.cache))
     sc = await ctx.sectors.screener(where=f"symbol in ['{ctx.ticker}']", limit=10)

@@ -175,7 +175,7 @@ def extract_price(data: dict[str, Any], symbol: str) -> list[Evidence]:
             idx_mom = round((float(i_last["close"]) - float(i_first["close"])) / float(i_first["close"]) * 100, 1)
             evs.append(Evidence(
                 evidence_id="",
-                source_endpoint=_endpoint("transaction/index-daily", "", "index=IDXCOMPOSITE"),
+                source_endpoint=_endpoint("transaction/index-daily", "", "index_code=ihsg"),
                 headline=f"IHSG momentum 90 hari {idx_mom:+.1f}%",
                 facts=[EvidenceFact("index_momentum_90d", idx_mom, "%")],
             ))
@@ -183,7 +183,7 @@ def extract_price(data: dict[str, Any], symbol: str) -> list[Evidence]:
     if movers:
         evs.append(Evidence(
             evidence_id="",
-            source_endpoint=_endpoint("ranking/top-changes", "", "start=7d&end=today"),
+            source_endpoint=_endpoint("ranking/top-changes", "", "periods=7d"),
             headline=f"Konteks movers: {len(movers)} saham bergerak besar (contoh {movers[0].get('symbol')} {movers[0].get('change_pct')}%)",
             facts=[EvidenceFact("n_movers", len(movers), "saham")],
         ))
@@ -209,7 +209,7 @@ def extract_smartmoney(data: dict[str, Any], symbol: str) -> list[Evidence]:
         direction = "akumulasi" if net > 0 else "distribusi"
         evs.append(Evidence(
             evidence_id="",
-            source_endpoint=_endpoint("broker/top-buyers-sellers", symbol, "start=30d&end=today"),
+            source_endpoint=_endpoint("broker-summary", symbol, "start=30d&end=today"),
             headline=f"Broker institusi: net {direction} Rp{abs(net)/1e9:.1f} M",
             facts=[EvidenceFact("broker_net_flow", round(net / 1e9, 1), "Rp M")],
         ))
@@ -243,7 +243,7 @@ def extract_insider(data: dict[str, Any], symbol: str) -> list[Evidence]:
         direction = "beli" if len(buys) >= len(sells) else "jual"
         evs.append(Evidence(
             evidence_id="",
-            source_endpoint=_endpoint("news/filings", symbol, "filter=insider"),
+            source_endpoint=_endpoint("filings", symbol, "transaction_type=buy"),
             headline=f"Transaksi insider: {len(buys)} beli, {len(sells)} jual (net {direction})",
             facts=[
                 EvidenceFact("insider_buys", len(buys), "transaksi"),
@@ -277,7 +277,7 @@ def extract_antigorengan(data: dict[str, Any], symbol: str) -> list[Evidence]:
         latest = susp[-1]
         evs.append(Evidence(
             evidence_id="",
-            source_endpoint=_endpoint("news/suspensions", symbol, ""),
+            source_endpoint=_endpoint("suspensions", symbol, ""),
             headline=f"Riwayat suspensi: {len(susp)}x (terakhir {latest.get('date')}: {latest.get('reason')})",
             facts=[EvidenceFact("n_suspensions", len(susp), "kali")],
         ))
