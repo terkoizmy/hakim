@@ -81,6 +81,10 @@ terhubung satu sama lain.
   - `Pemegang Saham` (major shareholder, % kepemilikan)
   - `Orang Kunci` (direksi/komisaris dari section `management`)
   - `Red Flag` (dari memo), `Temuan Smart Money` (akumulasi/distribusi broker)
+  - `Bukti Kabar` (headline berita dari `/v2/news/` — filter per symbol/sector/tags/
+    keyword, est. 1 kredit/panggilan, perlu 1 probe; resep-contoh FinArena memang
+    punya endpoint ini tapi tidak pernah memakainya → pembeda kita)
+  - `Penghentian` (suspension dari `/v2/suspensions/` — kandidat "pin merah" papan)
   - `Fakta Angka` (key_facts memo — PE, ROE, dsb.)
 - **Tipe edge**: `memegang saham` (%), `menjabat di`, `menandai red flag`,
   `mendukung argumen` (bull/bear), `aktifitas broker net`.
@@ -122,6 +126,15 @@ pemegang teratas — estimasi ≤ 10 kredit untuk MVP, hanya sekali, lalu cache/
 3. Page react-flow MVP dengan data emiten tunggal.
 4. Probe screener shareholder lintas emiten (1–2 kredit) → graf antar-emiten.
 5. Panel detail + polish visual (menunggu sketsa desain pemilik proyek).
+
+---
+
+### Cakupan pasar Sectors (dicatat 2026-09-10)
+
+IDX 99,99% (950+ emiten, harian) · SGX ±80% · KLSE ada · + ekstensi saham mining.
+**Bukan seluruh Asia** (tidak ada SET/HKEX/TSE). Implikasi Papan Bukti: benang merah
+lintas bursa (pemegang SGX/KLSE ↔ emiten IDX) mungkin, asalkan data shareholder
+screener menyertakan negara/bursa — cek saat probe.
 
 ---
 
