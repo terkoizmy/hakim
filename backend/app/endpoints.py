@@ -27,6 +27,7 @@ from .models import (
     JournalResponse,
     PostmortemResponse,
     PriceSeriesResponse,
+    SectorListResponse,
     TickerListResponse,
 )
 from .orchestrator import TERMINAL_EVENTS, TrialContext, TrialFailed, run_trial
@@ -189,19 +190,29 @@ def build_router(
     # ---------------------------------------------------------------- tickers
 
     @router.get("/api/tickers", response_model=TickerListResponse)
-    async def tickers(q: str = "", limit: int = 50, offset: int = 0) -> TickerListResponse:
+    async def tickers(
+        q: str = "", limit: int = 50, offset: int = 0, sector: str = ""
+    ) -> TickerListResponse:
         """Listed-companies registry for the dashboard (CONTRACT 1.2.0).
 
         Ensures the registry is populated first (0 credits in fixture mode;
         live mode refreshes at most once a day). `q` is a case-insensitive
-        substring match on ticker OR company_name; `total` counts only rows
-        matching `q`.
+        substring match on ticker OR company_name; `sector` filters by the
+        IDX sector classification (CONTRACT 1.2.3). `total` counts only rows
+        matching the filters.
         """
         await sectors.listed_companies()
         items, total = db.list_tickers(
-            q=q.strip(), limit=min(limit, 200), offset=max(offset, 0)
+            q=q.strip(), limit=min(limit, 200), offset=max(offset, 0), sector=sector.strip()
         )
         return TickerListResponse(items=items, total=total)
+
+    @router.get("/api/tickers/sectors", response_model=SectorListResponse)
+    async def ticker_sectors() -> SectorListResponse:
+        """Distinct sectors in the registry with per-sector counts (CONTRACT 1.2.3)."""
+        await sectors.listed_companies()
+        items = db.ticker_sectors()
+        return SectorListResponse(items=items, total=len(items))
 
     # ----------------------------------------------------------------- health
 

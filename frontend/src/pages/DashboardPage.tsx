@@ -40,6 +40,9 @@ export default function DashboardPage() {
   );
   const [docketFallback, setDocketFallback] = useState(true); // fallback daftar contoh
   const [query, setQuery] = useState('');
+  /** Kontrak 1.2.3 — filter sektor IDX-IC ('' = semua). */
+  const [sector, setSector] = useState('');
+  const [sectors, setSectors] = useState<{ sector: string; count: number }[]>([]);
   const [docketLoading, setDocketLoading] = useState(false);
   /** Total emiten yang cocok di backend (registry IDX penuh = ±962). */
   const [total, setTotal] = useState(0);
@@ -77,20 +80,34 @@ export default function DashboardPage() {
     return m;
   }, [journal]);
 
+  // Opsi sektor untuk dropdown filter (kontrak 1.2.3) — opsional, backend lama diabaikan.
+  useEffect(() => {
+    let alive = true;
+    api
+      .fetchTickerSectors()
+      .then((res) => {
+        if (alive) setSectors(res.items);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // Daftar emiten: dari backend bila tersedia; gagal → pakai daftar contoh.
   useEffect(() => {
     let alive = true;
     setDocketLoading(true);
     const t = setTimeout(() => {
       api
-        .listTickers(query.trim() || undefined, PAGE_SIZE, 0)
+        .listTickers(query.trim() || undefined, PAGE_SIZE, 0, sector.trim() || undefined)
         .then((res) => {
           if (!alive) return;
-          if (res.items.length > 0) {
-            setDocket(res.items);
-            setDocketFallback(false);
-            setTotal(res.total);
-          }
+          // Jawaban backend selalu dipakai — hasil kosong valid (mis. filter
+          // sektor tanpa pencocokan); fallback contoh hanya bila request gagal.
+          setDocket(res.items);
+          setDocketFallback(false);
+          setTotal(res.total);
         })
         .catch(() => {
           if (!alive) return;
@@ -111,14 +128,19 @@ export default function DashboardPage() {
       alive = false;
       clearTimeout(t);
     };
-  }, [query]);
+  }, [query, sector]);
 
   /** Muat 60 baris berikutnya (offset = jumlah yang sudah tampil). */
   function loadMore() {
     if (loadingMore || docketFallback) return;
     setLoadingMore(true);
     api
-      .listTickers(query.trim() || undefined, PAGE_SIZE, docket.length)
+      .listTickers(
+        query.trim() || undefined,
+        PAGE_SIZE,
+        docket.length,
+        sector.trim() || undefined,
+      )
       .then((res) => {
         const known = new Set(docket.map((d) => d.ticker));
         const fresh = res.items.filter((i) => !known.has(i.ticker));
@@ -152,23 +174,47 @@ export default function DashboardPage() {
           Semua emiten terdaftar IDX — klik baris untuk membuka berkas, lalu adili.
         </p>
 
-        {/* ---------- SEARCH ---------- */}
-        <label className="mt-[30px] flex max-w-[520px] items-center gap-3 rounded-[14px] border border-[#3a332a] bg-bg-2 px-[18px] transition-colors focus-within:border-brass-600 focus-within:shadow-[0_0_0_3px_rgba(201,162,74,0.12)]">
-          <span className="text-text-3" aria-hidden="true">
-            <SearchIcon size={18} />
-          </span>
-          <input
-            className="min-w-0 flex-1 border-0 bg-transparent py-[15px] text-[15px] text-text-0 outline-none placeholder:text-text-3"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari kode atau nama emiten…"
-            aria-label="Cari emiten"
-            autoFocus
-          />
-        </label>
+        {/* ---------- SEARCH + FILTER SEKTOR ---------- */}
+        <div className="mt-[30px] flex max-w-[720px] flex-col gap-3 min-[621px]:flex-row">
+          <label className="flex min-w-0 flex-1 items-center gap-3 rounded-[14px] border border-[#3a332a] bg-bg-2 px-[18px] transition-colors focus-within:border-brass-600 focus-within:shadow-[0_0_0_3px_rgba(201,162,74,0.12)]">
+            <span className="text-text-3" aria-hidden="true">
+              <SearchIcon size={18} />
+            </span>
+            <input
+              className="min-w-0 flex-1 border-0 bg-transparent py-[15px] text-[15px] text-text-0 outline-none placeholder:text-text-3"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cari kode atau nama emiten…"
+              aria-label="Cari emiten"
+              autoFocus
+            />
+          </label>
+          {sectors.length > 0 && (
+            <label className="flex items-center gap-2 rounded-[14px] border border-[#3a332a] bg-bg-2 px-[16px] transition-colors focus-within:border-brass-600">
+              <span className="font-mono text-[11px] uppercase tracking-[1px] text-text-3">
+                Sektor
+              </span>
+              <select
+                className="min-w-0 cursor-pointer border-0 bg-transparent py-[15px] pr-1 text-[14px] text-text-0 outline-none"
+                value={sector}
+                onChange={(e) => setSector(e.target.value)}
+                aria-label="Filter sektor"
+              >
+                <option value="">Semua</option>
+                {sectors.map((s) => (
+                  <option key={s.sector} value={s.sector}>
+                    {s.sector} ({s.count})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
         <p className="mb-[26px] mt-2 font-mono text-[12px] tracking-[0.5px] text-text-3">
           {total > 0
-            ? `MENAMPILKAN ${docket.length} DARI ${total} PERKARA${query.trim() ? '' : ' — KETIK UNTUK MENCARI ATAU GULIR + MUAT LAGI'}`
+            ? `MENAMPILKAN ${docket.length} DARI ${total} PERKARA${
+                sector.trim() ? ` — SEKTOR ${sector.trim().toUpperCase()}` : query.trim() ? '' : ' — KETIK UNTUK MENCARI ATAU GULIR + MUAT LAGI'
+              }`
             : 'MENAMPILKAN DAFTAR PERKARA'}
         </p>
 
@@ -215,6 +261,11 @@ export default function DashboardPage() {
                           <div className="max-w-[180px] truncate font-medium text-text-0">
                             {t.company_name || 'Emiten IDX'}
                           </div>
+                          {t.sector && (
+                            <div className="max-w-[180px] truncate text-[11.5px] text-text-3">
+                              {t.sector}
+                            </div>
+                          )}
                         </td>
                         <td className={TD}>
                           {last ? (

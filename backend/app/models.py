@@ -189,10 +189,21 @@ class PostmortemResponse(BaseModel):
 class TickerItem(BaseModel):
     ticker: str
     company_name: str
+    sector: Optional[str] = None
 
 
 class TickerListResponse(BaseModel):
     items: list[TickerItem]
+    total: int
+
+
+class SectorStat(BaseModel):
+    sector: str
+    count: int
+
+
+class SectorListResponse(BaseModel):
+    items: list[SectorStat]
     total: int
 
 

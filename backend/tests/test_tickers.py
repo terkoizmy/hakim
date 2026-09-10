@@ -51,7 +51,7 @@ def test_tickers_fixture_returns_registry(app_env):
         assert body["total"] >= 1
         assert len(body["items"]) == body["total"]  # default limit 50 >= registry size
         for item in body["items"]:
-            assert set(item) == {"ticker", "company_name"}
+            assert set(item) == {"ticker", "company_name", "sector"}
             assert item["ticker"]
         tickers = {i["ticker"] for i in body["items"]}
         assert "BBCA" in tickers
@@ -65,7 +65,9 @@ def test_tickers_q_lowercase_finds_bbc(app_env):
         assert r.status_code == 200
         body = r.json()
         assert body["total"] == 1
-        assert body["items"] == [{"ticker": "BBCA", "company_name": "Bank Central Asia Tbk"}]
+        assert body["items"] == [
+            {"ticker": "BBCA", "company_name": "Bank Central Asia Tbk", "sector": "Financials"}
+        ]
 
 
 def test_tickers_q_matches_company_name(app_env):
@@ -114,9 +116,21 @@ def test_tickers_live_refreshes_once_then_cache_hit(tmp_path):
                 200,
                 json={
                     "results": [
-                        {"symbol": "BBCA.JK", "company_name": "Bank Central Asia Tbk"},
-                        {"symbol": "CUAN.JK", "company_name": "Petrindo Jaya Kreasi Tbk"},
-                        {"symbol": "TLKM.JK", "company_name": "Telkom Indonesia Tbk"},
+                        {
+                            "symbol": "BBCA.JK",
+                            "company_name": "Bank Central Asia Tbk",
+                            "query_values": {"sector": "Financials", "symbol": "BBCA.JK"},
+                        },
+                        {
+                            "symbol": "CUAN.JK",
+                            "company_name": "Petrindo Jaya Kreasi Tbk",
+                            "query_values": {"sector": "Energy", "symbol": "CUAN.JK"},
+                        },
+                        {
+                            "symbol": "TLKM.JK",
+                            "company_name": "Telkom Indonesia Tbk",
+                            "query_values": {"sector": "Infrastructures", "symbol": "TLKM.JK"},
+                        },
                     ],
                     "pagination": {"total_count": 3, "limit": 200, "offset": 0},
                 },
@@ -146,6 +160,6 @@ def test_tickers_live_refreshes_once_then_cache_hit(tmp_path):
         r2 = client.get("/api/tickers", params={"q": "bbca"})
         assert r2.status_code == 200
         assert r2.json()["items"] == [
-            {"ticker": "BBCA", "company_name": "Bank Central Asia Tbk"}
+            {"ticker": "BBCA", "company_name": "Bank Central Asia Tbk", "sector": "Financials"}
         ]
         assert screener_calls["n"] == 1  # cache hit — no new Sectors call

@@ -1,6 +1,6 @@
 # CONTRACT — Kontrak Backend ↔ Frontend SIDANG
 
-> **Status: FROZEN** · schema_version `1.2.1` · Tertulis 2026-09-09 oleh orkestrator.
+> **Status: FROZEN** · schema_version `1.2.3` · Tertulis 2026-09-09 oleh orkestrator.
 >
 > **Changelog 1.1.0** (2026-09-09): endpoint `GET /api/trials/{trial_id}/price-series` baru; postmortem menyertakan `price_series: Point[] | null`.
 >
@@ -9,6 +9,8 @@
 > **Changelog 1.2.1** (2026-09-09): `JournalItem` menambahkan field `trial_id` — FE halaman detail emiten memanggil `/price-series` langsung (0 kredit) tanpa lewat postmortem.
 >
 > **Changelog 1.2.2** (2026-09-10): `POST /api/trials` dapat menolak dengan `409` bila emiten yang sama sudah diadili kurang dari 7 hari lalu (cooldown re-sidang).
+>
+> **Changelog 1.2.3** (2026-09-10): registry emiten membawa sektor IDX-IC — `TickerItem` menambah field `sector` (bisa `null` untuk emiten lama/belum ter-backfill); `GET /api/tickers` menerima param `sector=`; endpoint `GET /api/tickers/sectors` baru (daftar sektor + jumlah emiten). Sektor didapat dari echo `query_values` Companies Screener (`where="sector != ''"` + `include_query_values=true`, live-verified 2026-09-10).
 >
 > Aturan: worker HANYA MEMBACA file ini. Perubahan hanya oleh orkestrator dengan bump `schema_version`.
 > Sumber kebenaran tunggal untuk: event SSE, MemoJSON, endpoint REST, kode error.
@@ -140,7 +142,8 @@ Validasi: pydantic di backend; jika JSON hakim invalid → 1x repair loop → bi
 | `GET` | `/api/journal?limit=&offset=` | `200 { "items": [ { "memo_id", "trial_id", "ticker", "company_name", "verdict_category", "info_richness", "price_at_trial", "created_at" } ], "total" }` — `trial_id` sejak 1.2.1. |
 | `GET` | `/api/journal/{memo_id}/postmortem` | `200 { "memo": MemoJSON, "price_at_trial": 8.4, "price_now": 7.9, "change_pct": -5.95, "days_elapsed": 21, "price_series": [ { "date": "2026-09-08", "close": 8400, "volume": 12000000, "change_pct": 0.5 }, … ] \| null }` — `price_series` ascending by date, 2–52 titik; `null` bila data tidak cukup (< 2 titik). |
 | `GET` | `/api/trials/{trial_id}/price-series` | `200 { "trial_id", "ticker", "points": [ { "date", "close", "volume", "change_pct" }, … ] \| null }` — snapshot harga dari trial (daily_transaction), ascending, 2–52 titik; `null` bila < 2 titik (HTTP tetap 200). |
-| `GET` | `/api/tickers?q=&limit=&offset=` | `200 { "items": [ { "ticker", "company_name" } ], "total" }` — daftar emiten terdaftar dari cache daftar emiten (sudah dipakai validasi POST /api/trials). `q` = pencarian case-insensitive pada ticker ATAU company_name (prefix/substring). `limit` default 50, `offset` default 0, `total` = jumlah hasil setelah filter `q` (bukan total semua). Fixture mode: dari `_listed_companies` fixture. Cache 1 hari — jika cache daftar emiten kosong, isi dulu lalu jawab (live mode: 1 kredit saat refresh pertama saja). |
+| `GET` | `/api/tickers?q=&limit=&offset=&sector=` | `200 { "items": [ { "ticker", "company_name", "sector" } ], "total" }` — daftar emiten terdaftar dari cache daftar emiten (sudah dipakai validasi POST /api/trials). `q` = pencarian case-insensitive pada ticker ATAU company_name (prefix/substring). `sector` = filter persis nama sektor IDX-IC (mis. `Financials`) — sejak 1.2.3. `limit` default 50, `offset` default 0, `total` = jumlah hasil setelah filter (bukan total semua). `sector` bisa `null` (emiten lama / registry sebelum 1.2.3). Fixture mode: dari `_listed_companies` fixture. Cache 1 hari — jika cache daftar emiten kosong, isi dulu lalu jawab (live mode: 1 kredit/halaman saat refresh pertama saja). |
+| `GET` | `/api/tickers/sectors` | `200 { "items": [ { "sector", "count" } ], "total" }` — daftar sektor berbeda dalam registry + jumlah emiten per sektor (terurut terbanyak dulu) untuk dropdown filter dashboard. Sejak 1.2.3. |
 | `GET` | `/api/health` | `200 { "status": "ok", "sectors_mode": "fixture\|live", "version": "…" }` |
 
 CORS: allow `http://localhost:5173` (Vite default).

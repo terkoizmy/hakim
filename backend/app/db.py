@@ -55,7 +55,8 @@ CREATE TABLE IF NOT EXISTS cache (
 
 CREATE TABLE IF NOT EXISTS tickers (
     symbol       TEXT PRIMARY KEY,
-    company_name TEXT
+    company_name TEXT,
+    sector       TEXT
 );
 
 CREATE TABLE IF NOT EXISTS price_series (
@@ -88,6 +89,10 @@ class Database:
         conn = self._connect()
         try:
             conn.executescript(SCHEMA)
+            # Migration idempotent: DB lama (pra-1.2.3) belum punya kolom sector.
+            cols = {r["name"] for r in conn.execute("PRAGMA table_info(tickers)")}
+            if "sector" not in cols:
+                conn.execute("ALTER TABLE tickers ADD COLUMN sector TEXT")
             conn.commit()
         finally:
             conn.close()
@@ -346,43 +351,59 @@ class Database:
         finally:
             conn.close()
 
-    def upsert_tickers(self, rows: list[tuple[str, str]]) -> None:
+    def upsert_tickers(self, rows: list[tuple[str, str]] | list[tuple[str, str, str | None]]) -> None:
+        """Insert/replace tickers — (symbol, company_name) atau dengan sector."""
         conn = self._connect()
         try:
             conn.executemany(
-                "INSERT OR REPLACE INTO tickers (symbol, company_name) VALUES (?, ?)", rows
+                "INSERT OR REPLACE INTO tickers (symbol, company_name, sector) VALUES (?, ?, ?)",
+                [(r[0], r[1], r[2] if len(r) > 2 else None) for r in rows],
             )
             conn.commit()
         finally:
             conn.close()
 
     def list_tickers(
-        self, q: str = "", limit: int = 50, offset: int = 0
-    ) -> tuple[list[dict[str, str]], int]:
+        self, q: str = "", limit: int = 50, offset: int = 0, sector: str = ""
+    ) -> tuple[list[dict[str, Any]], int]:
         """Search the ticker registry (case-insensitive substring on symbol or
         company_name). Returns (items, total_after_filter) — `total` counts only
-        rows matching `q`, not the whole registry (CONTRACT 1.2.0)."""
+        rows matching `q` (and `sector`), not the whole registry (CONTRACT 1.2.0/1.2.3)."""
         conn = self._connect()
         try:
+            where: list[str] = []
+            args: list[Any] = []
             if q:
+                where.append("(symbol LIKE ? OR company_name LIKE ?)")
                 like = f"%{q}%"
-                total = conn.execute(
-                    "SELECT COUNT(*) AS c FROM tickers WHERE symbol LIKE ? OR company_name LIKE ?",
-                    (like, like),
-                ).fetchone()["c"]
-                rows = conn.execute(
-                    "SELECT symbol, company_name FROM tickers "
-                    "WHERE symbol LIKE ? OR company_name LIKE ? "
-                    "ORDER BY symbol LIMIT ? OFFSET ?",
-                    (like, like, limit, offset),
-                ).fetchall()
-            else:
-                total = conn.execute("SELECT COUNT(*) AS c FROM tickers").fetchone()["c"]
-                rows = conn.execute(
-                    "SELECT symbol, company_name FROM tickers ORDER BY symbol LIMIT ? OFFSET ?",
-                    (limit, offset),
-                ).fetchall()
-            items = [{"ticker": r["symbol"], "company_name": r["company_name"]} for r in rows]
+                args.extend([like, like])
+            if sector:
+                where.append("sector = ?")
+                args.append(sector)
+            cond = (" WHERE " + " AND ".join(where)) if where else ""
+            total = conn.execute(f"SELECT COUNT(*) AS c FROM tickers{cond}", args).fetchone()["c"]
+            rows = conn.execute(
+                f"SELECT symbol, company_name, sector FROM tickers{cond} "
+                "ORDER BY symbol LIMIT ? OFFSET ?",
+                [*args, limit, offset],
+            ).fetchall()
+            items = [
+                {"ticker": r["symbol"], "company_name": r["company_name"], "sector": r["sector"]}
+                for r in rows
+            ]
             return items, total
+        finally:
+            conn.close()
+
+    def ticker_sectors(self) -> list[dict[str, Any]]:
+        """Distinct sectors in the registry with per-sector counts (CONTRACT 1.2.3)."""
+        conn = self._connect()
+        try:
+            rows = conn.execute(
+                "SELECT sector, COUNT(*) AS c FROM tickers "
+                "WHERE sector IS NOT NULL AND sector != '' "
+                "GROUP BY sector ORDER BY c DESC, sector"
+            ).fetchall()
+            return [{"sector": r["sector"], "count": r["c"]} for r in rows]
         finally:
             conn.close()

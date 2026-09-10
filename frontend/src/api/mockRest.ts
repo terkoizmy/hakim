@@ -10,6 +10,7 @@ import type {
   MemoJSON,
   PostmortemResponse,
   PriceSeriesResponse,
+  TickerSectorsResponse,
   TickersResponse,
 } from '../types/contract';
 import { JOURNAL_ITEMS, POSTMORTEMS } from '../mocks/journal';
@@ -17,10 +18,20 @@ import { ApiError, type RestClient, type TrialModeInput } from './types';
 import { COMPANY_NAMES, companyNameFor } from './mockData';
 import { mockStore } from './mockStore';
 
+/** Sektor mock per ticker (kontrak 1.2.3) — cukup untuk demo dropdown. */
+const MOCK_SECTOR_BY_TICKER: Record<string, string> = {
+  BBCA: 'Financials',
+  BBRI: 'Financials',
+  CUAN: 'Energy',
+  GOTO: 'Technology',
+  BRMS: 'Basic Materials',
+};
+
 /** Daftar emiten mock (urutan stabil, cocok dengan COMPANY_NAMES). */
 const MOCK_TICKERS = Object.entries(COMPANY_NAMES).map(([ticker, company_name]) => ({
   ticker,
   company_name,
+  sector: MOCK_SECTOR_BY_TICKER[ticker] ?? null,
 }));
 
 /** Series harga sintetis untuk mock postmortem (12 titik mingguan). */
@@ -83,11 +94,25 @@ export const mockRestClient: RestClient = {
     return { trial_id: trialId, ticker, points: mockPriceSeries(base) };
   },
 
-  async listTickers(q, limit = 50, offset = 0): Promise<TickersResponse> {
+  async listTickers(q, limit = 50, offset = 0, sector): Promise<TickersResponse> {
     const needle = (q ?? '').trim().toUpperCase();
+    const sec = (sector ?? '').trim();
     const filtered = MOCK_TICKERS.filter(
-      (t) => !needle || t.ticker.includes(needle) || t.company_name.toUpperCase().includes(needle),
+      (t) =>
+        (!needle || t.ticker.includes(needle) || t.company_name.toUpperCase().includes(needle)) &&
+        (!sec || t.sector === sec),
     );
     return { items: filtered.slice(offset, offset + limit), total: filtered.length };
+  },
+
+  async fetchTickerSectors(): Promise<TickerSectorsResponse> {
+    const counts = new Map<string, number>();
+    for (const t of MOCK_TICKERS) {
+      if (t.sector) counts.set(t.sector, (counts.get(t.sector) ?? 0) + 1);
+    }
+    const items = [...counts.entries()]
+      .map(([sector, count]) => ({ sector, count }))
+      .sort((a, b) => b.count - a.count || a.sector.localeCompare(b.sector));
+    return { items, total: items.length };
   },
 };

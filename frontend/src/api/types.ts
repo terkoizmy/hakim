@@ -10,6 +10,7 @@ import type {
   MemoJSON,
   PostmortemResponse,
   PriceSeriesResponse,
+  TickerSectorsResponse,
   TickersResponse,
   TrialEvent,
 } from '../types/contract';
@@ -58,5 +59,12 @@ export interface RestClient {
   /** Kontrak 1.1.0 — null bila series tidak tersedia (HTTP 200 + points null). */
   fetchPriceSeries(trialId: string): Promise<PriceSeriesResponse>;
   /** Kontrak 1.2.0 — daftar emiten untuk dashboard. */
-  listTickers(q?: string, limit?: number, offset?: number): Promise<TickersResponse>;
+  listTickers(
+    q?: string,
+    limit?: number,
+    offset?: number,
+    sector?: string,
+  ): Promise<TickersResponse>;
+  /** Kontrak 1.2.3 — daftar sektor registry untuk dropdown filter. */
+  fetchTickerSectors(): Promise<TickerSectorsResponse>;
 }

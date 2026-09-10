@@ -350,11 +350,19 @@ export interface PriceSeriesResponse {
 export interface TickerListItem {
   ticker: string;
   company_name: string;
+  /** Kontrak 1.2.3 — klasifikasi sektor IDX-IC (Financials, Energy, dst.). */
+  sector?: string | null;
 }
 
-/** GET /api/tickers?q=&limit=&offset= → 200 */
+/** GET /api/tickers?q=&limit=&offset=&sector= → 200 */
 export interface TickersResponse {
   items: TickerListItem[];
+  total: number;
+}
+
+/** Kontrak 1.2.3 — GET /api/tickers/sectors → 200 */
+export interface TickerSectorsResponse {
+  items: { sector: string; count: number }[];
   total: number;
 }
 

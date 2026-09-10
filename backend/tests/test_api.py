@@ -231,3 +231,34 @@ def test_retrial_cooldown_409(app_env):
         # emiten lain tetap boleh
         r2 = client.post("/api/trials", json={"ticker": "CUAN", "mode": "fixture"})
         assert r2.status_code == 202
+
+
+def test_tickers_sector_filter_and_list(app_env):
+    """Filter sektor per registry emiten (CONTRACT 1.2.3): /api/tickers?sector=
+    dan /api/tickers/sectors mengembalikan taksonomi IDX-IC dari fixture."""
+    app, db = app_env
+    with TestClient(app) as client:
+        r = client.get("/api/tickers/sectors")
+        assert r.status_code == 200
+        sectors = r.json()
+        assert sectors["total"] > 0
+        by_name = {s["sector"]: s["count"] for s in sectors["items"]}
+        assert "Financials" in by_name
+
+        # filter sektor hanya mengembalikan emiten sektor itu
+        r = client.get("/api/tickers", params={"sector": "Financials", "limit": 200})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total"] == by_name["Financials"]
+        assert all(it["sector"] == "Financials" for it in body["items"])
+        assert any(it["ticker"] == "BBCA" for it in body["items"])
+
+        # kombinasi q + sector
+        r = client.get("/api/tickers", params={"q": "bank", "sector": "Financials", "limit": 200})
+        assert r.status_code == 200
+        assert all(it["sector"] == "Financials" for it in r.json()["items"])
+
+        # sektor tak dikenal -> 0 hasil
+        r = client.get("/api/tickers", params={"sector": "Tidak Ada"})
+        assert r.status_code == 200
+        assert r.json()["total"] == 0

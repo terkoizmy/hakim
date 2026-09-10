@@ -532,7 +532,12 @@ class SectorsClient:
         return payload
 
     async def screener(
-        self, where: str, order_by: str = "symbol", limit: int = 50, offset: int = 0
+        self,
+        where: str,
+        order_by: str = "symbol",
+        limit: int = 50,
+        offset: int = 0,
+        include_query_values: bool = False,
     ) -> SectorsResponse:
         """Structured screener — `where`, never `q=`.
 
@@ -542,6 +547,8 @@ class SectorsClient:
         params: dict[str, Any] = {"where": where, "order_by": order_by, "limit": limit}
         if offset:
             params["offset"] = offset
+        if include_query_values:
+            params["include_query_values"] = "true"
         return await self._get("screener", None, params, tool="screener")
 
     # ------------------------------------------------------- ticker registry
@@ -569,24 +576,34 @@ class SectorsClient:
         # live: targeted screener lookup (1 credit) then cache the result.
         # The API stores symbols with the .JK suffix (e.g. "BBRI.JK"), so
         # match both the normalized and suffixed forms in the same call.
-        resp = await self.screener(where=f"symbol in ['{sym}','{sym}.JK']", limit=10)
+        # `sector != ''` in the where makes the row echo its sector (1.2.3).
+        resp = await self.screener(
+            where=f"symbol in ['{sym}','{sym}.JK'] and sector != ''",
+            limit=10,
+            include_query_values=True,
+        )
         results = resp.payload.get("results", [])
         for row in results:
             row_sym = self.normalize_symbol(row.get("symbol", ""))
             if row_sym == sym:
                 name = row.get("company_name", sym)
-                self.db.upsert_tickers([(sym, name)])
+                qv = row.get("query_values") if isinstance(row.get("query_values"), dict) else {}
+                self.db.upsert_tickers([(sym, name, qv.get("sector"))])
                 return name
         raise TickerNotFound(sym)
 
-    async def listed_companies(self) -> list[dict[str, str]]:
-        """Full listed-companies registry [{symbol, company_name}].
+    async def listed_companies(self) -> list[dict[str, Any]]:
+        """Full listed-companies registry [{symbol, company_name, sector}].
 
         Served from a 1-day cache. On a cold cache it is fetched once and
         mirrored into the tickers table, so GET /api/tickers and the
         POST /api/trials validation share the same registry:
           - fixture: GENERIC._listed_companies (0 HTTP)
           - live: paginated screener (1 credit/page, first refresh only)
+
+        `sector` comes from the screener's `query_values` echo (CONTRACT 1.2.3):
+        referencing `sector` in the where clause makes each result row echo its
+        sector — verified live 2026-09-10 (1-credit probe, total_count 962).
         """
         cached = self.db.cache_get(LISTED_COMPANIES_CACHE_KEY)
         if cached is not None:
@@ -598,27 +615,41 @@ class SectorsClient:
         else:
             rows = await self._fetch_all_listed()
 
-        results = [
-            {
-                "symbol": self.normalize_symbol(row.get("symbol", "")),
-                "company_name": row.get("company_name", ""),
-            }
-            for row in rows
-            if row.get("symbol")
-        ]
+        results = []
+        for row in rows:
+            if not row.get("symbol"):
+                continue
+            qv = row.get("query_values") if isinstance(row.get("query_values"), dict) else {}
+            results.append(
+                {
+                    "symbol": self.normalize_symbol(row.get("symbol", "")),
+                    "company_name": row.get("company_name", ""),
+                    "sector": row.get("sector") or qv.get("sector"),
+                }
+            )
         self.db.cache_set(
             LISTED_COMPANIES_CACHE_KEY, {"results": results}, LISTED_COMPANIES_TTL_DAYS
         )
-        self.db.upsert_tickers([(r["symbol"], r["company_name"]) for r in results])
+        self.db.upsert_tickers(
+            [(r["symbol"], r["company_name"], r.get("sector")) for r in results]
+        )
         return results
 
     async def _fetch_all_listed(self) -> list[dict[str, Any]]:
-        """Paginate the screener to fetch the full listed-companies registry."""
+        """Paginate the screener to fetch the full listed-companies registry.
+
+        `include_query_values` makes the API echo `sector` per row (probed
+        2026-09-10, 1 credit) — same page count, no extra calls.
+        """
         rows: list[dict[str, Any]] = []
         offset = 0
         for _ in range(SCREENER_MAX_PAGES):
             resp = await self.screener(
-                where="symbol != ''", order_by="symbol", limit=SCREENER_PAGE_SIZE, offset=offset
+                where="sector != ''",
+                order_by="symbol",
+                limit=SCREENER_PAGE_SIZE,
+                offset=offset,
+                include_query_values=True,
             )
             page = resp.payload.get("results", [])
             rows.extend(page)

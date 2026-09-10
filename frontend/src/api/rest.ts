@@ -8,6 +8,7 @@ import type {
   MemoJSON,
   PostmortemResponse,
   PriceSeriesResponse,
+  TickerSectorsResponse,
   TickersResponse,
 } from '../types/contract';
 import { config } from '../config';
@@ -65,9 +66,14 @@ export const restClient: RestClient = {
     );
   },
 
-  listTickers(q, limit = 50, offset = 0) {
+  listTickers(q, limit = 50, offset = 0, sector) {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (q) params.set('q', q);
+    if (sector) params.set('sector', sector);
     return request<TickersResponse>(`/api/tickers?${params.toString()}`);
+  },
+
+  fetchTickerSectors() {
+    return request<TickerSectorsResponse>('/api/tickers/sectors');
   },
 };

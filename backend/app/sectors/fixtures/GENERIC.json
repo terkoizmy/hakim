@@ -4,199 +4,248 @@
   "_listed_companies": [
     {
       "symbol": "BBCA",
-      "company_name": "Bank Central Asia Tbk"
+      "company_name": "Bank Central Asia Tbk",
+      "sector": "Financials"
     },
     {
       "symbol": "CUAN",
-      "company_name": "Petrindo Jaya Kreasi Tbk"
+      "company_name": "Petrindo Jaya Kreasi Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "BBRI",
-      "company_name": "Bank Rakyat Indonesia Tbk"
+      "company_name": "Bank Rakyat Indonesia Tbk",
+      "sector": "Financials"
     },
     {
       "symbol": "BMRI",
-      "company_name": "Bank Mandiri Tbk"
+      "company_name": "Bank Mandiri Tbk",
+      "sector": "Financials"
     },
     {
       "symbol": "BBNI",
-      "company_name": "Bank Negara Indonesia Tbk"
+      "company_name": "Bank Negara Indonesia Tbk",
+      "sector": "Financials"
     },
     {
       "symbol": "TLKM",
-      "company_name": "Telkom Indonesia Tbk"
+      "company_name": "Telkom Indonesia Tbk",
+      "sector": "Infrastructures"
     },
     {
       "symbol": "ASII",
-      "company_name": "Astra International Tbk"
+      "company_name": "Astra International Tbk",
+      "sector": "Industrials"
     },
     {
       "symbol": "GOTO",
-      "company_name": "GoTo Gojek Tokopedia Tbk"
+      "company_name": "GoTo Gojek Tokopedia Tbk",
+      "sector": "Technology"
     },
     {
       "symbol": "BREN",
-      "company_name": "Barito Renewables Energy Tbk"
+      "company_name": "Barito Renewables Energy Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "ANTM",
-      "company_name": "Aneka Tambang Tbk"
+      "company_name": "Aneka Tambang Tbk",
+      "sector": "Basic Materials"
     },
     {
       "symbol": "ADRO",
-      "company_name": "Alamtri Resources Indonesia Tbk"
+      "company_name": "Alamtri Resources Indonesia Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "PTBA",
-      "company_name": "Bukit Asam Tbk"
+      "company_name": "Bukit Asam Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "ITMG",
-      "company_name": "Indo Tambangraya Megah Tbk"
+      "company_name": "Indo Tambangraya Megah Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "INCO",
-      "company_name": "Vale Indonesia Tbk"
+      "company_name": "Vale Indonesia Tbk",
+      "sector": "Basic Materials"
     },
     {
       "symbol": "MDKA",
-      "company_name": "Merdeka Copper Gold Tbk"
+      "company_name": "Merdeka Copper Gold Tbk",
+      "sector": "Basic Materials"
     },
     {
       "symbol": "PGAS",
-      "company_name": "Perusahaan Gas Negara Tbk"
+      "company_name": "Perusahaan Gas Negara Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "UNTR",
-      "company_name": "United Tractors Tbk"
+      "company_name": "United Tractors Tbk",
+      "sector": "Industrials"
     },
     {
       "symbol": "ICBP",
-      "company_name": "Indofood CBP Sukses Makmur Tbk"
+      "company_name": "Indofood CBP Sukses Makmur Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "INDF",
-      "company_name": "Indofood Sukses Makmur Tbk"
+      "company_name": "Indofood Sukses Makmur Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "KLBF",
-      "company_name": "Kalbe Farma Tbk"
+      "company_name": "Kalbe Farma Tbk",
+      "sector": "Healthcare"
     },
     {
       "symbol": "GGRM",
-      "company_name": "Gudang Garam Tbk"
+      "company_name": "Gudang Garam Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "HMSP",
-      "company_name": "HM Sampoerna Tbk"
+      "company_name": "HM Sampoerna Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "UNVR",
-      "company_name": "Unilever Indonesia Tbk"
+      "company_name": "Unilever Indonesia Tbk",
+      "sector": "Consumer Cyclicals"
     },
     {
       "symbol": "SMGR",
-      "company_name": "Semen Indonesia Tbk"
+      "company_name": "Semen Indonesia Tbk",
+      "sector": "Basic Materials"
     },
     {
       "symbol": "INTP",
-      "company_name": "Indocement Tunggal Prakarsa Tbk"
+      "company_name": "Indocement Tunggal Prakarsa Tbk",
+      "sector": "Basic Materials"
     },
     {
       "symbol": "WIKA",
-      "company_name": "Wijaya Karya Tbk"
+      "company_name": "Wijaya Karya Tbk",
+      "sector": "Industrials"
     },
     {
       "symbol": "PTPP",
-      "company_name": "PP Tbk"
+      "company_name": "PP Tbk",
+      "sector": "Industrials"
     },
     {
       "symbol": "ADHI",
-      "company_name": "Adhi Karya Tbk"
+      "company_name": "Adhi Karya Tbk",
+      "sector": "Industrials"
     },
     {
       "symbol": "JSMR",
-      "company_name": "Jasa Marga Tbk"
+      "company_name": "Jasa Marga Tbk",
+      "sector": "Infrastructures"
     },
     {
       "symbol": "EXCL",
-      "company_name": "XL Axiata Tbk"
+      "company_name": "XL Axiata Tbk",
+      "sector": "Infrastructures"
     },
     {
       "symbol": "ISAT",
-      "company_name": "Indosat Ooredoo Hutchison Tbk"
+      "company_name": "Indosat Ooredoo Hutchison Tbk",
+      "sector": "Infrastructures"
     },
     {
       "symbol": "TOWR",
-      "company_name": "Sarana Menara Nusantara Tbk"
+      "company_name": "Sarana Menara Nusantara Tbk",
+      "sector": "Infrastructures"
     },
     {
       "symbol": "MTEL",
-      "company_name": "Dayamitra Telekomunikasi Tbk"
+      "company_name": "Dayamitra Telekomunikasi Tbk",
+      "sector": "Infrastructures"
     },
     {
       "symbol": "ESSA",
-      "company_name": "Surya Esa Perkasa Tbk"
+      "company_name": "Surya Esa Perkasa Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "MEDC",
-      "company_name": "Medco Energi Internasional Tbk"
+      "company_name": "Medco Energi Internasional Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "ELSA",
-      "company_name": "Elnusa Tbk"
+      "company_name": "Elnusa Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "AKRA",
-      "company_name": "AKR Corporindo Tbk"
+      "company_name": "AKR Corporindo Tbk",
+      "sector": "Energy"
     },
     {
       "symbol": "AMRT",
-      "company_name": "Sumber Alfaria Trijaya Tbk"
+      "company_name": "Sumber Alfaria Trijaya Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "MAPI",
-      "company_name": "Mitra Adiperkasa Tbk"
+      "company_name": "Mitra Adiperkasa Tbk",
+      "sector": "Consumer Cyclicals"
     },
     {
       "symbol": "ACES",
-      "company_name": "Ace Hardware Indonesia Tbk"
+      "company_name": "Ace Hardware Indonesia Tbk",
+      "sector": "Consumer Cyclicals"
     },
     {
       "symbol": "ERAA",
-      "company_name": "Erajaya Swasembada Tbk"
+      "company_name": "Erajaya Swasembada Tbk",
+      "sector": "Consumer Cyclicals"
     },
     {
       "symbol": "SIDO",
-      "company_name": "Industri Jamu dan Farmasi Sido Muncul Tbk"
+      "company_name": "Industri Jamu dan Farmasi Sido Muncul Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "CPIN",
-      "company_name": "Charoen Pokphand Indonesia Tbk"
+      "company_name": "Charoen Pokphand Indonesia Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "JPFA",
-      "company_name": "Japfa Comfeed Indonesia Tbk"
+      "company_name": "Japfa Comfeed Indonesia Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "MYOR",
-      "company_name": "Mayora Indah Tbk"
+      "company_name": "Mayora Indah Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "TINS",
-      "company_name": "Timah Tbk"
+      "company_name": "Timah Tbk",
+      "sector": "Basic Materials"
     },
     {
       "symbol": "AALI",
-      "company_name": "Astra Agro Lestari Tbk"
+      "company_name": "Astra Agro Lestari Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "LSIP",
-      "company_name": "PP London Sumatra Indonesia Tbk"
+      "company_name": "PP London Sumatra Indonesia Tbk",
+      "sector": "Consumer Non-Cyclicals"
     },
     {
       "symbol": "SMAR",
-      "company_name": "Sinar Mas Agro Resources Tbk"
+      "company_name": "Sinar Mas Agro Resources Tbk",
+      "sector": "Consumer Non-Cyclicals"
     }
   ],
   "company_report:__generic__:sections=financials,valuation,peers,management,ownership,dividend": {
