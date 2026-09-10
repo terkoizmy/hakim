@@ -157,7 +157,7 @@ function PmView({ data }: { data: PostmortemResponse }) {
             Putusan Komite · {formatDate(memo.created_at)}
           </span>
           <Link
-            to={`/memo/${memo.memo_id}`}
+            to={`/memo/${memo.trial_id ?? memo.memo_id}`}
             className="font-mono text-[11px] uppercase tracking-[1px] text-brass-500 transition-colors hover:text-brass-300"
           >
             Memorandum lengkap →

@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 import secrets
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -37,6 +37,9 @@ logger = logging.getLogger(__name__)
 
 HEARTBEAT_INTERVAL = 15.0
 
+# Cooldown re-sidang untuk emiten yang sama (CONTRACT 1.2.2).
+RETRIAL_COOLDOWN = timedelta(days=7)
+
 
 def build_router(
     settings: Settings,
@@ -57,6 +60,29 @@ def build_router(
             company_name = await sectors.validate_ticker(ticker)
         except TickerNotFound:
             raise HTTPException(status_code=422, detail="Ticker tidak dikenal")
+
+        # Cooldown re-sidang: memo terakhir untuk emiten yang sama mengikat 7 hari.
+        # Memo lama tetap bisa dibuka kapan pun dari jurnal — hanya sidang BARU
+        # yang ditolak, supaya data arsip tidak dobel dan kredit Sectors tidak
+        # terbuang untuk emiten yang putusannya belum kedaluwarsa.
+        last = db.last_memo_for_ticker(ticker)
+        if last:
+            try:
+                last_dt = datetime.fromisoformat(last["created_at"].replace("Z", "+00:00"))
+            except ValueError:
+                last_dt = None
+            if last_dt is not None:
+                elapsed = datetime.now(timezone.utc) - last_dt
+                if elapsed < RETRIAL_COOLDOWN:
+                    next_allowed = (last_dt + RETRIAL_COOLDOWN).strftime("%d %b %Y")
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"{ticker} sudah diadili pada {last_dt.strftime('%d %b %Y')} — "
+                            f"memorandumnya masih berlaku di jurnal. Sidang ulang emiten yang "
+                            f"sama dapat dilakukan setelah {next_allowed}."
+                        ),
+                    )
 
         trial_id = "tr_" + secrets.token_hex(6)
         created_at = now_iso()

@@ -215,3 +215,19 @@ def test_sse_404_for_unknown_trial(app_env):
     with TestClient(app) as client:
         r = client.get("/api/trials/tr_nonexistent/events")
         assert r.status_code == 404
+
+
+def test_retrial_cooldown_409(app_env):
+    """Emiten yang sudah punya memo < 7 hari tidak boleh diadili ulang (CONTRACT 1.2.2)."""
+    app, _ = app_env
+    with TestClient(app) as client:
+        trial_id = _start_trial(client, "BBCA")
+        _wait_memo(client, trial_id)
+
+        r = client.post("/api/trials", json={"ticker": "BBCA", "mode": "fixture"})
+        assert r.status_code == 409
+        assert "sudah diadili" in r.json()["detail"]
+
+        # emiten lain tetap boleh
+        r2 = client.post("/api/trials", json={"ticker": "CUAN", "mode": "fixture"})
+        assert r2.status_code == 202

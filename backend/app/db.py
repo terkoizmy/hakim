@@ -176,6 +176,19 @@ class Database:
         finally:
             conn.close()
 
+    def last_memo_for_ticker(self, ticker: str) -> Optional[dict[str, Any]]:
+        """Most recent memo for a ticker — feeds the 7-day re-trial cooldown."""
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT memo_id, trial_id, created_at FROM memos "
+                "WHERE ticker = ? ORDER BY created_at DESC LIMIT 1",
+                (ticker,),
+            ).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
     def get_memo(self, memo_id: str) -> Optional[dict[str, Any]]:
         conn = self._connect()
         try:

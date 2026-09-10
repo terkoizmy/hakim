@@ -147,7 +147,8 @@ export default function JournalPage() {
                       </td>
                       <td className={`${TD_CLS} whitespace-nowrap text-right`}>
                         <span className="flex justify-end gap-3 text-[12.5px]">
-                          <Link to={`/memo/${it.memo_id}`} className="text-brass-500 transition-colors hover:text-brass-300">
+                          {/* endpoint memo = /api/trials/{trial_id}/memo — bukan memo_id */}
+                          <Link to={`/memo/${it.trial_id ?? it.memo_id}`} className="text-brass-500 transition-colors hover:text-brass-300">
                             Memo
                           </Link>
                           <Link

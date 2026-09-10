@@ -8,6 +8,8 @@
 >
 > **Changelog 1.2.1** (2026-09-09): `JournalItem` menambahkan field `trial_id` — FE halaman detail emiten memanggil `/price-series` langsung (0 kredit) tanpa lewat postmortem.
 >
+> **Changelog 1.2.2** (2026-09-10): `POST /api/trials` dapat menolak dengan `409` bila emiten yang sama sudah diadili kurang dari 7 hari lalu (cooldown re-sidang).
+>
 > Aturan: worker HANYA MEMBACA file ini. Perubahan hanya oleh orkestrator dengan bump `schema_version`.
 > Sumber kebenaran tunggal untuk: event SSE, MemoJSON, endpoint REST, kode error.
 
@@ -132,7 +134,7 @@ Validasi: pydantic di backend; jika JSON hakim invalid → 1x repair loop → bi
 
 | Method | Path | Request / Response |
 |---|---|---|
-| `POST` | `/api/trials` | Body `{ "ticker": "CUAN", "mode": "auto\|fixture" }` (mode opsional, default `auto`) → `202 { "trial_id", "ticker", "company_name", "mode", "created_at" }`. Ticker divalidasi via cache daftar emiten **sebelum** hit Sectors (404 Sectors = 1 kredit). Ticker invalid → `422 { "detail": "Ticker tidak dikenal" }`. Sidang berjalan di background task. |
+| `POST` | `/api/trials` | Body `{ "ticker": "CUAN", "mode": "auto\|fixture" }` (mode opsional, default `auto`) → `202 { "trial_id", "ticker", "company_name", "mode", "created_at" }`. Ticker divalidasi via cache daftar emiten **sebelum** hit Sectors (404 Sectors = 1 kredit). Ticker invalid → `422 { "detail": "Ticker tidak dikenal" }`. Emiten yang sudah punya memo < 7 hari → `409 { "detail": "<TICKER> sudah diadili pada … — sidang ulang … setelah <tgl>" }` (cooldown re-sidang; memo lama tetap bisa dibuka dari jurnal). Sidang berjalan di background task. |
 | `GET` | `/api/trials/{trial_id}/events` | SSE. Replay dari `Last-Event-ID` bila ada. |
 | `GET` | `/api/trials/{trial_id}/memo` | `200 MemoJSON` · `404 { "detail": "…" }` bila belum `memo_ready`. |
 | `GET` | `/api/journal?limit=&offset=` | `200 { "items": [ { "memo_id", "trial_id", "ticker", "company_name", "verdict_category", "info_richness", "price_at_trial", "created_at" } ], "total" }` — `trial_id` sejak 1.2.1. |

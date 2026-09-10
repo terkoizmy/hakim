@@ -254,7 +254,7 @@ export default function TickerDetailPage() {
                           </td>
                           <td className={TD_CLS}>
                             <span className="flex gap-4 text-[13px]">
-                              <Link to={`/memo/${j.memo_id}`} className="text-brass-500 transition-colors hover:text-brass-300">
+                              <Link to={`/memo/${j.trial_id ?? j.memo_id}`} className="text-brass-500 transition-colors hover:text-brass-300">
                                 Memo
                               </Link>
                               <Link

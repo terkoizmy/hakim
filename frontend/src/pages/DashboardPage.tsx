@@ -248,7 +248,7 @@ export default function DashboardPage() {
                   className={`flex w-full cursor-pointer items-center gap-3 rounded-none border-t border-[#2a251e] px-2 py-[11px] text-left transition-colors hover:bg-[rgba(201,162,74,0.05)] ${
                     i === 0 ? 'border-t-0' : ''
                   }`}
-                  onClick={() => navigate(`/memo/${j.memo_id}`)}
+                  onClick={() => navigate(`/memo/${j.trial_id ?? j.memo_id}`)}
                   title={`Buka memorandum ${j.ticker}`}
                 >
                   <SideDot category={j.verdict_category} />
