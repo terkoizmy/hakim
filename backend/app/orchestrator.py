@@ -219,6 +219,7 @@ async def _utterance(
     evidence_pool: list[Evidence],
     rebuts_id: Optional[str],
     utterance_id: str,
+    prior_utterances: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     if ctx.llm.available:
         try:
@@ -240,7 +241,9 @@ async def _utterance(
                 + "tanpa basa-basi pembuka/penutup, tanpa mengulang judul di dalam argument_md. "
                 + "Selalu sitasi evidence_id."
             )
-            user = _debate_user_prompt(ctx, summaries, evidence_pool, side, round_no, rebuts_id)
+            user = _debate_user_prompt(
+                ctx, summaries, evidence_pool, side, round_no, rebuts_id, prior_utterances
+            )
             content = await ctx.llm.chat(ctx.settings.model_debate, [{"role": "system", "content": system}, {"role": "user", "content": user}], json_mode=True, max_tokens=900)
             data = _parse_json(content)
             return {
@@ -267,6 +270,7 @@ def _debate_user_prompt(
     side: str,
     round_no: int,
     rebuts_id: Optional[str],
+    prior_utterances: Optional[list[dict[str, Any]]] = None,
 ) -> str:
     parts = [f"Ticker: {ctx.ticker} ({ctx.company_name}). Ronde {round_no}, sisi {side}."]
     parts.append("\nRangkuman analis:\n" + "\n".join(f"- [{s.agent_id}] {s.summary_md}" for s in summaries))
@@ -277,8 +281,23 @@ def _debate_user_prompt(
             ensure_ascii=False,
         )
     )
+    if round_no == 1:
+        parts.append(
+            "\nRONDE 1 (pembukaan): sampaikan argumen terkuatmu dengan ANGKA SPESIFIK "
+            "dari bukti (mis. PE 8,4x, net akumulasi Rp3,3 miliar). Pilih 1-2 tema saja."
+        )
+    else:
+        parts.append(
+            "\nRONDE 2 (bantahan): WAJIB membalas argumen lawan di bawah ini secara langsung "
+            "dan memakai bukti/angka yang BELUM dipakai di ronde 1. "
+            "DILARANG mengulang poin, angka, atau tema argumenmu sendiri di ronde 1 — "
+            "kalau poinmu sudah cukup kuat, perkuat dengan sudut pandang baru."
+        )
+        for u in prior_utterances or []:
+            tag = "argumen lawan" if u["side"] != side else "argumenmu (ronde 1)"
+            parts.append(f"\n[{tag} · ronde {u['round']} · {u['title']}]\n{u['argument_md']}")
     if rebuts_id:
-        parts.append(f"\nBalas argumen sebelumnya (id {rebuts_id}).")
+        parts.append(f"\nSet \"rebuts\" = \"{rebuts_id}\".")
     parts.append(
         '\nKeluarkan JSON: {"title": "...", "argument_md": "...", "cites": ["ev_..."]} '
         "(argument_md maksimal 3 kalimat/bullet)"
@@ -497,7 +516,10 @@ async def run_trial(ctx: TrialContext) -> MemoJSON:
         for side in ("prosecution", "defense"):
             rebuts_id = utterances[-1]["id"] if utterances else None
             ut_id = f"ut_{len(utterances) + 1}"
-            payload = await _utterance(ctx, side, round_no, analyst_results, evidence_pool, rebuts_id, ut_id)
+            payload = await _utterance(
+                ctx, side, round_no, analyst_results, evidence_pool, rebuts_id, ut_id,
+                prior_utterances=utterances,
+            )
             payload["id"] = ut_id
             utterances.append(payload)
             await ctx.bus.publish(ctx.trial_id, "debate_utterance", payload)
