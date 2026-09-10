@@ -9,6 +9,8 @@ import type { VerdictCategory } from '../types/contract';
 const EXAMPLES = ['BBCA', 'CUAN', 'GOTO', 'BRMS', 'BBRI'];
 
 const SEARCH_DEBOUNCE_MS = 250;
+/** Baris per halaman daftar emiten (registry IDX penuh ±962 — dimuat bertahap). */
+const PAGE_SIZE = 60;
 
 // Mock berkas-perkara: th mono uppercase di atas permukaan lebih gelap;
 // header boleh wrap 2 baris (JML SIDANG dst.) agar tabel muat di kolom 1fr.
@@ -39,6 +41,9 @@ export default function DashboardPage() {
   const [docketFallback, setDocketFallback] = useState(true); // fallback daftar contoh
   const [query, setQuery] = useState('');
   const [docketLoading, setDocketLoading] = useState(false);
+  /** Total emiten yang cocok di backend (registry IDX penuh = ±962). */
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [recent, setRecent] = useState<JournalItem[]>([]);
   const [journal, setJournal] = useState<JournalItem[]>([]);
 
@@ -78,12 +83,13 @@ export default function DashboardPage() {
     setDocketLoading(true);
     const t = setTimeout(() => {
       api
-        .listTickers(query.trim() || undefined, 60, 0)
+        .listTickers(query.trim() || undefined, PAGE_SIZE, 0)
         .then((res) => {
           if (!alive) return;
           if (res.items.length > 0) {
             setDocket(res.items);
             setDocketFallback(false);
+            setTotal(res.total);
           }
         })
         .catch(() => {
@@ -106,6 +112,22 @@ export default function DashboardPage() {
       clearTimeout(t);
     };
   }, [query]);
+
+  /** Muat 60 baris berikutnya (offset = jumlah yang sudah tampil). */
+  function loadMore() {
+    if (loadingMore || docketFallback) return;
+    setLoadingMore(true);
+    api
+      .listTickers(query.trim() || undefined, PAGE_SIZE, docket.length)
+      .then((res) => {
+        const known = new Set(docket.map((d) => d.ticker));
+        const fresh = res.items.filter((i) => !known.has(i.ticker));
+        setDocket((prev) => [...prev, ...fresh]);
+        setTotal(res.total);
+      })
+      .catch(() => undefined)
+      .finally(() => setLoadingMore(false));
+  }
 
   const showRecent = recent.length > 0;
 
@@ -145,7 +167,9 @@ export default function DashboardPage() {
           />
         </label>
         <p className="mb-[26px] mt-2 font-mono text-[12px] tracking-[0.5px] text-text-3">
-          {query.trim() ? `MENAMPILKAN ${docket.length} PERKARA` : 'MENAMPILKAN SEMUA PERKARA'}
+          {total > 0
+            ? `MENAMPILKAN ${docket.length} DARI ${total} PERKARA${query.trim() ? '' : ' — KETIK UNTUK MENCARI ATAU GULIR + MUAT LAGI'}`
+            : 'MENAMPILKAN DAFTAR PERKARA'}
         </p>
 
         <div
@@ -229,6 +253,18 @@ export default function DashboardPage() {
               <p className="m-0 border-t border-[#2a251e] px-[18px] py-2.5 font-mono text-[11px] tracking-[0.3px] text-text-3">
                 Menampilkan contoh ticker — daftar emiten backend belum tersedia.
               </p>
+            )}
+            {!docketFallback && docket.length < total && (
+              <div className="flex items-center justify-center border-t border-[#2a251e] px-[18px] py-3">
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="cursor-pointer rounded-[8px] border border-brass-600 px-4 py-[7px] font-mono text-[12px] tracking-[0.5px] text-brass-400 transition-colors hover:bg-brass-500 hover:text-bg-1 disabled:opacity-50"
+                >
+                  {loadingMore ? 'Memuat…' : `Muat ${Math.min(PAGE_SIZE, total - docket.length)} lagi`}
+                </button>
+              </div>
             )}
           </div>
 
