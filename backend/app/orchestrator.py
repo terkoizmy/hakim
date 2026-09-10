@@ -275,9 +275,20 @@ def _debate_user_prompt(
     parts = [f"Ticker: {ctx.ticker} ({ctx.company_name}). Ronde {round_no}, sisi {side}."]
     parts.append("\nRangkuman analis:\n" + "\n".join(f"- [{s.agent_id}] {s.summary_md}" for s in summaries))
     parts.append(
-        "\nBukti:\n"
+        "\nBukti (headline + fakta angka — kutip angkanya dalam argumen):\n"
         + json.dumps(
-            [{"evidence_id": ev.evidence_id, "headline": ev.headline} for ev in evidence_pool],
+            [
+                {
+                    "evidence_id": ev.evidence_id,
+                    "headline": ev.headline,
+                    "facts": [
+                        {"label": f.label, "value": f.value, "unit": f.unit}
+                        for f in ev.facts
+                        if f.value is not None
+                    ],
+                }
+                for ev in evidence_pool
+            ],
             ensure_ascii=False,
         )
     )
