@@ -324,7 +324,7 @@ export function MemoView({ memo }: { memo: MemoJSON }) {
                     <tr key={`${r.endpoint}-${r.at}-${i}`} className="transition-colors hover:bg-[#1a1713]">
                       <td className={`${TD_CLS} font-mono text-[11px] text-text-3`} title={r.agent ? `dipanggil oleh ${r.agent}` : r.endpoint}>{r.endpoint}</td>
                       <td className={`${TD_CLS} break-all font-mono text-[12.5px] text-text-3`}>{r.params || '—'}</td>
-                      <td className={`${TD_CLS} font-mono text-[12.5px]`}>
+                      <td className={`${TD_CLS} font-mono text-[12.5px]`} title={r.cache === 'hit' ? 'Data masih tersimpan di cache lokal (7 hari) — 0 kredit' : 'Diambil langsung dari API Sectors — kredit terpakai'}>
                         <span className={r.cache === 'hit' ? 'text-[#7fb069]' : 'text-[#c96a5a]'}>{r.cache}</span>
                       </td>
                       <td className={`${TD_CLS} whitespace-nowrap font-mono text-[12.5px] text-text-3`}>{formatDateTime(r.at)}</td>
@@ -333,6 +333,12 @@ export function MemoView({ memo }: { memo: MemoJSON }) {
                 </tbody>
               </table>
             </div>
+            <p className="mt-3 font-mono text-[11px] leading-relaxed text-text-3">
+              <span className="text-[#7fb069]">hit</span> = data dari cache lokal (TTL 7 hari, 0 kredit) ·{' '}
+              <span className="text-[#c96a5a]">miss</span> = diambil langsung dari API Sectors (kredit terpakai).{' '}
+              Sidang pertama sebuah emiten memang hampir seluruhnya miss — cache menghemat kredit pada endpoint
+              yang dipakai bersama (indeks, top-changes, daftar emiten).
+            </p>
           </section>
         </div>
       </div>
