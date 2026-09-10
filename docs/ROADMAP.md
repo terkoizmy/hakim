@@ -129,6 +129,39 @@ pemegang teratas — estimasi ≤ 10 kredit untuk MVP, hanya sekali, lalu cache/
 
 ---
 
+### Layout halaman (sketsa pemilik proyek, 2026-09-10 — `sketch-analisis-page.png`)
+
+```
+┌─────────┬──────────────────────────────┬──────────────┐
+│ daftar  │  PAPAN BUKTI DETEKTIF        │ detail       │
+│ emiten  │  (react-flow + benang)       │ informasi    │
+├─────────┼──────────────────────────────┤ node         │
+│ FILTER  │  AI Agent chat soal emiten   ├──────────────┤
+│ &LEGENDA│  yang sedang dianalisis      │ BENANG       │
+│         │                              │ TERKAIT      │
+└─────────┴──────────────────────────────┴──────────────┘
+```
+
+- **Kiri-atas** — daftar emiten tersidang (dari `GET /api/board`), pilih untuk memuat papan.
+- **Kiri-bawah** — **Filter & Legenda Papan**: toggle per tipe node (pemegang saham,
+  orang kunci, red flag, kabar, fakta angka), toggle per tipe edge, + mode
+  "benang merah lintas emiten" (hanya hubungan antar pemegang). *(keputusan 2026-09-10)*
+- **Tengah-atas** — graf react-flow; tengah-bawah — chat AI Agent soal emiten yang
+  sedang dianalisis.
+- **Kanan-atas** — detail informasi node terpilih (fakta + angka + sumber + tanggal).
+- **Kanan-bawah** — **Benang Terkait**: daftar koneksi node terpilih ("si X juga
+  memegang BRMS 12%"), klik → pindah seleksi ke node itu — navigasi graf tanpa drag.
+  *(keputusan 2026-09-10)*
+
+### Ditunda: node kebijakan pemerintah (dibahas 2026-09-10, tunda)
+
+Sectors tidak punya endpoint regulasi khusus; sumber mungkin hanya `/v2/news/`
+(filter keyword; tags Sectors berorientasi pasar, bukan kategori kebijakan) dan
+red_flags memo. Konsepnya kuat — kebijakan = node hub yang menimpa banyak emiten —
+tapi sumber datanya perlu matang dulu. Opsi yang tercatat: dari memo (0 kredit),
+dari news+LLM saat sidang (+1–2 kredit/sidang), papan kebijakan global (±10–15
+kredit sekali), analis ke-6. **Belum diputuskan — jangan implementasi.**
+
 ### Cakupan pasar Sectors (dicatat 2026-09-10)
 
 IDX 99,99% (950+ emiten, harian) · SGX ±80% · KLSE ada · + ekstensi saham mining.
