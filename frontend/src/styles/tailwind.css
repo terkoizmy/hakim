@@ -12,6 +12,19 @@
     height: 100%;
   }
 
+  html {
+    color-scheme: dark;
+  }
+
+  select {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: var(--bg-2);
+    color: var(--text-0);
+  }
+
   body {
     margin: 0;
     font-family: var(--font-sans);
@@ -439,4 +452,76 @@
   .md-sm { font-size: 13.5px; line-height: 1.6; }
   .md-sm p { margin-bottom: 6px; }
   .md-sm ul, .md-sm ol { margin: 4px 0; }
+}
+
+/* ============================================================
+   Media Print — Penyesuaian cetak dokumen resmi (kertas putih)
+   ============================================================ */
+@media print {
+  :root {
+    --bg-0: #ffffff !important;
+    --bg-1: #ffffff !important;
+    --bg-2: #f9f8f6 !important;
+    --bg-3: #f2efe9 !important;
+    --bg-4: #ebe7de !important;
+    
+    --text-0: #12100e !important;
+    --text-1: #2d2720 !important;
+    --text-2: #484035 !important;
+    --text-3: #756c5e !important;
+
+    --line-0: rgba(0, 0, 0, 0.08) !important;
+    --line-1: rgba(0, 0, 0, 0.16) !important;
+    --line-2: rgba(0, 0, 0, 0.28) !important;
+
+    --brass-100: #4a3813 !important;
+    --brass-200: #6e5526 !important;
+    --brass-300: #8a6f33 !important;
+    --brass-400: #9a7a36 !important;
+    --brass-500: #8a6820 !important;
+    --brass-600: #6e5218 !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #12100e !important;
+    color-scheme: light !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Reset border dan background gelap pada kartu saat dicetak */
+  .border-\[\#3a332a\],
+  .border-\[\#2a251e\],
+  .border-line-0,
+  .border-line-1 {
+    border-color: #d1c8ba !important;
+  }
+
+  .bg-bg-2,
+  .bg-\[\#1a1713\],
+  .bg-\[\#201c17\] {
+    background-color: #fbfaf8 !important;
+  }
+
+  /* Hero Putusan khusus saat print agar teks judul & progress bar kontras */
+  section.bg-\[linear-gradient\(180deg\,var\(--bg-2\)\,\#1a1713\)\] {
+    background: #f7f5f0 !important;
+    border: 2px solid #8a6f33 !important;
+    box-shadow: none !important;
+  }
+
+  /* Progress bar konfidensi saat print */
+  .bg-\[\#2a251e\] {
+    background-color: #dfdbd3 !important;
+  }
+
+  /* Hilangkan animasi dan shadow saat cetak */
+  * {
+    animation: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
 }

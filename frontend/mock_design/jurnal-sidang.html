@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jurnal Sidang — SIDANG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14120f;
+    --bg-2:#1a1713;
+    --surface:#201c17;
+    --surface-2:#26211a;
+    --fg:#ece7dd;
+    --muted:#a89f90;
+    --faint:#6f675a;
+    --border:#3a332a;
+    --border-soft:#2a251e;
+    --brass:#c9a24a;
+    --brass-soft:#e0c27a;
+    --brass-dim:#8a6f33;
+    --ok:#7fb069;
+    --warn:#d9a441;
+    --red:#c96a5a;
+    --font-display:"Fraunces", Georgia, serif;
+    --font-body:"Inter", system-ui, sans-serif;
+    --font-mono:"JetBrains Mono", ui-monospace, monospace;
+    --maxw:980px;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--brass);color:#14120f}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(201,162,74,.05), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px);
+  }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(20,18,15,.82);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:600;font-size:20px;letter-spacing:.5px}
+  .brand .gavel{width:22px;height:22px;color:var(--brass)}
+  .brand em{font-style:italic;color:var(--brass)}
+  .nav-links{display:flex;align-items:center;gap:26px;font-size:13.5px;color:var(--muted)}
+  .nav-links a{transition:color .2s}
+  .nav-links a:hover{color:var(--fg)}
+  .nav-cta{
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.5px;
+    color:var(--brass);border:1px solid var(--brass-dim);border-radius:999px;
+    padding:8px 16px;transition:all .2s;
+  }
+  .nav-cta:hover{background:var(--brass);color:#14120f;border-color:var(--brass)}
+
+  /* ---------- HEADER ---------- */
+  .page{padding:48px 0 0}
+  .crumb{font-family:var(--font-mono);font-size:12px;color:var(--faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:22px}
+  .crumb a{color:var(--brass)}
+  .crumb a:hover{color:var(--brass-soft)}
+  .page-head{border-bottom:1px solid var(--border);padding-bottom:28px;margin-bottom:30px}
+  .page-head .kicker{font-family:var(--font-mono);font-size:11px;color:var(--brass);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+  .page-head h1{font-family:var(--font-display);font-size:clamp(30px,4.5vw,44px);font-weight:500;line-height:1.1}
+  .page-head h1 em{font-style:italic;color:var(--brass-soft)}
+  .page-head p{font-size:14.5px;color:var(--muted);margin-top:12px;max-width:52ch}
+
+  /* ---------- TABLE ---------- */
+  .table-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{
+    font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--faint);text-align:left;padding:12px 16px;border-bottom:1px solid var(--border);
+    background:var(--bg-2);white-space:nowrap;
+  }
+  tbody td{padding:13px 16px;border-bottom:1px solid var(--border-soft);vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr{transition:background .15s}
+  tbody tr:hover{background:var(--bg-2)}
+  td .mono{font-family:var(--font-mono);font-size:12.5px;color:var(--fg);font-variant-numeric:tabular-nums}
+  td .mono.dim{color:var(--faint)}
+  td .num{font-family:var(--font-mono);font-size:12.5px;color:var(--brass-soft);font-variant-numeric:tabular-nums;text-align:right}
+  td .lbl{color:var(--muted)}
+  td .tick{font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--fg);letter-spacing:.5px}
+  td .tick em{font-style:normal;color:var(--brass)}
+  td .name{font-size:13px;color:var(--muted)}
+  .badge{
+    display:inline-flex;align-items:center;gap:7px;
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.3px;
+    border-radius:6px;padding:5px 10px;white-space:nowrap;
+  }
+  .badge .dot{width:6px;height:6px;border-radius:50%}
+  .b-ok{color:var(--ok);border:1px solid rgba(127,176,105,.4);background:rgba(127,176,105,.06)}
+  .b-ok .dot{background:var(--ok)}
+  .b-warn{color:var(--warn);border:1px solid rgba(217,164,65,.4);background:rgba(217,164,65,.06)}
+  .b-warn .dot{background:var(--warn)}
+  .b-red{color:var(--red);border:1px solid rgba(201,106,90,.4);background:rgba(201,106,90,.06)}
+  .b-red .dot{background:var(--red)}
+  .b-info{color:var(--brass-soft);border:1px solid var(--brass-dim);background:rgba(201,162,74,.06)}
+  .b-info .dot{background:var(--brass)}
+  .b-none{color:var(--faint);border:1px solid var(--border);background:var(--bg-2)}
+  .b-none .dot{background:var(--faint)}
+  .actions{display:flex;justify-content:flex-end;gap:14px;font-size:12.5px;white-space:nowrap}
+  .actions a{color:var(--brass);transition:color .2s}
+  .actions a:hover{color:var(--brass-soft)}
+  .actions a:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:3px}
+
+  /* ---------- EMPTY STATE ---------- */
+  .empty{
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    text-align:center;padding:72px 24px;border:1px dashed var(--border);border-radius:var(--radius);
+    background:var(--bg-2);
+  }
+  .empty .glyph{width:44px;height:44px;color:var(--brass-dim)}
+  .empty h2{font-family:var(--font-display);font-size:22px;font-weight:500}
+  .empty p{font-size:14px;color:var(--muted);max-width:40ch}
+  .empty .btn{
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.5px;
+    color:var(--brass);border:1px solid var(--brass-dim);border-radius:999px;
+    padding:10px 20px;transition:all .2s;
+  }
+  .empty .btn:hover{background:var(--brass);color:#14120f;border-color:var(--brass)}
+  .empty .btn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+  /* ---------- FOOTER ---------- */
+  footer{border-top:1px solid var(--border-soft);padding:40px 0 48px;margin-top:56px}
+  .foot-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:28px}
+  .foot-brand{font-family:var(--font-display);font-size:18px;font-weight:500}
+  .foot-brand em{font-style:italic;color:var(--brass)}
+  .foot-links{display:flex;gap:24px;font-size:13px;color:var(--muted)}
+  .foot-links a:hover{color:var(--brass-soft)}
+  .disclaimer{
+    border:1px solid var(--border-soft);border-radius:10px;padding:18px 20px;
+    font-size:12.5px;color:var(--faint);line-height:1.7;background:var(--bg-2);
+  }
+  .disclaimer strong{color:var(--muted);font-weight:500}
+  .disclaimer .warn{color:var(--warn)}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:640px){
+    .table-wrap{overflow-x:auto}
+    table{min-width:640px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<header class="nav" data-od-id="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="sidang-landing.html" data-od-id="brand">
+      <svg class="gavel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l8 8-3 3-8-8z"/><path d="M6 10l8 8-3 3-8-8z"/><path d="M3 21h8"/><path d="M10 3l8 8"/></svg>
+      SIDANG<em>.</em>
+    </a>
+    <nav class="nav-links" data-od-id="nav-links">
+      <a href="berkas-perkara.html">Berkas Perkara</a>
+      <a href="sidang-landing.html#jurnal">Jurnal</a>
+    </nav>
+    <a class="nav-cta" href="berkas-perkara.html" data-od-id="nav-cta">Daftar Perkara</a>
+  </div>
+</header>
+
+<!-- ============ JOURNAL ============ -->
+<main class="page" data-od-id="journal">
+  <div class="wrap">
+    <div class="crumb"><a href="sidang-landing.html">Beranda</a><span class="sep" style="color:var(--faint);margin:0 6px">/</span>JURNAL SIDANG</div>
+
+    <div class="page-head" data-od-id="page-head">
+      <div class="kicker">Arsip</div>
+      <h1>Jurnal <em>Sidang</em></h1>
+      <p>Semua putusan yang pernah diputuskan komite, terarsip.</p>
+    </div>
+
+    <!-- archive table -->
+    <div class="table-wrap" data-od-id="archive-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Tanggal</th>
+            <th>Ticker</th>
+            <th>Emiten</th>
+            <th>Putusan</th>
+            <th>Kekayaan Data</th>
+            <th style="text-align:right">Harga Saat Sidang</th>
+            <th style="text-align:right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono dim">09 Sep 2026</td>
+            <td class="tick">BBCA<em>.</em></td>
+            <td class="name">Bank Central Asia</td>
+            <td><span class="badge b-ok"><span class="dot"></span>Layak diteliti lanjut</span></td>
+            <td><span class="badge b-info"><span class="dot"></span>Info A</span></td>
+            <td class="num">Rp 10.250</td>
+            <td class="actions"><a href="putusan-dokumen.html" data-od-id="memo-bbca">Memo</a><a href="#" data-od-id="pm-bbca">Post-mortem</a></td>          </tr>
+          <tr>
+            <td class="mono dim">08 Sep 2026</td>
+            <td class="tick">TLKM<em>.</em></td>
+            <td class="name">Telkom Indonesia</td>
+            <td><span class="badge b-warn"><span class="dot"></span>Perlu kehati-hatian</span></td>
+            <td><span class="badge b-info"><span class="dot"></span>Info B</span></td>
+            <td class="num">Rp 3.040</td>
+            <td class="actions"><a href="#" data-od-id="memo-tlkm">Memo</a><a href="#" data-od-id="pm-tlkm">Post-mortem</a></td>
+          </tr>
+          <tr>
+            <td class="mono dim">07 Sep 2026</td>
+            <td class="tick">GOTO<em>.</em></td>
+            <td class="name">GoTo Gojek Tokopedia</td>
+            <td><span class="badge b-red"><span class="dot"></span>Red flag berat</span></td>
+            <td><span class="badge b-info"><span class="dot"></span>Info C</span></td>
+            <td class="num">Rp 62</td>
+            <td class="actions"><a href="#" data-od-id="memo-goto">Memo</a><a href="#" data-od-id="pm-goto">Post-mortem</a></td>
+          </tr>
+          <tr>
+            <td class="mono dim">06 Sep 2026</td>
+            <td class="tick">ASII<em>.</em></td>
+            <td class="name">Astra International</td>
+            <td><span class="badge b-ok"><span class="dot"></span>Layak diteliti lanjut</span></td>
+            <td><span class="badge b-info"><span class="dot"></span>Info B</span></td>
+            <td class="num">Rp 5.175</td>
+            <td class="actions"><a href="#" data-od-id="memo-asii">Memo</a><a href="#" data-od-id="pm-asii">Post-mortem</a></td>
+          </tr>
+          <tr>
+            <td class="mono dim">05 Sep 2026</td>
+            <td class="tick">BBRI<em>.</em></td>
+            <td class="name">Bank Rakyat Indonesia</td>
+            <td><span class="badge b-warn"><span class="dot"></span>Perlu kehati-hatian</span></td>
+            <td><span class="badge b-info"><span class="dot"></span>Info A</span></td>
+            <td class="num">Rp 4.890</td>
+            <td class="actions"><a href="#" data-od-id="memo-bbri">Memo</a><a href="#" data-od-id="pm-bbri">Post-mortem</a></td>
+          </tr>
+          <tr>
+            <td class="mono dim">04 Sep 2026</td>
+            <td class="tick">UNVR<em>.</em></td>
+            <td class="name">Unilever Indonesia</td>
+            <td><span class="badge b-none"><span class="dot"></span>Belum diadili</span></td>
+            <td><span class="badge b-none"><span class="dot"></span>—</span></td>
+            <td class="num dim">—</td>
+            <td class="actions"><a href="berkas-emiten.html" data-od-id="memo-unvr">Buka sidang</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- empty state -->
+    <div class="empty" data-od-id="empty-state">
+      <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l8 8-3 3-8-8z"/><path d="M6 10l8 8-3 3-8-8z"/><path d="M3 21h8"/><path d="M10 3l8 8"/></svg>
+      <h2>Belum ada sidang.</h2>
+      <p>Komite belum memutuskan perkara apa pun. Mulai sidang pertama dari daftar emiten.</p>
+      <a class="btn" href="sidang-landing.html" data-od-id="empty-cta">Ke Beranda</a>
+    </div>
+  </div>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer data-od-id="footer">
+  <div class="wrap">
+    <div class="foot-top">
+      <span class="foot-brand">SIDANG<em>.</em></span>
+      <div class="foot-links">
+        <a href="berkas-perkara.html">Berkas Perkara</a>
+        <a href="sidang-landing.html#jurnal">Jurnal</a>
+      </div>
+    </div>
+    <div class="disclaimer" data-od-id="disclaimer">
+      <strong>Disclaimer GLOBAL No. 10.</strong> SIDANG adalah alat bantu riset, bukan rekomendasi investasi. Seluruh putusan, kategori, dan konfidensi merupakan hasil analisis otomatis dari data arsip dan tidak menjamin akurasi prediksi. Harga yang tampil hanya berasal dari arsip sidang — <span class="warn">tidak ada harga real-time</span>. Keputusan investasi sepenuhnya tanggung jawab Anda.
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

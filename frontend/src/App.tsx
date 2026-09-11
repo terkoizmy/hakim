@@ -7,6 +7,7 @@ import MemoPage from './pages/MemoPage';
 import JournalPage from './pages/JournalPage';
 import PostmortemPage from './pages/PostmortemPage';
 import TickerDetailPage from './pages/TickerDetailPage';
+import DetectiveBoardPage from './pages/DetectiveBoardPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 const router = createBrowserRouter([
@@ -15,6 +16,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'board', element: <DetectiveBoardPage /> },
       { path: 'trial/:trialId', element: <CourtroomPage /> },
       { path: 'memo/:trialId', element: <MemoPage /> },
       { path: 'journal', element: <JournalPage /> },

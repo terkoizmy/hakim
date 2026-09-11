@@ -211,3 +211,71 @@ class HealthResponse(BaseModel):
     status: str
     sectors_mode: str
     version: str
+
+
+# ----------------------------------------------------------------- board models
+
+class BoardNodeData(BaseModel):
+    type: str  # 'emiten' | 'pemegang' | 'orang' | 'redflag' | 'kabar' | 'fakta'
+    label: str
+    sub: Optional[str] = None
+    value: Optional[str] = None
+    verdict: Optional[str] = None
+    severity: Optional[str] = None  # 'rendah' | 'sedang' | 'tinggi'
+    date: Optional[str] = None
+    detail: Optional[list[str]] = None
+    source: Optional[str] = None
+    cross: Optional[bool] = None
+    retrievedAt: Optional[str] = None
+
+
+class BoardNode(BaseModel):
+    id: str
+    type: str
+    position: dict[str, float]
+    data: BoardNodeData
+    rotate: float = 0.0
+
+
+class BoardEdge(BaseModel):
+    id: str
+    source: str
+    target: str
+    type: str  # 'memegang' | 'menjabat' | 'redflag' | 'fakta'
+    label: Optional[str] = None
+
+
+class MetricBenchmark(BaseModel):
+    label: str
+    value: float
+    sectorAvg: float
+    unit: str
+    verdict: str  # 'superior' | 'fair' | 'inferior'
+
+
+class RiskScorecard(BaseModel):
+    governance: int
+    financial: int
+    valuation: int
+    overall: str  # 'Rendah' | 'Sedang' | 'Tinggi'
+
+
+class BoardResponse(BaseModel):
+    ticker: str
+    name: str
+    nodes: list[BoardNode]
+    edges: list[BoardEdge]
+    initialChat: str
+    aiInsights: dict[str, str]
+    priceHistory: Optional[list[PricePoint]] = None
+    metricsComparison: Optional[list[MetricBenchmark]] = None
+    riskScore: Optional[RiskScorecard] = None
+    thesisSummary: Optional[str] = None
+
+
+class BoardChatRequest(BaseModel):
+    message: str
+
+
+class BoardChatResponse(BaseModel):
+    reply: str

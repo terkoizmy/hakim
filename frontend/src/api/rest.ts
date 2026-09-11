@@ -76,4 +76,16 @@ export const restClient: RestClient = {
   fetchTickerSectors() {
     return request<TickerSectorsResponse>('/api/tickers/sectors');
   },
+
+  fetchBoard(ticker) {
+    return request<any>(`/api/board/${encodeURIComponent(ticker)}`);
+  },
+
+  chatBoard(ticker, message) {
+    return request<{ reply: string }>(`/api/board/${encodeURIComponent(ticker)}/chat`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  },
 };
+

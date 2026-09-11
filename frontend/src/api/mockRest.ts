@@ -6,6 +6,7 @@
 import type {
   CreateTrialResponse,
   HealthResponse,
+  JournalItem,
   JournalResponse,
   MemoJSON,
   PostmortemResponse,
@@ -13,10 +14,12 @@ import type {
   TickerSectorsResponse,
   TickersResponse,
 } from '../types/contract';
-import { JOURNAL_ITEMS, POSTMORTEMS } from '../mocks/journal';
 import { ApiError, type RestClient, type TrialModeInput } from './types';
 import { COMPANY_NAMES, companyNameFor } from './mockData';
 import { mockStore } from './mockStore';
+
+const JOURNAL_ITEMS: JournalItem[] = [];
+const POSTMORTEMS: Record<string, PostmortemResponse> = {};
 
 /** Sektor mock per ticker (kontrak 1.2.3) — cukup untuk demo dropdown. */
 const MOCK_SECTOR_BY_TICKER: Record<string, string> = {
@@ -115,4 +118,22 @@ export const mockRestClient: RestClient = {
       .sort((a, b) => b.count - a.count || a.sector.localeCompare(b.sector));
     return { items, total: items.length };
   },
+
+  async fetchBoard(ticker: string): Promise<any> {
+    const up = ticker.trim().toUpperCase();
+    return {
+      ticker: up,
+      name: `${up} Tbk`,
+      nodes: [],
+      edges: [],
+      initialChat: `Papan investigasi ${up} aktif.`,
+      aiInsights: {},
+    };
+  },
+
+  async chatBoard(ticker: string, message: string): Promise<{ reply: string }> {
+    const up = ticker.trim().toUpperCase();
+    return { reply: `Analisis keterkaitan ${up} selesai diinvestigasi.` };
+  },
 };
+

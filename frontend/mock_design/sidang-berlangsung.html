@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sidang BBCA — SIDANG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14120f;
+    --bg-2:#1a1713;
+    --surface:#201c17;
+    --surface-2:#26211a;
+    --fg:#ece7dd;
+    --muted:#a89f90;
+    --faint:#6f675a;
+    --border:#3a332a;
+    --border-soft:#2a251e;
+    --brass:#c9a24a;
+    --brass-soft:#e0c27a;
+    --brass-dim:#8a6f33;
+    --ok:#7fb069;
+    --warn:#d9a441;
+    --red:#c96a5a;
+    --blue:#6f9fd8;
+    --purple:#a98fd0;
+    --font-display:"Fraunces", Georgia, serif;
+    --font-body:"Inter", system-ui, sans-serif;
+    --font-mono:"JetBrains Mono", ui-monospace, monospace;
+    --maxw:1180px;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--brass);color:#14120f}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(201,162,74,.06), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px);
+  }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(20,18,15,.82);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:600;font-size:20px;letter-spacing:.5px}
+  .brand .gavel{width:22px;height:22px;color:var(--brass)}
+  .brand em{font-style:italic;color:var(--brass)}
+  .nav-links{display:flex;align-items:center;gap:26px;font-size:13.5px;color:var(--muted)}
+  .nav-links a{transition:color .2s}
+  .nav-links a:hover{color:var(--fg)}
+  .nav-cta{
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.5px;
+    color:var(--brass);border:1px solid var(--brass-dim);border-radius:999px;
+    padding:8px 16px;transition:all .2s;
+  }
+  .nav-cta:hover{background:var(--brass);color:#14120f;border-color:var(--brass)}
+
+  /* ---------- CASE BAR ---------- */
+  .casebar{padding:34px 0 6px}
+  .crumb{font-family:var(--font-mono);font-size:12px;color:var(--faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:20px}
+  .crumb a{color:var(--brass)}
+  .crumb a:hover{color:var(--brass-soft)}
+  .crumb .sep{color:var(--faint);margin:0 6px}
+  .case-top{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .seal{
+    width:52px;height:52px;flex:none;border-radius:50%;
+    border:1px solid var(--brass-dim);color:var(--brass);
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 30% 30%, rgba(201,162,74,.12), transparent 70%);
+  }
+  .seal svg{width:26px;height:26px}
+  .case-id{display:flex;flex-direction:column}
+  .case-tick{font-family:var(--font-mono);font-size:clamp(30px,4.5vw,44px);font-weight:500;letter-spacing:2px;line-height:1}
+  .case-tick em{font-style:normal;color:var(--brass)}
+  .case-sub{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .case-sub .name{font-family:var(--font-display);font-size:16px;color:var(--muted)}
+  .case-no{font-family:var(--font-mono);font-size:12px;color:var(--faint);letter-spacing:.5px}
+  .badge{
+    display:inline-flex;align-items:center;gap:7px;
+    font-family:var(--font-mono);font-size:11.5px;letter-spacing:.3px;
+    border-radius:6px;padding:5px 10px;white-space:nowrap;
+  }
+  .badge .dot{width:6px;height:6px;border-radius:50%}
+  .b-info{color:var(--brass-soft);border:1px solid var(--brass-dim);background:rgba(201,162,74,.06)}
+  .b-info .dot{background:var(--brass)}
+  .b-live{color:var(--red);border:1px solid rgba(201,106,90,.4);background:rgba(201,106,90,.06)}
+  .b-live .dot{background:var(--red);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .stats{display:flex;gap:0;flex-wrap:wrap;margin-top:24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+  .stat{
+    flex:1 1 150px;padding:16px 20px;border-right:1px solid var(--border-soft);
+    display:flex;flex-direction:column;gap:4px;
+  }
+  .stat:last-child{border-right:none}
+  .stat .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--faint)}
+  .stat .v{font-family:var(--font-mono);font-size:20px;font-weight:500;color:var(--fg);font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:12px;color:var(--muted);font-weight:400}
+  .stat .v .hit{color:var(--ok)}
+  .stat .v .miss{color:var(--red)}
+
+  /* ---------- STEPPER ---------- */
+  .stepper{display:flex;align-items:center;gap:0;margin-top:30px}
+  .step{flex:1;display:flex;flex-direction:column;gap:8px;position:relative}
+  .step .rail{height:2px;background:var(--border);position:relative;top:11px;margin:0 0 0 0}
+  .step .rail::after{content:"";position:absolute;inset:0;background:var(--brass);transform:scaleX(0);transform-origin:left;transition:transform .5s ease}
+  .step.done .rail::after{transform:scaleX(1)}
+  .step.active .rail::after{transform:scaleX(1)}
+  .step .node{
+    width:24px;height:24px;border-radius:50%;flex:none;
+    border:1px solid var(--border);background:var(--bg-2);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-size:11px;color:var(--faint);
+    position:relative;z-index:1;transition:all .3s;
+  }
+  .step.done .node{background:var(--brass);border-color:var(--brass);color:#14120f}
+  .step.active .node{background:var(--brass);border-color:var(--brass);color:#14120f;box-shadow:0 0 0 4px rgba(201,162,74,.18)}
+  .step .lbl{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.5px;color:var(--faint);text-transform:uppercase}
+  .step.done .lbl,.step.active .lbl{color:var(--fg)}
+  .step .round-tag{
+    font-family:var(--font-mono);font-size:10.5px;color:var(--brass);
+    border:1px solid var(--brass-dim);border-radius:999px;padding:2px 8px;
+    align-self:flex-start;margin-top:2px;
+  }
+  .step .node-row{display:flex;align-items:center;gap:12px}
+
+  /* ---------- SECTION HEAD ---------- */
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:44px 0 18px}
+  .sec-head h2{font-family:var(--font-display);font-size:22px;font-weight:500}
+  .sec-head .kicker{font-family:var(--font-mono);font-size:11px;color:var(--brass);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+  .sec-head .note{font-family:var(--font-mono);font-size:12px;color:var(--faint)}
+
+  /* ---------- ANALYST PANEL ---------- */
+  .analysts{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+  .analyst{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;display:flex;flex-direction:column;gap:12px;position:relative;
+  }
+  .analyst.waiting{border-style:dashed;border-color:var(--border)}
+  .analyst .top{display:flex;align-items:center;gap:10px}
+  .analyst .avatar{
+    width:34px;height:34px;border-radius:9px;flex:none;
+    display:flex;align-items:center;justify-content:center;color:#14120f;
+  }
+  .analyst .avatar svg{width:18px;height:18px}
+  .analyst .who{display:flex;flex-direction:column;min-width:0}
+  .analyst .who .role{font-size:13px;font-weight:600;color:var(--fg);line-height:1.2}
+  .analyst .who .tag{font-size:11px;color:var(--faint);line-height:1.3}
+  .status-dot{
+    width:9px;height:9px;border-radius:50%;margin-left:auto;flex:none;
+    background:var(--faint);position:relative;
+  }
+  .status-dot.busy{background:var(--warn);animation:pulse 1.4s infinite}
+  .status-dot.done{background:var(--ok)}
+  .status-dot.wait{background:var(--faint)}
+  .ev-list{display:flex;flex-direction:column;gap:6px}
+  .ev{
+    display:flex;align-items:center;gap:8px;
+    font-size:12.5px;color:var(--muted);line-height:1.35;
+    padding:7px 9px;border:1px solid var(--border-soft);border-radius:8px;
+    cursor:pointer;transition:all .15s;text-align:left;background:transparent;width:100%;
+  }
+  .ev:hover{border-color:var(--border);color:var(--fg);background:var(--bg-2)}
+  .ev:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  .ev .id{font-family:var(--font-mono);font-size:10.5px;color:var(--brass);flex:none}
+  .ev .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .ev .pill{
+    font-family:var(--font-mono);font-size:10px;color:var(--faint);
+    border:1px solid var(--border-soft);border-radius:5px;padding:1px 6px;flex:none;
+  }
+  .analyst .summary{
+    border-top:1px solid var(--border-soft);padding-top:10px;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .analyst .summary .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .analyst .summary .row .t{font-size:12px;color:var(--muted)}
+  .analyst .summary .row .t b{color:var(--fg);font-weight:600}
+  .analyst .fold{
+    font-family:var(--font-mono);font-size:11px;color:var(--brass);
+    border:1px solid var(--brass-dim);border-radius:7px;padding:7px 10px;
+    text-align:center;cursor:pointer;transition:all .15s;background:transparent;
+  }
+  .analyst .fold:hover{background:var(--brass);color:#14120f;border-color:var(--brass)}
+  .analyst .fold:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+  /* analyst accent colors */
+  .a-fund .avatar{background:var(--brass)}
+  .a-price .avatar{background:var(--blue)}
+  .a-smart .avatar{background:var(--ok)}
+  .a-insider .avatar{background:var(--purple)}
+  .a-anti .avatar{background:var(--red)}
+  .a-fund{border-top:2px solid var(--brass)}
+  .a-price{border-top:2px solid var(--blue)}
+  .a-smart{border-top:2px solid var(--ok)}
+  .a-insider{border-top:2px solid var(--purple)}
+  .a-anti{border-top:2px solid var(--red)}
+
+  /* ---------- DEBATE PODIUM ---------- */
+  .podium{display:grid;grid-template-columns:1fr 1fr;gap:14px;position:relative}
+  .podium .round-badge{
+    position:absolute;top:-14px;left:50%;transform:translateX(-50%);
+    font-family:var(--font-mono);font-size:11px;letter-spacing:1px;color:var(--brass);
+    background:var(--bg);border:1px solid var(--brass-dim);border-radius:999px;
+    padding:5px 16px;z-index:2;white-space:nowrap;
+  }
+  .side{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:22px;display:flex;flex-direction:column;gap:16px;
+  }
+  .side .side-head{display:flex;align-items:center;gap:12px}
+  .side .side-head .role{font-family:var(--font-display);font-size:18px;font-weight:500}
+  .side .side-head .thesis{font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:3px 9px;border-radius:6px}
+  .side.jaksa{border-top:2px solid var(--red)}
+  .side.jaksa .thesis{color:var(--red);border:1px solid rgba(201,106,90,.4);background:rgba(201,106,90,.06)}
+  .side.pembela{border-top:2px solid var(--ok)}
+  .side.pembela .thesis{color:var(--ok);border:1px solid rgba(127,176,105,.4);background:rgba(127,176,105,.06)}
+  .utterance{display:flex;flex-direction:column;gap:8px}
+  .utterance .chip{
+    display:inline-flex;align-items:center;gap:8px;align-self:flex-start;
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.5px;
+    color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:4px 12px;
+  }
+  .utterance .chip .spk{color:var(--fg);font-weight:500}
+  .utterance .chip .bear{color:var(--red)}
+  .utterance .chip .bull{color:var(--ok)}
+  .utterance .chip .reply{color:var(--brass)}
+  .utterance h4{font-size:15px;font-weight:600;color:var(--fg);line-height:1.4}
+  .utterance p{font-size:13.5px;color:var(--muted);line-height:1.6}
+  .utterance ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+  .utterance li{font-size:13.5px;color:var(--muted);line-height:1.5;padding-left:16px;position:relative}
+  .utterance li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--brass-dim)}
+  .cites{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+  .cite{
+    font-family:var(--font-mono);font-size:11px;color:var(--brass);
+    border:1px solid var(--brass-dim);border-radius:6px;padding:3px 9px;
+    cursor:pointer;transition:all .15s;background:transparent;
+  }
+  .cite:hover{background:var(--brass);color:#14120f;border-color:var(--brass)}
+  .cite:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+  /* ---------- VERDICT ---------- */
+  .verdict{margin-top:44px}
+  .verdict-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:30px;position:relative;overflow:hidden;
+  }
+  .verdict-card::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(600px 200px at 80% 0%, rgba(201,162,74,.05), transparent 60%);
+  }
+  .judge{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+  .judge .seal{
+    width:46px;height:46px;border-radius:50%;border:1px solid var(--brass-dim);
+    color:var(--brass);display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 30% 30%, rgba(201,162,74,.14), transparent 70%);
+  }
+  .judge .seal svg{width:22px;height:22px}
+  .judge .who .role{font-family:var(--font-display);font-size:17px;font-weight:500}
+  .judge .who .sub{font-family:var(--font-mono);font-size:11px;color:var(--faint);letter-spacing:.5px}
+  .memo{
+    font-family:var(--font-display);font-size:clamp(17px,2.4vw,21px);line-height:1.7;
+    color:var(--fg);max-width:70ch;min-height:120px;
+  }
+  .memo .caret{display:inline-block;width:2px;height:1.1em;background:var(--brass);vertical-align:text-bottom;animation:blink 1s steps(1) infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .memo .em{font-style:italic;color:var(--brass-soft)}
+  .memo .verdict-word{color:var(--ok);font-weight:600}
+  .memo .verdict-word.red{color:var(--red)}
+
+  /* ---------- FINAL BANNER ---------- */
+  .final-banner{
+    display:none;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    margin-top:20px;border:1px solid var(--brass-dim);border-radius:var(--radius);
+    background:linear-gradient(180deg, rgba(201,162,74,.08), rgba(201,162,74,.02));
+    padding:18px 22px;
+  }
+  .final-banner.show{display:flex}
+  .final-banner .msg{display:flex;align-items:center;gap:12px}
+  .final-banner .msg .glyph{width:22px;height:22px;color:var(--brass);flex:none}
+  .final-banner .msg .t{font-family:var(--font-display);font-size:17px;font-weight:500}
+  .final-banner .msg .s{font-size:13px;color:var(--muted)}
+  .btn-primary{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:var(--font-mono);font-size:14px;letter-spacing:.5px;font-weight:500;
+    color:#14120f;background:var(--brass);border:1px solid var(--brass);
+    border-radius:10px;padding:13px 24px;transition:all .2s;cursor:pointer;
+  }
+  .btn-primary svg{width:17px;height:17px}
+  .btn-primary:hover{background:var(--brass-soft);border-color:var(--brass-soft)}
+  .btn-primary:focus-visible{outline:2px solid var(--brass-soft);outline-offset:2px}
+
+  /* ---------- FOOTER ---------- */
+  footer{border-top:1px solid var(--border-soft);padding:40px 0 48px;margin-top:56px}
+  .foot-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:28px}
+  .foot-brand{font-family:var(--font-display);font-size:18px;font-weight:500}
+  .foot-brand em{font-style:italic;color:var(--brass)}
+  .foot-links{display:flex;gap:24px;font-size:13px;color:var(--muted)}
+  .foot-links a:hover{color:var(--brass-soft)}
+  .disclaimer{
+    border:1px solid var(--border-soft);border-radius:10px;padding:18px 20px;
+    font-size:12.5px;color:var(--faint);line-height:1.7;background:var(--bg-2);
+  }
+  .disclaimer strong{color:var(--muted);font-weight:500}
+  .disclaimer .warn{color:var(--warn)}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:1080px){
+    .analysts{grid-template-columns:repeat(3,1fr)}
+  }
+  @media (max-width:900px){
+    .podium{grid-template-columns:1fr}
+    .podium .round-badge{position:static;transform:none;margin:0 auto 4px}
+  }
+  @media (max-width:640px){
+    .analysts{grid-template-columns:1fr 1fr}
+    .stats{flex-direction:column}
+    .stat{border-right:none;border-bottom:1px solid var(--border-soft)}
+    .stat:last-child{border-bottom:none}
+    .stepper{flex-direction:column;align-items:stretch;gap:14px}
+    .step .rail{display:none}
+    .verdict-card{padding:22px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<header class="nav" data-od-id="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="sidang-landing.html" data-od-id="brand">
+      <svg class="gavel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l8 8-3 3-8-8z"/><path d="M6 10l8 8-3 3-8-8z"/><path d="M3 21h8"/><path d="M10 3l8 8"/></svg>
+      SIDANG<em>.</em>
+    </a>
+    <nav class="nav-links" data-od-id="nav-links">
+      <a href="berkas-perkara.html">Berkas Perkara</a>
+      <a href="sidang-landing.html#jurnal">Jurnal</a>
+    </nav>
+    <a class="nav-cta" href="berkas-perkara.html" data-od-id="nav-cta">Daftar Perkara</a>
+  </div>
+</header>
+
+<!-- ============ CASE BAR ============ -->
+<section class="casebar" data-od-id="case-bar">
+  <div class="wrap">
+    <div class="crumb"><a href="berkas-perkara.html">Daftar Perkara</a><span class="sep">/</span><a href="berkas-emiten.html">BBCA</a><span class="sep">/</span>SIDANG BERLANGSUNG</div>
+
+    <div class="case-top">
+      <div class="seal" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l8 8-3 3-8-8z"/><path d="M6 10l8 8-3 3-8-8z"/><path d="M3 21h8"/><path d="M10 3l8 8"/></svg>
+      </div>
+      <div class="case-id">
+        <div class="case-tick">BBCA<em>.</em></div>
+        <div class="case-sub">
+          <span class="name">Bank Central Asia</span>
+          <span class="badge b-live"><span class="dot"></span>Sidang berlangsung</span>
+          <span class="case-no">PERKARA No. 2026/014</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats" data-od-id="case-stats">
+      <div class="stat">
+        <span class="k">Bukti</span>
+        <span class="v">12 <small>EV</small></span>
+      </div>
+      <div class="stat">
+        <span class="k">Analis</span>
+        <span class="v">3 <small>/ 5 selesai</small></span>
+      </div>
+      <div class="stat">
+        <span class="k">Data</span>
+        <span class="v"><span class="hit">9</span> / <span class="miss">3</span> <small>hit/miss</small></span>
+      </div>
+      <div class="stat">
+        <span class="k">Durasi</span>
+        <span class="v">02:14 <small>menit</small></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STEPPER ============ -->
+<section class="wrap" data-od-id="stepper">
+  <div class="stepper">
+    <div class="step done" data-od-id="step-bukti">
+      <div class="node-row">
+        <div class="node">1</div>
+        <div class="lbl">Pengumpulan Bukti</div>
+      </div>
+      <div class="rail"></div>
+    </div>
+    <div class="step active" data-od-id="step-debat">
+      <div class="node-row">
+        <div class="node">2</div>
+        <div class="lbl">Perdebatan</div>
+        <span class="round-tag">RONDE 1/2</span>
+      </div>
+      <div class="rail"></div>
+    </div>
+    <div class="step" data-od-id="step-putusan">
+      <div class="node-row">
+        <div class="node">3</div>
+        <div class="lbl">Putusan</div>
+      </div>
+      <div class="rail"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ANALYST PANEL ============ -->
+<section class="wrap" data-od-id="analyst-panel">
+  <div class="sec-head">
+    <div>
+      <div class="kicker">Panel</div>
+      <h2>Lima analis</h2>
+    </div>
+    <span class="note">Klik baris bukti untuk membuka detail</span>
+  </div>
+
+  <div class="analysts">
+    <!-- Fundamental -->
+    <article class="analyst a-fund done" data-od-id="analyst-fundamental">
+      <div class="top">
+        <div class="avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+        </div>
+        <div class="who">
+          <span class="role">Fundamental</span>
+          <span class="tag">Laba &amp; valuasi</span>
+        </div>
+        <span class="status-dot done" title="Selesai"></span>
+      </div>
+      <div class="ev-list">
+        <button class="ev" data-od-id="ev-fund-1">
+          <span class="id">EV_1</span>
+          <span class="txt">ROE konsisten di atas 20%</span>
+          <span class="pill">ROE 21,4%</span>
+        </button>
+        <button class="ev" data-od-id="ev-fund-2">
+          <span class="id">EV_2</span>
+          <span class="txt">Pertumbuhan laba dua digit</span>
+          <span class="pill">+12,8%</span>
+        </button>
+      </div>
+      <div class="summary">
+        <div class="row">
+          <span class="t">Ringkasan — <b>2 bukti</b></span>
+          <span class="badge b-info"><span class="dot"></span>Info A</span>
+        </div>
+        <button class="fold" data-od-id="fold-fundamental">Baca kesimpulan</button>
+      </div>
+    </article>
+
+    <!-- Harga -->
+    <article class="analyst a-price done" data-od-id="analyst-harga">
+      <div class="top">
+        <div class="avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+        </div>
+        <div class="who">
+          <span class="role">Harga</span>
+          <span class="tag">Momentum &amp; volume</span>
+        </div>
+        <span class="status-dot done" title="Selesai"></span>
+      </div>
+      <div class="ev-list">
+        <button class="ev" data-od-id="ev-harga-1">
+          <span class="id">EV_3</span>
+          <span class="txt">Volume naik di atas rata-rata</span>
+          <span class="pill">1,8×</span>
+        </button>
+        <button class="ev" data-od-id="ev-harga-2">
+          <span class="id">EV_4</span>
+          <span class="txt">Harga di atas MA-50</span>
+          <span class="pill">+4,2%</span>
+        </button>
+      </div>
+      <div class="summary">
+        <div class="row">
+          <span class="t">Ringkasan — <b>2 bukti</b></span>
+          <span class="badge b-info"><span class="dot"></span>Info B</span>
+        </div>
+        <button class="fold" data-od-id="fold-harga">Baca kesimpulan</button>
+      </div>
+    </article>
+
+    <!-- Smart Money -->
+    <article class="analyst a-smart busy" data-od-id="analyst-smartmoney">
+      <div class="top">
+        <div class="avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>
+        </div>
+        <div class="who">
+          <span class="role">Smart Money</span>
+          <span class="tag">Aliran institusi</span>
+        </div>
+        <span class="status-dot busy" title="Menyelidiki"></span>
+      </div>
+      <div class="ev-list">
+        <button class="ev" data-od-id="ev-smart-1">
+          <span class="id">EV_5</span>
+          <span class="txt">Aliran dana asing masuk</span>
+          <span class="pill">+Rp 1,2 T</span>
+        </button>
+      </div>
+      <div class="summary">
+        <div class="row">
+          <span class="t">Menyelidiki…</span>
+        </div>
+      </div>
+    </article>
+
+    <!-- Insider -->
+    <article class="analyst a-insider waiting" data-od-id="analyst-insider">
+      <div class="top">
+        <div class="avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div class="who">
+          <span class="role">Insider</span>
+          <span class="tag">Transaksi direksi</span>
+        </div>
+        <span class="status-dot wait" title="Menunggu"></span>
+      </div>
+      <div class="ev-list">
+        <button class="ev" data-od-id="ev-insider-1">
+          <span class="id">EV_6</span>
+          <span class="txt">Menunggu giliran…</span>
+        </button>
+      </div>
+    </article>
+
+    <!-- Anti-Gorengan -->
+    <article class="analyst a-anti waiting" data-od-id="analyst-antigorengan">
+      <div class="top">
+        <div class="avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div class="who">
+          <span class="role">Anti-Gorengan</span>
+          <span class="tag">Deteksi manipulasi</span>
+        </div>
+        <span class="status-dot wait" title="Menunggu"></span>
+      </div>
+      <div class="ev-list">
+        <button class="ev" data-od-id="ev-anti-1">
+          <span class="id">EV_7</span>
+          <span class="txt">Menunggu giliran…</span>
+        </button>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ============ DEBATE PODIUM ============ -->
+<section class="wrap" data-od-id="debate">
+  <div class="sec-head">
+    <div>
+      <div class="kicker">Perdebatan</div>
+      <h2>Jaksa vs Pembela</h2>
+    </div>
+    <span class="note">Tayang langsung · bukan kotak hitam</span>
+  </div>
+
+  <div class="podium">
+    <span class="round-badge">RONDE 1 / 2</span>
+
+    <div class="side jaksa" data-od-id="side-jaksa">
+      <div class="side-head">
+        <span class="role">Jaksa</span>
+        <span class="thesis">Tesis bear</span>
+      </div>
+
+      <div class="utterance">
+        <span class="chip"><span class="spk">JAKSA</span> · <span class="bear">bear</span></span>
+        <h4>Valuasi sudah mahal relatif</h4>
+        <p>Harga telah naik jauh di atas rata-rata historis, sementara pertumbuhan laba mulai melambat.</p>
+        <div class="cites">
+          <button class="cite" data-od-id="cite-jaksa-1">EV_3</button>
+          <button class="cite" data-od-id="cite-jaksa-2">EV_4</button>
+        </div>
+      </div>
+
+      <div class="utterance">
+        <span class="chip"><span class="spk">JAKSA</span> · <span class="bear">bear</span> · <span class="reply">↩ balasan</span></span>
+        <h4>Momentum tak didukung fundamental</h4>
+        <p>Kenaikan volume lebih banyak didorong sentimen jangka pendek, bukan perbaikan laba.</p>
+        <div class="cites">
+          <button class="cite" data-od-id="cite-jaksa-3">EV_3</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="side pembela" data-od-id="side-pembela">
+      <div class="side-head">
+        <span class="role">Pembela</span>
+        <span class="thesis">Tesis bull</span>
+      </div>
+
+      <div class="utterance">
+        <span class="chip"><span class="spk">PEMBELA</span> · <span class="bull">bull</span></span>
+        <h4>Kualitas laba tetap solid</h4>
+        <p>ROE konsisten di atas 20% dan pertumbuhan laba dua digit menopang valuasi.</p>
+        <div class="cites">
+          <button class="cite" data-od-id="cite-pembela-1">EV_1</button>
+          <button class="cite" data-od-id="cite-pembela-2">EV_2</button>
+        </div>
+      </div>
+
+      <div class="utterance">
+        <span class="chip"><span class="spk">PEMBELA</span> · <span class="bull">bull</span> · <span class="reply">↩ balasan</span></span>
+        <h4>Aliran institusi menopang</h4>
+        <p>Masuknya dana asing menunjukkan keyakinan jangka panjang, bukan sekadar momentum.</p>
+        <div class="cites">
+          <button class="cite" data-od-id="cite-pembela-3">EV_5</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VERDICT ============ -->
+<section class="wrap" data-od-id="verdict">
+  <div class="sec-head">
+    <div>
+      <div class="kicker">Putusan</div>
+      <h2>Memorandum hakim</h2>
+    </div>
+    <span class="note">Mengetik langsung</span>
+  </div>
+
+  <div class="verdict-card">
+    <div class="judge">
+      <div class="seal" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l8 8-3 3-8-8z"/><path d="M6 10l8 8-3 3-8-8z"/><path d="M3 21h8"/><path d="M10 3l8 8"/></svg>
+      </div>
+      <div class="who">
+        <div class="role">Hakim</div>
+        <div class="sub">MEMORANDUM RISET · SIDANG 2026/014</div>
+      </div>
+    </div>
+    <div class="memo" id="memo" data-od-id="memo" aria-live="polite">
+      <span class="caret"></span>
+    </div>
+  </div>
+
+  <div class="final-banner" id="finalBanner" data-od-id="final-banner">
+    <div class="msg">
+      <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+      <div>
+        <div class="t">Memorandum sidang telah final.</div>
+        <div class="s">Putusan tercatat di arsip perkara BBCA.</div>
+      </div>
+    </div>
+    <button class="btn-primary" data-od-id="read-memo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Baca memorandum
+    </button>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer data-od-id="footer">
+  <div class="wrap">
+    <div class="foot-top">
+      <span class="foot-brand">SIDANG<em>.</em></span>
+      <div class="foot-links">
+        <a href="berkas-perkara.html">Berkas Perkara</a>
+        <a href="sidang-landing.html#jurnal">Jurnal</a>
+      </div>
+    </div>
+    <div class="disclaimer" data-od-id="disclaimer">
+      <strong>Disclaimer GLOBAL No. 10.</strong> SIDANG adalah alat bantu riset, bukan rekomendasi investasi. Seluruh putusan, kategori, dan konfidensi merupakan hasil analisis otomatis dari data arsip dan tidak menjamin akurasi prediksi. Harga yang tampil hanya berasal dari arsip sidang — <span class="warn">tidak ada harga real-time</span>. Keputusan investasi sepenuhnya tanggung jawab Anda.
+    </div>
+  </div>
+</footer>
+
+<script>
+  // scroll reveal
+  (function(){
+    var els = document.querySelectorAll('[data-reveal]');
+    if(!('IntersectionObserver' in window)){
+      els.forEach(function(e){e.classList.add('is-in')});
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){en.target.classList.add('is-in');io.unobserve(en.target)}
+      });
+    },{threshold:0.1});
+    els.forEach(function(e){io.observe(e)});
+  })();
+
+  // evidence rows -> open detail (placeholder)
+  document.querySelectorAll('.ev').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var id = btn.querySelector('.id').textContent;
+      alert('Detail bukti ' + id + ' — panel analis.');
+    });
+  });
+
+  // cite chips -> point to evidence
+  document.querySelectorAll('.cite').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var id = btn.textContent.trim();
+      var ev = document.querySelector('[data-od-id="ev-' + id.toLowerCase().replace('_','-') + '"]');
+      if(ev){ev.style.outline='2px solid var(--brass)';setTimeout(function(){ev.style.outline='none'},1600);}
+    });
+  });
+
+  // fold -> read conclusion (placeholder)
+  document.querySelectorAll('.fold').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      alert('Kesimpulan analis — ' + btn.closest('.analyst').querySelector('.role').textContent);
+    });
+  });
+
+  // typewriter memorandum
+  (function(){
+    var memo = document.getElementById('memo');
+    var text = 'Berdasarkan dua belas bukti yang dihimpun lima analis, hakim menilai kualitas laba BBCA tetap solid dengan ROE di atas 20% dan pertumbuhan dua digit. Namun valuasi yang sudah mahal relatif serta momentum yang tak sepenuhnya didukung fundamental menuntut kehati-hatian. Putusan: <span class="em">Layak diteliti lanjut</span> dengan catatan — pantau aliran institusi pada ronde berikutnya.';
+    var html = '';
+    var i = 0;
+    var timer = setInterval(function(){
+      if(i < text.length){
+        var ch = text[i];
+        if(ch === '<'){ html += text.slice(i, text.indexOf('>', i)+1); i = text.indexOf('>', i)+1; }
+        else { html += ch; i++; }
+        memo.innerHTML = html + '<span class="caret"></span>';
+      } else {
+        clearInterval(timer);
+        memo.innerHTML = html;
+        document.getElementById('finalBanner').classList.add('show');
+      }
+    }, 18);
+  })();
+
+  // read memo -> dossier
+  document.querySelector('[data-od-id="read-memo"]').addEventListener('click', function(){
+    window.location.href = 'berkas-emiten.html';
+  });
+</script>
+</body>
+</html>

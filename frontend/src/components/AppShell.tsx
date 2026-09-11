@@ -15,7 +15,7 @@ export default function AppShell() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="sticky top-0 z-40 border-b border-line-0 bg-[rgba(20,18,15,0.82)] backdrop-blur-[12px]">
+      <header className="sticky top-0 z-40 border-b border-line-0 bg-[rgba(20,18,15,0.82)] backdrop-blur-[12px] print:hidden">
         <div className="container flex h-16 items-center justify-between gap-6">
           <Link
             to="/"
@@ -31,6 +31,9 @@ export default function AppShell() {
           <nav className="flex items-center gap-[26px]" aria-label="Navigasi utama">
             <NavLink to="/dashboard" className={({ isActive }) => navLinkClass(isActive && !isCourt && !isMemo)}>
               Berkas Perkara
+            </NavLink>
+            <NavLink to="/board" className={({ isActive }) => navLinkClass(isActive)}>
+              Papan Detektif
             </NavLink>
             <NavLink to="/journal" className={({ isActive }) => navLinkClass(isActive)}>
               Jurnal
@@ -63,7 +66,7 @@ export default function AppShell() {
         <Outlet />
       </main>
 
-      <footer className="mt-14 border-t border-line-0 py-10 pb-12">
+      <footer className="mt-14 border-t border-line-0 py-10 pb-12 print:hidden">
         <div className="container">
           <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
             <span className="font-display text-[18px] font-medium text-text-0">
@@ -71,6 +74,7 @@ export default function AppShell() {
             </span>
             <nav className="flex gap-6 text-[13px] text-text-2">
               <Link to="/dashboard" className="transition-colors hover:text-brass-400">Berkas Perkara</Link>
+              <Link to="/board" className="transition-colors hover:text-brass-400">Papan Detektif</Link>
               <Link to="/journal" className="transition-colors hover:text-brass-400">Jurnal</Link>
             </nav>
           </div>

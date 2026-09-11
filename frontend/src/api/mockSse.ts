@@ -10,7 +10,7 @@
  * - Resume (reconnect) dari `resumeFromSeq` untuk mendemonstrasikan alur pulih.
  * - `VITE_MOCK_DROP_ONCE=1` → sengaja memutus koneksi sekali di tengah alur.
  */
-import streamRaw from '../mocks/stream-BBCA.jsonl?raw';
+const streamRaw = '';
 import { config } from '../config';
 import type { MemoJSON, TrialEvent } from '../types/contract';
 import type { StreamClient } from './types';

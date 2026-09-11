@@ -1,0 +1,86 @@
+import type { PricePoint, VerdictCategory } from './contract';
+
+export type NodeType =
+  | 'emiten'
+  | 'pemegang'
+  | 'orang'
+  | 'redflag'
+  | 'kabar'
+  | 'fakta';
+
+export type EdgeType = 'memegang' | 'menjabat' | 'redflag' | 'fakta';
+
+export interface MetricBenchmark {
+  label: string;
+  value: number;
+  sectorAvg: number;
+  unit: string;
+  verdict: 'superior' | 'fair' | 'inferior';
+}
+
+export interface RiskScorecard {
+  governance: number;
+  financial: number;
+  valuation: number;
+  overall: 'Rendah' | 'Sedang' | 'Tinggi';
+}
+
+export interface BoardNodeData {
+  type: NodeType;
+  label: string;
+  sub?: string;
+  value?: string;
+  verdict?: VerdictCategory;
+  severity?: 'rendah' | 'sedang' | 'tinggi';
+  date?: string;
+  detail?: string[];
+  source?: string;
+  cross?: boolean;
+  selected?: boolean;
+  retrievedAt?: string;
+}
+
+export interface BoardNode {
+  id: string;
+  type: NodeType;
+  position: { x: number; y: number };
+  data: BoardNodeData;
+  rotate: number;
+}
+
+export interface BoardEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: EdgeType;
+  label?: string;
+}
+
+export interface TickerBoardData {
+  ticker: string;
+  name: string;
+  nodes: BoardNode[];
+  edges: BoardEdge[];
+  initialChat: string;
+  aiInsights: Record<string, string>;
+  priceHistory?: PricePoint[];
+  metricsComparison?: MetricBenchmark[];
+  riskScore?: RiskScorecard;
+  thesisSummary?: string;
+}
+
+export const EDGE_META: Record<EdgeType, { label: string; color: string; dash?: string }> = {
+  memegang: { label: 'memegang saham', color: '#c96a5a' },
+  menjabat: { label: 'menjabat di', color: '#a89f90' },
+  redflag: { label: 'menandai red flag', color: '#c96a5a', dash: '6 4' },
+  fakta: { label: 'menunjuk fakta', color: '#6f675a' },
+};
+
+export const NODE_TYPE_META: Record<NodeType, { label: string; color: string }> = {
+  emiten: { label: 'Emiten', color: '#c9a24a' },
+  pemegang: { label: 'Pemegang Saham', color: '#5a8fb0' },
+  orang: { label: 'Orang Kunci', color: '#a28fd6' },
+  redflag: { label: 'Red Flag', color: '#c96a5a' },
+  kabar: { label: 'Bukti Kabar', color: '#d9a441' },
+  fakta: { label: 'Fakta Angka', color: '#4cc98f' },
+};

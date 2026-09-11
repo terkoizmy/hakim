@@ -1,10 +1,139 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { VerdictBadge } from './JournalPage';
-import { SearchIcon } from '../components/icons';
+import { SearchIcon, ChevronDownIcon, CheckIcon } from '../components/icons';
 import type { JournalItem, TickerListItem } from '../types/contract';
 import type { VerdictCategory } from '../types/contract';
+
+/** Custom Dropdown Sektor dengan tema Mahkamah / Dark Sepia & Brass */
+function SectorDropdown({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { sector: string; count: number }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  const selectedOption = options.find((o) => o.sector === value);
+  const selectedLabel = selectedOption
+    ? `${selectedOption.sector} (${selectedOption.count})`
+    : 'Semua Sektor';
+
+  const totalAll = options.reduce((acc, curr) => acc + curr.count, 0);
+
+  return (
+    <div className="relative min-w-[220px]" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-3 rounded-[14px] border border-[#3a332a] bg-bg-2 px-[18px] py-[15px] text-left transition-all hover:border-brass-600/70 focus:border-brass-600 focus:outline-none focus:shadow-[0_0_0_3px_rgba(201,162,74,0.12)]"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <div className="flex items-center gap-2 overflow-hidden">
+          <span className="font-mono text-[11px] uppercase tracking-[1px] text-text-3">
+            Sektor:
+          </span>
+          <span className="truncate text-[14.5px] font-medium text-text-0">
+            {selectedLabel}
+          </span>
+        </div>
+        <ChevronDownIcon
+          size={16}
+          className={`flex-none text-brass-400 transition-transform duration-200 ${
+            open ? 'rotate-180 text-brass-300' : ''
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div className="anim-in absolute left-0 right-0 top-[calc(100%+8px)] z-50 max-h-[340px] overflow-y-auto rounded-xl border border-[#3a332a] bg-[#1a1713] p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.8)] backdrop-blur-md">
+          {/* Option: Semua */}
+          <button
+            type="button"
+            onClick={() => {
+              onChange('');
+              setOpen(false);
+            }}
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors ${
+              value === ''
+                ? 'bg-brass-500/20 font-semibold text-brass-300'
+                : 'text-text-1 hover:bg-[#28231c] hover:text-text-0'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {value === '' ? (
+                <CheckIcon size={14} className="text-brass-400" />
+              ) : (
+                <span className="w-3.5" />
+              )}
+              <span>Semua Sektor</span>
+            </div>
+            <span className="font-mono text-[11px] text-text-3">{totalAll}</span>
+          </button>
+
+          <div className="my-1 border-t border-[#2a251e]" />
+
+          {/* Sektor List */}
+          {options.map((s) => {
+            const isSelected = value === s.sector;
+            return (
+              <button
+                key={s.sector}
+                type="button"
+                onClick={() => {
+                  onChange(s.sector);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[13.5px] transition-colors ${
+                  isSelected
+                    ? 'bg-brass-500/20 font-semibold text-brass-300'
+                    : 'text-text-1 hover:bg-[#28231c] hover:text-text-0'
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate pr-2">
+                  {isSelected ? (
+                    <CheckIcon size={14} className="flex-none text-brass-400" />
+                  ) : (
+                    <span className="w-3.5 flex-none" />
+                  )}
+                  <span className="truncate">{s.sector}</span>
+                </div>
+                <span className="flex-none font-mono text-[11px] text-text-3">
+                  {s.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const EXAMPLES = ['BBCA', 'CUAN', 'GOTO', 'BRMS', 'BBRI'];
 
@@ -190,24 +319,11 @@ export default function DashboardPage() {
             />
           </label>
           {sectors.length > 0 && (
-            <label className="flex items-center gap-2 rounded-[14px] border border-[#3a332a] bg-bg-2 px-[16px] transition-colors focus-within:border-brass-600">
-              <span className="font-mono text-[11px] uppercase tracking-[1px] text-text-3">
-                Sektor
-              </span>
-              <select
-                className="min-w-0 cursor-pointer border-0 bg-transparent py-[15px] pr-1 text-[14px] text-text-0 outline-none"
-                value={sector}
-                onChange={(e) => setSector(e.target.value)}
-                aria-label="Filter sektor"
-              >
-                <option value="">Semua</option>
-                {sectors.map((s) => (
-                  <option key={s.sector} value={s.sector}>
-                    {s.sector} ({s.count})
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SectorDropdown
+              value={sector}
+              onChange={setSector}
+              options={sectors}
+            />
           )}
         </div>
         <p className="mb-[26px] mt-2 font-mono text-[12px] tracking-[0.5px] text-text-3">

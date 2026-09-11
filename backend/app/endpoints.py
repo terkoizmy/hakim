@@ -21,6 +21,9 @@ from .db import Database
 from .eventbus import EventBus, now_iso
 from .llm import LLMClient
 from .models import (
+    BoardChatRequest,
+    BoardChatResponse,
+    BoardResponse,
     CreateTrialRequest,
     CreateTrialResponse,
     HealthResponse,
@@ -30,6 +33,7 @@ from .models import (
     SectorListResponse,
     TickerListResponse,
 )
+from .board import build_board_for_ticker
 from .orchestrator import TERMINAL_EVENTS, TrialContext, TrialFailed, run_trial
 from .price_series import build_price_series
 from .sectors import SectorsClient, TickerNotFound
@@ -213,6 +217,46 @@ def build_router(
         await sectors.listed_companies()
         items = db.ticker_sectors()
         return SectorListResponse(items=items, total=len(items))
+
+    # ------------------------------------------------------------------ board
+
+    @router.get("/api/board/{ticker}", response_model=BoardResponse)
+    async def get_board(ticker: str) -> BoardResponse:
+        """Dynamic detective board graph builder using live Sectors & SQLite memo."""
+        try:
+            return await build_board_for_ticker(ticker, db=db, sectors=sectors)
+        except Exception as exc:
+            logger.error("Gagal menyusun board untuk ticker %s: %s", ticker, exc)
+            raise HTTPException(status_code=500, detail=f"Gagal memuat papan detektif {ticker}: {exc}")
+
+    @router.post("/api/board/{ticker}/chat", response_model=BoardChatResponse)
+    async def chat_board(ticker: str, req: BoardChatRequest) -> BoardChatResponse:
+        """AI Detective Chat: answers questions about cross-ownership, board, and risks."""
+        sym = ticker.strip().upper()
+        q = req.message.strip().lower()
+
+        # Build context from board data
+        board_data = await build_board_for_ticker(sym, db=db, sectors=sectors)
+        sh_list = [n.data.label for n in board_data.nodes if n.data.type == "pemegang"]
+        mg_list = [f"{n.data.label} ({n.data.sub})" for n in board_data.nodes if n.data.type == "orang"]
+        rf_list = [n.data.label for n in board_data.nodes if n.data.type == "redflag"]
+
+        # Simple intelligent heuristics with context
+        if "pemilik" in q or "pemegang" in q or "saham" in q:
+            reply = f"Berdasarkan data registri IDX, pemegang saham utama {sym} meliputi: {', '.join(sh_list) if sh_list else 'Masyarakat / Publik'}."
+        elif "direksi" in q or "komisaris" in q or "manajemen" in q or "orang" in q:
+            reply = f"Jajaran pengurus kunci {sym} saat ini tercatat: {', '.join(mg_list[:4]) if mg_list else 'Belum terindeks'}."
+        elif "red flag" in q or "risiko" in q or "kejanggalan" in q:
+            if rf_list:
+                reply = f"Temuan risiko penting pada {sym}: " + " | ".join(rf_list)
+            else:
+                reply = f"Tidak ada temuan red flag berat yang terindikasi pada audit komite sidang terkini {sym}."
+        elif "valuasi" in q or "harga" in q or "pb" in q or "pe" in q:
+            reply = board_data.aiInsights.get("fakta", f"Valuasi {sym} saat ini terpantau di papan fakta metrik.")
+        else:
+            reply = f"Investigasi {sym} ({board_data.name}): {board_data.thesisSummary} Anda dapat mengklik node pada papan untuk memperluas jaringan koneksi."
+
+        return BoardChatResponse(reply=reply)
 
     # ----------------------------------------------------------------- health
 

@@ -4,7 +4,17 @@ import { api, ApiError } from '../api';
 import type { CacheStatus, MemoJSON, VerdictCategory } from '../types/contract';
 import { formatDate, formatDateTime, formatValue } from '../utils/format';
 import { Markdown } from '../utils/md';
-import { AlertIcon, BookIcon, GavelIcon } from '../components/icons';
+import {
+  AlertIcon,
+  BookIcon,
+  GavelIcon,
+  PrinterIcon,
+  CopyIcon,
+  CheckIcon,
+  ArrowRightIcon,
+  SparkIcon,
+  ScaleIcon,
+} from '../components/icons';
 
 /** Label sentence case sesuai mock. */
 const VERDICT_DOC_LABEL: Record<VerdictCategory, { plain: string; em?: string }> = {
@@ -122,16 +132,82 @@ export function MemoView({ memo }: { memo: MemoJSON }) {
   const cat = VERDICT_DOC_LABEL[verdict.category];
   // Sub-judul hero: kalimat pertama rasional.
   const vSub = stripMd(verdict.rationale_md).split(/(?<=[.!?])\s/)[0] ?? '';
+  const [copied, setCopied] = useState(false);
+
+  const handleCopySummary = () => {
+    const summaryText = `[MEMORANDUM PUTUSAN SIDANG RISET]
+Emiten: ${memo.ticker} - ${memo.company_name}
+Nomor Perkara: ${memo.memo_id} (Sidang ${memo.trial_id})
+Disahkan: ${formatDateTime(memo.created_at)}
+Putusan: ${cat.plain}${cat.em ?? ''} (Konfidensi: ${Math.round(verdict.confidence * 100)}%)
+
+RINGKASAN EKSEKUTIF:
+${stripMd(memo.executive_summary)}
+
+RASIONAL PUTUSAN:
+${stripMd(verdict.rationale_md)}
+
+PERTANYAAN VERIFIKASI WAJIB INVESTOR:
+${verdict.verification_questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+TEMUAN RED FLAGS:
+${memo.red_flags.map((rf) => `- [${rf.severity.toUpperCase()}] ${stripMd(rf.flag_md)}`).join('\n') || '- Tidak ada red flag'}
+
+Platform Sidang Riset Pasar Modal (Hakim)`;
+
+    navigator.clipboard.writeText(summaryText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
     <div className="pb-[72px]">
       <div className="mx-auto w-full max-w-[900px] px-6 pt-10">
-        <div className="mb-[26px] flex items-center font-mono text-[12px] uppercase tracking-[1px] text-text-3">
-          <Link to="/dashboard" className="text-brass-500 transition-colors hover:text-brass-300">Daftar Perkara</Link>
-          <span className="mx-[6px]">/</span>
-          <Link to={`/ticker/${memo.ticker}`} className="text-brass-500 transition-colors hover:text-brass-300">{memo.ticker}</Link>
-          <span className="mx-[6px]">/</span>
-          <span>Memorandum</span>
+        <div className="mb-[26px] flex flex-wrap items-center justify-between gap-3 print:hidden">
+          <div className="flex items-center font-mono text-[12px] uppercase tracking-[1px] text-text-3">
+            <Link to="/dashboard" className="text-brass-500 transition-colors hover:text-brass-300">Daftar Perkara</Link>
+            <span className="mx-[6px]">/</span>
+            <Link to={`/ticker/${memo.ticker}`} className="text-brass-500 transition-colors hover:text-brass-300">{memo.ticker}</Link>
+            <span className="mx-[6px]">/</span>
+            <span>Memorandum</span>
+          </div>
+
+          {/* Action Buttons: Salin Ringkasan & Cetak / Simpan PDF */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#3a332a] bg-bg-2 px-3 py-1.5 font-mono text-[11.5px] text-text-2 hover:border-brass-500 hover:text-brass-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/40"
+              title="Salin teks ringkasan memo ke clipboard"
+            >
+              {copied ? (
+                <>
+                  <CheckIcon size={14} className="text-[#7fb069]" />
+                  <span className="text-[#7fb069] font-medium">Tersalin ke Clipboard!</span>
+                </>
+              ) : (
+                <>
+                  <CopyIcon size={14} />
+                  <span>Salin Ringkasan</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1.5 rounded-md border border-brass-600/60 bg-brass-500/10 px-3 py-1.5 font-mono text-[11.5px] font-semibold text-brass-300 hover:bg-brass-500 hover:text-[#14120f] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/40"
+              title="Cetak atau Simpan sebagai PDF"
+            >
+              <PrinterIcon size={14} />
+              <span>Cetak / Simpan PDF</span>
+            </button>
+          </div>
         </div>
 
         {/* ---------- DOC HEAD ---------- */}
@@ -339,6 +415,81 @@ export function MemoView({ memo }: { memo: MemoJSON }) {
               Sidang pertama sebuah emiten memang hampir seluruhnya miss — cache menghemat kredit pada endpoint
               yang dipakai bersama (indeks, top-changes, daftar emiten).
             </p>
+          </section>
+
+          {/* ---------- TINDAKAN & INVESTIGASI LANJUTAN ---------- */}
+          <section className="anim-in print:hidden border-t border-[#3a332a] pt-8">
+            <SecHead kicker="Eksplorasi" title="Tindakan & Investigasi Lanjutan" note="Langkah analisis berikutnya" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Link
+                to={`/ticker/${memo.ticker}`}
+                className="group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-accent hover:bg-[#1a1713]"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-accent">
+                      <SparkIcon className="h-3.5 w-3.5" /> Berkas Perkara
+                    </span>
+                    <ArrowRightIcon className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-1 group-hover:text-accent" />
+                  </div>
+                  <h4 className="mt-2 font-serif text-[15px] font-medium text-text-1">
+                    Profil Lengkap {memo.ticker}
+                  </h4>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-text-3">
+                    Buka dossier keuangan mendalam, pergerakan valuasi historis, dan ringkasan fundamental {memo.ticker}.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center gap-1 font-mono text-[11.5px] text-accent">
+                  Buka Profil Ticker &rarr;
+                </div>
+              </Link>
+
+              <Link
+                to="/board"
+                className="group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-accent hover:bg-[#1a1713]"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#d4a373]">
+                      🔍 Papan Bukti
+                    </span>
+                    <ArrowRightIcon className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-1 group-hover:text-[#d4a373]" />
+                  </div>
+                  <h4 className="mt-2 font-serif text-[15px] font-medium text-text-1">
+                    Papan Detektif / Jaringan
+                  </h4>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-text-3">
+                    Visualisasikan benang merah keterkaitan kepemilikan konglomerasi, klaster sektor, dan anomali pasar.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center gap-1 font-mono text-[11.5px] text-[#d4a373]">
+                  Investigasi di Detective Board &rarr;
+                </div>
+              </Link>
+
+              <Link
+                to={`/journal/${memo.memo_id}/postmortem`}
+                className="group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-[#7fb069] hover:bg-[#1a1713]"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#7fb069]">
+                      <ScaleIcon className="h-3.5 w-3.5" /> Evaluasi Putusan
+                    </span>
+                    <ArrowRightIcon className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-1 group-hover:text-[#7fb069]" />
+                  </div>
+                  <h4 className="mt-2 font-serif text-[15px] font-medium text-text-1">
+                    Postmortem & Track Record
+                  </h4>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-text-3">
+                    Uji akurasi tesis putusan {cat.plain}{cat.em || ''} terhadap realisasi harga pasar dari waktu ke waktu.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center gap-1 font-mono text-[11.5px] text-[#7fb069]">
+                  Audit Akurasi Putusan &rarr;
+                </div>
+              </Link>
+            </div>
           </section>
         </div>
       </div>

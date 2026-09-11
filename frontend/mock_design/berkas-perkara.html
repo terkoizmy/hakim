@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Berkas Perkara — SIDANG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14120f;
+    --bg-2:#1a1713;
+    --surface:#201c17;
+    --surface-2:#26211a;
+    --fg:#ece7dd;
+    --muted:#a89f90;
+    --faint:#6f675a;
+    --border:#3a332a;
+    --border-soft:#2a251e;
+    --brass:#c9a24a;
+    --brass-soft:#e0c27a;
+    --brass-dim:#8a6f33;
+    --ok:#7fb069;
+    --warn:#d9a441;
+    --red:#c96a5a;
+    --font-display:"Fraunces", Georgia, serif;
+    --font-body:"Inter", system-ui, sans-serif;
+    --font-mono:"JetBrains Mono", ui-monospace, monospace;
+    --maxw:1180px;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--brass);color:#14120f}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(201,162,74,.06), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px);
+  }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(20,18,15,.82);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:600;font-size:20px;letter-spacing:.5px}
+  .brand .gavel{width:22px;height:22px;color:var(--brass)}
+  .brand em{font-style:italic;color:var(--brass)}
+  .nav-links{display:flex;align-items:center;gap:26px;font-size:13.5px;color:var(--muted)}
+  .nav-links a{transition:color .2s}
+  .nav-links a:hover{color:var(--fg)}
+  .nav-cta{
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.5px;
+    color:var(--brass);border:1px solid var(--brass-dim);border-radius:999px;
+    padding:8px 16px;transition:all .2s;
+  }
+  .nav-cta:hover{background:var(--brass);color:#14120f;border-color:var(--brass)}
+
+  /* ---------- PAGE HEAD ---------- */
+  .page-head{padding:56px 0 8px}
+  .crumb{font-family:var(--font-mono);font-size:12px;color:var(--faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:18px}
+  .crumb a{color:var(--brass)}
+  .crumb a:hover{color:var(--brass-soft)}
+  .page-head h1{
+    font-family:var(--font-display);font-weight:400;
+    font-size:clamp(34px,5vw,52px);line-height:1.05;letter-spacing:-.5px;
+  }
+  .page-head h1 em{font-style:italic;color:var(--brass)}
+  .page-head .lede{max-width:60ch;margin-top:14px;color:var(--muted);font-size:16px}
+
+  /* ---------- SEARCH ---------- */
+  .search-bar{
+    margin:30px 0 22px;display:flex;align-items:center;gap:12px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:0 18px;max-width:520px;
+  }
+  .search-bar svg{width:18px;height:18px;color:var(--faint);flex:none}
+  .search-bar input{
+    flex:1;background:transparent;border:none;outline:none;color:var(--fg);
+    font-family:var(--font-body);font-size:15px;padding:15px 0;min-width:0;
+  }
+  .search-bar input::placeholder{color:var(--faint)}
+  .search-bar:focus-within{border-color:var(--brass-dim);box-shadow:0 0 0 3px rgba(201,162,74,.12)}
+  .search-count{font-family:var(--font-mono);font-size:12px;color:var(--faint);margin:-6px 0 0;letter-spacing:.5px}
+
+  /* ---------- LAYOUT ---------- */
+  .layout{display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;padding:8px 0 40px}
+
+  /* ---------- TABLE ---------- */
+  .table-wrap{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    overflow:hidden;
+  }
+  table{width:100%;border-collapse:collapse}
+  thead th{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;
+    color:var(--faint);text-align:left;font-weight:500;
+    padding:14px 18px;border-bottom:1px solid var(--border);
+    background:var(--bg-2);
+  }
+  thead th.num,td.num{text-align:right}
+  tbody td{
+    padding:15px 18px;border-bottom:1px solid var(--border-soft);
+    font-size:14px;vertical-align:middle;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr{cursor:pointer;transition:background .15s}
+  tbody tr:hover{background:rgba(201,162,74,.05)}
+  tbody tr:focus-visible{outline:2px solid var(--brass);outline-offset:-2px}
+  .tick{font-family:var(--font-mono);font-size:14px;letter-spacing:1px;color:var(--brass-soft);font-weight:500}
+  .name{color:var(--fg);font-weight:500}
+  .name .sector{display:block;font-size:12px;color:var(--faint);font-weight:400;margin-top:1px}
+  .badge{
+    display:inline-flex;align-items:center;gap:7px;
+    font-family:var(--font-mono);font-size:11.5px;letter-spacing:.3px;
+    border-radius:6px;padding:5px 10px;white-space:nowrap;
+  }
+  .badge .dot{width:6px;height:6px;border-radius:50%}
+  .b-ok{color:var(--ok);border:1px solid rgba(127,176,105,.4);background:rgba(127,176,105,.06)}
+  .b-ok .dot{background:var(--ok)}
+  .b-warn{color:var(--warn);border:1px solid rgba(217,164,65,.4);background:rgba(217,164,65,.06)}
+  .b-warn .dot{background:var(--warn)}
+  .b-red{color:var(--red);border:1px solid rgba(201,106,90,.4);background:rgba(201,106,90,.06)}
+  .b-red .dot{background:var(--red)}
+  .b-none{color:var(--faint);border:1px solid var(--border);background:transparent}
+  .b-none .dot{background:var(--faint)}
+  .mono{font-family:var(--font-mono);font-size:13px}
+  .mono.rp{color:var(--fg);font-variant-numeric:tabular-nums}
+  .muted{color:var(--faint)}
+  .empty{display:none;padding:48px 18px;text-align:center;color:var(--faint);font-size:14px}
+  .empty.show{display:block}
+
+  /* ---------- SIDE PANEL ---------- */
+  .side{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:22px;position:sticky;top:88px;
+  }
+  .side .kicker{font-family:var(--font-mono);font-size:11px;color:var(--brass);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+  .side h3{font-family:var(--font-display);font-size:19px;font-weight:500;margin-bottom:18px}
+  .side-row{
+    display:flex;align-items:center;gap:12px;padding:11px 0;
+    border-top:1px solid var(--border-soft);cursor:pointer;transition:background .15s;
+    border-radius:6px;margin:0 -8px;padding-left:8px;padding-right:8px;
+  }
+  .side-row:first-of-type{border-top:none}
+  .side-row:hover{background:rgba(201,162,74,.05)}
+  .side-row:focus-visible{outline:2px solid var(--brass);outline-offset:-2px}
+  .side-row .mini{width:8px;height:8px;border-radius:50%;flex:none}
+  .side-row .st{font-family:var(--font-mono);font-size:12px;letter-spacing:.5px;color:var(--fg);flex:none}
+  .side-row .sd{font-size:12px;color:var(--faint);margin-left:auto;white-space:nowrap}
+  .side .note{font-size:12px;color:var(--faint);margin-top:16px;padding-top:14px;border-top:1px solid var(--border-soft);line-height:1.6}
+
+  /* ---------- FOOTER ---------- */
+  footer{border-top:1px solid var(--border-soft);padding:40px 0 48px}
+  .foot-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:28px}
+  .foot-brand{font-family:var(--font-display);font-size:18px;font-weight:500}
+  .foot-brand em{font-style:italic;color:var(--brass)}
+  .foot-links{display:flex;gap:24px;font-size:13px;color:var(--muted)}
+  .foot-links a:hover{color:var(--brass-soft)}
+  .disclaimer{
+    border:1px solid var(--border-soft);border-radius:10px;padding:18px 20px;
+    font-size:12.5px;color:var(--faint);line-height:1.7;background:var(--bg-2);
+  }
+  .disclaimer strong{color:var(--muted);font-weight:500}
+  .disclaimer .warn{color:var(--warn)}
+
+  /* ---------- REVEAL ---------- */
+  [data-reveal]{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+  [data-reveal].is-in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    [data-reveal]{opacity:1;transform:none;transition:none}
+    html{scroll-behavior:auto}
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:960px){
+    .layout{grid-template-columns:1fr}
+    .side{position:static}
+  }
+  @media (max-width:640px){
+    .table-wrap{overflow-x:auto}
+    table{min-width:640px}
+    .page-head{padding:40px 0 4px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<header class="nav" data-od-id="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="sidang-landing.html" data-od-id="brand">
+      <svg class="gavel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l8 8-3 3-8-8z"/><path d="M6 10l8 8-3 3-8-8z"/><path d="M3 21h8"/><path d="M10 3l8 8"/></svg>
+      SIDANG<em>.</em>
+    </a>
+    <nav class="nav-links" data-od-id="nav-links">
+      <a href="sidang-landing.html#putusan">Putusan</a>
+      <a href="sidang-landing.html#cara-kerja">Cara Kerja</a>
+      <a href="sidang-landing.html#jurnal">Jurnal</a>
+    </nav>
+    <a class="nav-cta" href="sidang-landing.html#mulai" data-od-id="nav-cta">Mulai Sidang</a>
+  </div>
+</header>
+
+<!-- ============ PAGE HEAD ============ -->
+<section class="page-head" data-od-id="page-head">
+  <div class="wrap">
+    <div class="crumb" data-reveal><a href="sidang-landing.html">SIDANG</a> / BERKAS PERKARA</div>
+    <h1 data-reveal>Berkas <em>Perkara</em></h1>
+    <p class="lede" data-reveal>Semua emiten terdaftar IDX — klik baris untuk membuka berkas, lalu adili.</p>
+  </div>
+</section>
+
+<!-- ============ SEARCH ============ -->
+<div class="wrap">
+  <div class="search-bar" data-reveal data-od-id="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input id="search" type="text" placeholder="Cari kode atau nama emiten…" autocomplete="off" spellcheck="false" aria-label="Cari kode atau nama emiten">
+  </div>
+  <p class="search-count" data-reveal id="search-count">MENAMPILKAN SEMUA PERKARA</p>
+</div>
+
+<!-- ============ LAYOUT ============ -->
+<div class="wrap">
+  <div class="layout">
+
+    <!-- TABLE -->
+    <div class="table-wrap" data-reveal data-od-id="screener">
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Emiten</th>
+            <th>Putusan Terakhir</th>
+            <th class="num">Jml Sidang</th>
+            <th>Terakhir Diadili</th>
+            <th class="num">Harga Saat Sidang</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr tabindex="0" data-od-id="row-bbri">
+            <td class="tick">BBRI</td>
+            <td><span class="name">Bank Rakyat Indonesia<span class="sector">Perbankan</span></span></td>
+            <td><span class="badge b-ok"><span class="dot"></span>Layak diteliti lanjut</span></td>
+            <td class="mono num">3</td>
+            <td class="mono muted">12 Mei 2026</td>
+            <td class="mono rp num">Rp 4.860</td>
+          </tr>
+          <tr tabindex="0" data-od-id="row-tlkm">
+            <td class="tick">TLKM</td>
+            <td><span class="name">Telkom Indonesia<span class="sector">Telekomunikasi</span></span></td>
+            <td><span class="badge b-ok"><span class="dot"></span>Layak diteliti lanjut</span></td>
+            <td class="mono num">2</td>
+            <td class="mono muted">08 Mei 2026</td>
+            <td class="mono rp num">Rp 3.120</td>
+          </tr>
+          <tr tabindex="0" data-od-id="row-goto">
+            <td class="tick">GOTO</td>
+            <td><span class="name">GoTo Gojek Tokopedia<span class="sector">Teknologi</span></span></td>
+            <td><span class="badge b-warn"><span class="dot"></span>Perlu kehati-hatian</span></td>
+            <td class="mono num">4</td>
+            <td class="mono muted">02 Mei 2026</td>
+            <td class="mono rp num">Rp 74</td>
+          </tr>
+          <tr tabindex="0" data-od-id="row-asii">
+            <td class="tick">ASII</td>
+            <td><span class="name">Astra International<span class="sector">Otomotif</span></span></td>
+            <td><span class="badge b-ok"><span class="dot"></span>Layak diteliti lanjut</span></td>
+            <td class="mono num">2</td>
+            <td class="mono muted">28 Apr 2026</td>
+            <td class="mono rp num">Rp 5.025</td>
+          </tr>
+          <tr tabindex="0" data-od-id="row-bumi">
+            <td class="tick">BUMI</td>
+            <td><span class="name">Bumi Resources<span class="sector">Energi</span></span></td>
+            <td><span class="badge b-red"><span class="dot"></span>Red flag berat</span></td>
+            <td class="mono num">5</td>
+            <td class="mono muted">21 Apr 2026</td>
+            <td class="mono rp num">Rp 118</td>
+          </tr>
+          <tr tabindex="0" data-od-id="row-ptba">
+            <td class="tick">PTBA</td>
+            <td><span class="name">Bukit Asam<span class="sector">Energi</span></span></td>
+            <td><span class="badge b-warn"><span class="dot"></span>Perlu kehati-hatian</span></td>
+            <td class="mono num">3</td>
+            <td class="mono muted">15 Apr 2026</td>
+            <td class="mono rp num">Rp 2.910</td>
+          </tr>
+          <tr tabindex="0" data-od-id="row-unic">
+            <td class="tick">UNIC</td>
+            <td><span class="name">Unilever Indonesia<span class="sector">Konsumen</span></span></td>
+            <td><span class="badge b-none"><span class="dot"></span>Belum diadili</span></td>
+            <td class="mono num">0</td>
+            <td class="mono muted">—</td>
+            <td class="mono rp num">—</td>
+          </tr>
+          <tr tabindex="0" data-od-id="row-icbp">
+            <td class="tick">ICBP</td>
+            <td><span class="name">Indofood CBP<span class="sector">Konsumen</span></span></td>
+            <td><span class="badge b-ok"><span class="dot"></span>Layak diteliti lanjut</span></td>
+            <td class="mono num">2</td>
+            <td class="mono muted">09 Apr 2026</td>
+            <td class="mono rp num">Rp 10.600</td>
+          </tr>
+          <tr tabindex="0" data-od-id="row-adro">
+            <td class="tick">ADRO</td>
+            <td><span class="name">Adaro Energy<span class="sector">Energi</span></span></td>
+            <td><span class="badge b-warn"><span class="dot"></span>Perlu kehati-hatian</span></td>
+            <td class="mono num">3</td>
+            <td class="mono muted">03 Apr 2026</td>
+            <td class="mono rp num">Rp 2.540</td>
+          </tr>
+          <tr tabindex="0" data-od-id="row-mncn">
+            <td class="tick">MNCN</td>
+            <td><span class="name">Media Nusantara Citra<span class="sector">Media</span></span></td>
+            <td><span class="badge b-red"><span class="dot"></span>Red flag berat</span></td>
+            <td class="mono num">4</td>
+            <td class="mono muted">28 Mar 2026</td>
+            <td class="mono rp num">Rp 412</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="empty" id="empty">Tidak ada perkara yang cocok dengan pencarian.</div>
+    </div>
+
+    <!-- SIDE PANEL -->
+    <aside class="side" data-reveal data-od-id="recent">
+      <span class="kicker">Arsip</span>
+      <h3>Sidang terakhir</h3>
+      <div class="side-row" tabindex="0" data-od-id="recent-1">
+        <span class="mini" style="background:var(--ok)"></span>
+        <span class="st">BBRI</span>
+        <span class="sd">12 Mei</span>
+      </div>
+      <div class="side-row" tabindex="0" data-od-id="recent-2">
+        <span class="mini" style="background:var(--ok)"></span>
+        <span class="st">TLKM</span>
+        <span class="sd">08 Mei</span>
+      </div>
+      <div class="side-row" tabindex="0" data-od-id="recent-3">
+        <span class="mini" style="background:var(--warn)"></span>
+        <span class="st">GOTO</span>
+        <span class="sd">02 Mei</span>
+      </div>
+      <div class="side-row" tabindex="0" data-od-id="recent-4">
+        <span class="mini" style="background:var(--ok)"></span>
+        <span class="st">ASII</span>
+        <span class="sd">28 Apr</span>
+      </div>
+      <p class="note">Klik baris untuk membuka memorandum riset lengkap dari sidang terakhir.</p>
+    </aside>
+
+  </div>
+</div>
+
+<!-- ============ FOOTER ============ -->
+<footer data-od-id="footer">
+  <div class="wrap">
+    <div class="foot-top">
+      <span class="foot-brand">SIDANG<em>.</em></span>
+      <div class="foot-links">
+        <a href="sidang-landing.html#putusan">Putusan</a>
+        <a href="sidang-landing.html#cara-kerja">Cara Kerja</a>
+        <a href="sidang-landing.html#jurnal">Jurnal</a>
+      </div>
+    </div>
+    <div class="disclaimer" data-od-id="disclaimer">
+      <strong>Disclaimer GLOBAL No. 10.</strong> SIDANG adalah alat bantu riset, bukan rekomendasi investasi. Seluruh putusan, kategori, dan konfidensi merupakan hasil analisis otomatis dari data arsip dan tidak menjamin akurasi prediksi. Harga yang tampil hanya berasal dari arsip sidang — <span class="warn">tidak ada harga real-time</span>. Keputusan investasi sepenuhnya tanggung jawab Anda.
+    </div>
+  </div>
+</footer>
+
+<script>
+  // scroll reveal
+  (function(){
+    var els = document.querySelectorAll('[data-reveal]');
+    if(!('IntersectionObserver' in window)){
+      els.forEach(function(e){e.classList.add('is-in')});
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){en.target.classList.add('is-in');io.unobserve(en.target)}
+      });
+    },{threshold:0.1});
+    els.forEach(function(e){io.observe(e)});
+  })();
+
+  // live search filter
+  var input = document.getElementById('search');
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#rows tr'));
+  var empty = document.getElementById('empty');
+  var count = document.getElementById('search-count');
+  input.addEventListener('input', function(){
+    var q = input.value.trim().toLowerCase();
+    var shown = 0;
+    rows.forEach(function(tr){
+      var hit = tr.textContent.toLowerCase().indexOf(q) !== -1;
+      tr.style.display = hit ? '' : 'none';
+      if(hit) shown++;
+    });
+    empty.classList.toggle('show', shown === 0);
+    count.textContent = q ? 'MENAMPILKAN ' + shown + ' PERKARA' : 'MENAMPILKAN SEMUA PERKARA';
+  });
+
+  // row click -> open berkas (placeholder)
+  rows.forEach(function(tr){
+    tr.addEventListener('click', function(){
+      var tick = tr.querySelector('.tick').textContent;
+      window.location.href = 'sidang-landing.html#mulai';
+    });
+    tr.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){e.preventDefault();tr.click()}
+    });
+  });
+</script>
+</body>
+</html>

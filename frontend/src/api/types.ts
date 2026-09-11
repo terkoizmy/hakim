@@ -67,4 +67,8 @@ export interface RestClient {
   ): Promise<TickersResponse>;
   /** Kontrak 1.2.3 — daftar sektor registry untuk dropdown filter. */
   fetchTickerSectors(): Promise<TickerSectorsResponse>;
+  /** Papan Detektif Investigasi & Relasi Konglomerasi */
+  fetchBoard(ticker: string): Promise<any>;
+  chatBoard(ticker: string, message: string): Promise<{ reply: string }>;
 }
+

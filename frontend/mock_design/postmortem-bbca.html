@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post-mortem BBCA — SIDANG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14120f;
+    --bg-2:#1a1713;
+    --surface:#201c17;
+    --surface-2:#26211a;
+    --fg:#ece7dd;
+    --muted:#a89f90;
+    --faint:#6f675a;
+    --border:#3a332a;
+    --border-soft:#2a251e;
+    --brass:#c9a24a;
+    --brass-soft:#e0c27a;
+    --brass-dim:#8a6f33;
+    --ok:#7fb069;
+    --warn:#d9a441;
+    --red:#c96a5a;
+    --font-display:"Fraunces", Georgia, serif;
+    --font-body:"Inter", system-ui, sans-serif;
+    --font-mono:"JetBrains Mono", ui-monospace, monospace;
+    --maxw:980px;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--brass);color:#14120f}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(201,162,74,.05), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px);
+  }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(20,18,15,.82);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:600;font-size:20px;letter-spacing:.5px}
+  .brand .gavel{width:22px;height:22px;color:var(--brass)}
+  .brand em{font-style:italic;color:var(--brass)}
+  .nav-links{display:flex;align-items:center;gap:26px;font-size:13.5px;color:var(--muted)}
+  .nav-links a{transition:color .2s}
+  .nav-links a:hover{color:var(--fg)}
+  .nav-cta{
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.5px;
+    color:var(--brass);border:1px solid var(--brass-dim);border-radius:999px;
+    padding:8px 16px;transition:all .2s;
+  }
+  .nav-cta:hover{background:var(--brass);color:#14120f;border-color:var(--brass)}
+
+  /* ---------- HEADER ---------- */
+  .page{padding:48px 0 0}
+  .crumb{font-family:var(--font-mono);font-size:12px;color:var(--faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:22px}
+  .crumb a{color:var(--brass)}
+  .crumb a:hover{color:var(--brass-soft)}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:26px;margin-bottom:30px}
+  .head .kicker{font-family:var(--font-mono);font-size:11px;color:var(--brass);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+  .head h1{font-family:var(--font-display);font-size:clamp(30px,4.5vw,44px);font-weight:500;line-height:1.1}
+  .head h1 em{font-style:italic;color:var(--brass-soft)}
+  .head .meta{font-size:13.5px;color:var(--muted);margin-top:10px}
+  .head .meta .mono{font-family:var(--font-mono);color:var(--fg)}
+  .head .badge{
+    display:inline-flex;align-items:center;gap:7px;
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.3px;
+    border-radius:6px;padding:5px 10px;white-space:nowrap;
+  }
+  .head .badge .dot{width:6px;height:6px;border-radius:50%}
+  .b-ok{color:var(--ok);border:1px solid rgba(127,176,105,.4);background:rgba(127,176,105,.06)}
+  .b-ok .dot{background:var(--ok)}
+
+  /* ---------- CHART ---------- */
+  .chart-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);padding:22px 22px 18px;margin-bottom:30px}
+  .chart-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+  .chart-head h2{font-family:var(--font-display);font-size:19px;font-weight:500}
+  .chart-head h2 em{font-style:italic;color:var(--brass-soft)}
+  .chart-head .note{font-family:var(--font-mono);font-size:11px;color:var(--faint);letter-spacing:.5px}
+  .chart{position:relative;width:100%;height:260px}
+  .chart svg{width:100%;height:100%;display:block;overflow:visible}
+  .chart .grid-line{stroke:var(--border-soft);stroke-width:1}
+  .chart .price-line{stroke:var(--brass);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .chart .post-fill{fill:rgba(201,162,74,.08)}
+  .chart .verdict-line{stroke:var(--brass-soft);stroke-width:1.5;stroke-dasharray:4 4}
+  .chart .verdict-dot{fill:var(--brass-soft)}
+  .chart .axis{font-family:var(--font-mono);font-size:10.5px;fill:var(--faint)}
+  .chart .price-label{font-family:var(--font-mono);font-size:10.5px;fill:var(--brass-soft)}
+  .chart .verdict-tag{font-family:var(--font-mono);font-size:10px;fill:var(--brass-soft);letter-spacing:.5px}
+
+  /* ---------- SUMMARY ROW ---------- */
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border-soft);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:30px}
+  .sum{background:var(--surface);padding:18px 20px}
+  .sum .lbl{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .sum .val{font-family:var(--font-mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums}
+  .sum .val.up{color:var(--ok)}
+  .sum .val.down{color:var(--red)}
+  .sum .sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+  /* ---------- OLD VERDICT CARD ---------- */
+  .verdict{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);padding:24px;margin-bottom:30px}
+  .verdict .tag{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--brass);margin-bottom:12px}
+  .verdict h2{font-family:var(--font-display);font-size:22px;font-weight:500;margin-bottom:6px}
+  .verdict h2 em{font-style:italic;color:var(--brass-soft)}
+  .verdict .reason{font-size:14.5px;color:var(--muted);max-width:62ch;margin-bottom:18px}
+  .verdict .q{font-family:var(--font-mono);font-size:11px;color:var(--brass);border:1px solid var(--brass-dim);border-radius:999px;padding:5px 12px;display:inline-block;margin:0 6px 6px 0;background:rgba(201,162,74,.05)}
+
+  /* ---------- FOOTER ---------- */
+  footer{border-top:1px solid var(--border-soft);padding:40px 0 48px;margin-top:56px}
+  .foot-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:28px}
+  .foot-brand{font-family:var(--font-display);font-size:18px;font-weight:500}
+  .foot-brand em{font-style:italic;color:var(--brass)}
+  .foot-links{display:flex;gap:24px;font-size:13px;color:var(--muted)}
+  .foot-links a:hover{color:var(--brass-soft)}
+  .disclaimer{
+    border:1px solid var(--border-soft);border-radius:10px;padding:18px 20px;
+    font-size:12.5px;color:var(--faint);line-height:1.7;background:var(--bg-2);
+  }
+  .disclaimer strong{color:var(--muted);font-weight:500}
+  .disclaimer .warn{color:var(--warn)}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:640px){
+    .summary{grid-template-columns:1fr}
+    .chart{height:220px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<header class="nav" data-od-id="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="sidang-landing.html" data-od-id="brand">
+      <svg class="gavel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l8 8-3 3-8-8z"/><path d="M6 10l8 8-3 3-8-8z"/><path d="M3 21h8"/><path d="M10 3l8 8"/></svg>
+      SIDANG<em>.</em>
+    </a>
+    <nav class="nav-links" data-od-id="nav-links">
+      <a href="berkas-perkara.html">Berkas Perkara</a>
+      <a href="jurnal-sidang.html">Jurnal</a>
+    </nav>
+    <a class="nav-cta" href="berkas-perkara.html" data-od-id="nav-cta">Daftar Perkara</a>
+  </div>
+</header>
+
+<!-- ============ POST-MORTEM ============ -->
+<main class="page" data-od-id="postmortem">
+  <div class="wrap">
+    <div class="crumb"><a href="jurnal-sidang.html">Jurnal Sidang</a><span class="sep" style="color:var(--faint);margin:0 6px">/</span>POST-MORTEM</div>
+
+    <div class="head" data-od-id="head">
+      <div>
+        <div class="kicker">Evaluasi Putusan</div>
+        <h1>BBCA<em>.</em> <span style="font-size:.55em;color:var(--muted)">Bank Central Asia</span></h1>
+        <div class="meta">Putusan <span class="mono">09 Sep 2026</span> · <span class="badge b-ok"><span class="dot"></span>Layak diteliti lanjut</span></div>
+      </div>
+    </div>
+
+    <!-- price chart -->
+    <div class="chart-card" data-od-id="chart">
+      <div class="chart-head">
+        <h2>Perjalanan <em>harga</em></h2>
+        <span class="note">ARSIP · BUKAN REAL-TIME</span>
+      </div>
+      <div class="chart">
+        <svg viewBox="0 0 900 260" preserveAspectRatio="none" role="img" aria-label="Grafik harga BBCA sejak tanggal putusan">
+          <line class="grid-line" x1="0" y1="40" x2="900" y2="40"/>
+          <line class="grid-line" x1="0" y1="130" x2="900" y2="130"/>
+          <line class="grid-line" x1="0" y1="220" x2="900" y2="220"/>
+          <path class="post-fill" d="M0,150 L120,142 L240,148 L360,138 L480,146 L600,120 L720,96 L900,70 L900,220 L0,220 Z"/>
+          <path class="price-line" d="M0,150 L120,142 L240,148 L360,138 L480,146 L600,120 L720,96 L900,70"/>
+          <line class="verdict-line" x1="360" y1="20" x2="360" y2="240"/>
+          <circle class="verdict-dot" cx="360" cy="138" r="4"/>
+          <text class="price-label" x="372" y="132">Rp 10.250</text>
+          <text class="verdict-tag" x="372" y="150">PUTUSAN</text>
+          <text class="axis" x="0" y="255">09 Sep</text>
+          <text class="axis" x="900" y="255" text-anchor="end">kini</text>
+          <text class="axis" x="0" y="34">Rp 10.900</text>
+          <text class="axis" x="0" y="214">Rp 9.800</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- summary row -->
+    <div class="summary" data-od-id="summary">
+      <div class="sum">
+        <div class="lbl">Harga saat putusan</div>
+        <div class="val">Rp 10.250</div>
+        <div class="sub">09 Sep 2026</div>
+      </div>
+      <div class="sum">
+        <div class="lbl">Harga terakhir</div>
+        <div class="val">Rp 10.900</div>
+        <div class="sub">arsip terbaru</div>
+      </div>
+      <div class="sum">
+        <div class="lbl">Selisih</div>
+        <div class="val up">+6,3%</div>
+        <div class="sub">sejak putusan</div>
+      </div>
+    </div>
+
+    <!-- old verdict card -->
+    <div class="verdict" data-od-id="verdict">
+      <div class="tag">Putusan Komite · 09 Sep 2026</div>
+      <h2>Layak <em>diteliti lanjut</em></h2>
+      <p class="reason">Fundamental bank tetap solid dengan pertumbuhan kredit yang sehat, sementara arus smart money menunjukkan akumulasi bertahap tanpa tekanan distribusi berarti. Insider tidak mencatat transaksi mencurigakan. Risiko utama terbatas pada valuasi yang sudah tinggi, sehingga komite menilai emiten layak diteliti lanjut, bukan rekomendasi beli.</p>
+      <span class="q">Apakah pertumbuhan kredit tetap terjaga?</span>
+      <span class="q">Apakah akumulasi smart money berlanjut?</span>
+      <span class="q">Apakah valuasi masih masuk akal?</span>
+    </div>
+  </div>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer data-od-id="footer">
+  <div class="wrap">
+    <div class="foot-top">
+      <span class="foot-brand">SIDANG<em>.</em></span>
+      <div class="foot-links">
+        <a href="berkas-perkara.html">Berkas Perkara</a>
+        <a href="jurnal-sidang.html">Jurnal</a>
+      </div>
+    </div>
+    <div class="disclaimer" data-od-id="disclaimer">
+      <strong>Disclaimer GLOBAL No. 10.</strong> SIDANG adalah alat bantu riset, bukan rekomendasi investasi. Seluruh putusan, kategori, dan konfidensi merupakan hasil analisis otomatis dari data arsip dan tidak menjamin akurasi prediksi. Harga yang tampil hanya berasal dari arsip sidang — <span class="warn">tidak ada harga real-time</span>. Keputusan investasi sepenuhnya tanggung jawab Anda.
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
