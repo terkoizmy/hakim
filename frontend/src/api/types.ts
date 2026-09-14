@@ -14,6 +14,7 @@ import type {
   TickersResponse,
   TrialEvent,
 } from '../types/contract';
+import type { BoardChatResponse } from '../types/board';
 
 export type TrialModeInput = 'auto' | 'fixture';
 
@@ -69,6 +70,6 @@ export interface RestClient {
   fetchTickerSectors(): Promise<TickerSectorsResponse>;
   /** Papan Detektif Investigasi & Relasi Konglomerasi */
   fetchBoard(ticker: string): Promise<any>;
-  chatBoard(ticker: string, message: string): Promise<{ reply: string }>;
+  chatBoard(ticker: string, message: string): Promise<BoardChatResponse>;
 }
 

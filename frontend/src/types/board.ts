@@ -77,6 +77,15 @@ export interface TickerBoardData {
   thesisSummary?: string;
 }
 
+/** Balasan POST /api/board/{ticker}/chat (CONTRACT 1.4.0).
+ *  `mode` jujur menyebut jalur yang dipakai: "llm" = model bahasa sungguhan,
+ *  "heuristik" = jawaban darurat dari data papan ketika LLM tidak tersedia. */
+export interface BoardChatResponse {
+  reply: string;
+  mode: 'llm' | 'heuristik';
+  model?: string | null;
+}
+
 export const EDGE_META: Record<EdgeType, { label: string; color: string; dash?: string }> = {
   memegang: { label: 'memegang saham', color: '#e07a5f' },
   menjabat: { label: 'menjabat di', color: '#c4b5a0' },

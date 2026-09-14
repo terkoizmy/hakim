@@ -204,14 +204,63 @@ Yang dikerjakan:
 Terverifikasi: `pytest` 32 lulus · `tsc -b` bersih · `vite build` bersih · 12↔42 kartu
 bolak-balik tanpa error konsol. **0 kredit** (semua dari cache BBCA).
 
-**Utang yang tersisa dari temuan ini:**
+**Utang yang tersisa dari temuan ini:** ketiganya sudah diselesaikan — lihat §2c.
 
-- `POST /api/board/{ticker}/chat` masih **heuristik kata kunci**, bukan LLM — sudah ditandai
-  di CONTRACT §3.2.
-- Orang yang sama muncul sebagai **dua node** karena ejaan nama berbeda dari Sectors
-  (`Tan Ho Hien/Subur Disebut Juga Subur Tan` vs `Tan Ho Hien/Subur Atau Dipanggil Subur Tan`).
-  Perlu normalisasi nama sebelum jadi masalah di emiten lain.
-- Panel kanan "Benang Terhubung (44)" memakai total edge graf, bukan yang tersaring tampilan.
+---
+
+## 2c. **SELESAI 2026-09-14** — tiga utang Papan Bukti + perapian tata letak
+
+### 1. Chat papan: heuristik → LLM sungguhan
+
+`POST /api/board/{ticker}/chat` sekarang menyusun jawaban lewat `LLMClient` dengan prompt
+sistem yang **mengikat jawaban pada isi papan** (anti-halusinasi) + konteks graf hasil
+`_chat_context`. Balasan membawa `mode` (`"llm"`/`"heuristik"`) dan `model`, jadi FE bisa
+jujur soal jalur yang dipakai.
+
+Konteks graf memisahkan **kepemilikan** dari **jejak transaksi** — broker summary masuk baris
+`Jejak broker/institusi (bukan pemegang saham): …` supaya LLM tidak menyebut broker sebagai
+pemegang saham. Balasan kosong dari LLM (`"   "`) juga jatuh ke heuristik, bukan ditampilkan.
+
+FE: `BoardChatResponse` di `types/board.ts`, chip **kuning "heuristik"** (title: LLM tidak
+tersedia) vs chip **hijau `{model}`**. Bukti live: chip `deepseek-v4-flash:0731` dan jawaban
+memuat angka papan (Dwimuria 54,9%; red flag konsentrasi level medium; stock split) — bukan
+hafalan model. **0 kredit Sectors** (graf dari cache), hanya token LLM.
+
+### 2. Identitas orang: dua ejaan → satu kartu
+
+`canonical_person_name` membuang alias (`/…`, `a.k.a.`, "yang biasa dipanggil"), dengan
+pengaman: nama sebelum `/` yang terlalu pendek (`A/Divisi Korporat`) **tidak** dianggap nama
+utama. Orang yang muncul di registri pemegang saham **dan** di manajemen menjadi satu node
+`pemegang` dengan jabatan di `sub` dan kedua benang (`memegang` + `menjabat`); kedua ejaan
+asli disimpan di `detail` sebagai jejak audit.
+
+Sekaligus: `_fmt_pct` tidak lagi menciutkan kepemilikan kecil jadi `0.0%`
+(`0.0001` fraksi → **`0.01%`**), dan `_fixture_lookup` mencocokkan fixture secara longgar
+terhadap segmen `sections=` sehingga mode fixture tidak lagi kosong untuk `company_report`
+7-seksi.
+
+### 3. Panel kanan memakai benang yang benar-benar tampil
+
+`Benang Terhubung (44)` → **`(14)`** — 14 = edge yang benar-benar digambar (sudah tersaring
+`activeEdgeTypes` + `visibleIdSet`). Daftar dikelompokkan **per entitas**: satu orang = satu
+baris, benangnya digabung di baris kedua (`memegang saham 0.01% · menjabat di Director`).
+Sisa benang yang tersembunyi filter disebut eksplisit ("N benang tersembunyi oleh filter tipe").
+
+### 4. Perapian tata letak (dari tangkapan layar pemilik proyek)
+
+- **Legenda satu kolom** dengan grid bersama `grid-cols-[12px_16px_1fr]` — checkbox, contoh
+  warna/garis, dan label ketiganya mulai pada x yang sama; baris lintas-emiten ikut rata.
+  Label tak lagi terpotong ("menunjuk f…" → utuh).
+- Kolom kiri/kanan dinaikkan `600 → 720px` agar sejajar canvas.
+- Baris benang: teks relasi turun ke baris kedua pada x tetap (`pl-4`), tidak lagi bergerigi.
+- Ruang mati kolom kanan dihapus — yang melar mengisi kolom adalah **daftar benang**
+  (`flex-1`), bukan kartu detail yang menyisakan lubang.
+
+### Verifikasi
+
+`pytest` **65 lulus** (33 tes papan baru di `backend/tests/test_board.py`, semuanya hermetic:
+`sectors_mode="fixture"` + `ollama_api_key=""` → 0 kredit & 0 token) · `tsc -b` bersih ·
+`vite build` bersih · jalur LLM diuji lewat UI sungguhan. CONTRACT dinaikkan ke **1.4.0**.
 
 ---
 

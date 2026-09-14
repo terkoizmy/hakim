@@ -1,7 +1,9 @@
 # CONTRACT — Kontrak Backend ↔ Frontend SIDANG
 
-> **Status: FROZEN** · schema_version `1.3.0` · Tertulis 2026-09-09 oleh orkestrator.
+> **Status: FROZEN** · schema_version `1.4.0` · Tertulis 2026-09-09 oleh orkestrator.
 >
+> **Changelog 1.4.0** (2026-09-14): `POST /api/board/{ticker}/chat` **kini memanggil LLM sungguhan** dan balasannya menambah `mode` (`"llm"`/`"heuristik"`) + `model` — FE wajib menandai balasan heuristik sebagai bukan analisis AI (lihat §3.2). Aturan identitas orang di §3.2: satu orang di registri pemegang saham DAN di manajemen = **satu** node `pemegang` (jabatan masuk `sub`, kedua benang tetap ada); ejaan alias Sectors dinormalisasi. Kedua endpoint board kini menjawab `422 Ticker tidak dikenal` untuk ticker di luar registry.
+
 > **Changelog 1.1.0** (2026-09-09): endpoint `GET /api/trials/{trial_id}/price-series` baru; postmortem menyertakan `price_series: Point[] | null`.
 >
 > **Changelog 1.2.0** (2026-09-09): endpoint `GET /api/tickers` baru — daftar emiten untuk dashboard "Berkas Perkara".
@@ -148,7 +150,7 @@ Validasi: pydantic di backend; jika JSON hakim invalid → 1x repair loop → bi
 | `GET` | `/api/tickers/sectors` | `200 { "items": [ { "sector", "count" } ], "total" }` — daftar sektor berbeda dalam registry + jumlah emiten per sektor (terurut terbanyak dulu) untuk dropdown filter dashboard. Sejak 1.2.3. |
 | `GET` | `/api/health` | `200 { "status": "ok", "sectors_mode": "fixture\|live", "version": "…" }` |
 | `GET` | `/api/board/{ticker}` | `200 { "ticker", "name", "nodes": [BoardNode], "edges": [BoardEdge], "initialChat", "aiInsights": { "<insight_key>": "…" }, "priceHistory": Point[] \| null, "metricsComparison": MetricBenchmark[], "riskScore": RiskScorecard \| null, "thesisSummary" }` — graf Papan Bukti Detektif untuk emiten yang sudah disidang. Sejak 1.3.0. |
-| `POST` | `/api/board/{ticker}/chat` | body `{ "message": "…" }` → `200 { "reply": "…" }`. Sejak 1.3.0. **Saat ini masih heuristik kata kunci**, bukan LLM — lihat catatan di bawah. |
+| `POST` | `/api/board/{ticker}/chat` | body `{ "message": "…" }` → `200 { "reply": "…", "mode": "llm" \| "heuristik", "model": "…" \| null }`. Sejak 1.3.0; `mode`/`model` sejak 1.4.0. LLM menjawab dari konteks graf papan (**0 kredit Sectors** — graf dibangun dari cache/arsip). `mode: "heuristik"` + `model: null` = LLM absen/gagal/membalas kosong; FE **wajib** menampilkannya sebagai jawaban darurat, bukan analisis AI. |
 
 CORS: allow `http://localhost:5173` (Vite default).
 
@@ -175,7 +177,25 @@ CORS: allow `http://localhost:5173` (Vite default).
 
 Kolom `aiInsights` memakai kunci per kategori: `pemegang`, `orang`, `redflag`, `valuasi`, `fakta` (dipakai panel detail).
 
-> **Keterbatasan yang diketahui (1.3.0):** `POST /api/board/{ticker}/chat` belum memanggil LLM — balasannya disusun dari heuristik kata kunci atas isi graf (mis. pertanyaan memuat "pemegang"/"saham" → daftar pemegang saham). FE tidak boleh menampilkannya sebagai analisis AI sampai ini diganti LLM sungguhan.
+**Identitas orang (sejak 1.4.0).** Sectors menulis nama orang dengan ejaan berbeda antar
+bagian payload (`Tan Ho Hien/Subur Disebut Juga Subur Tan` di `major_shareholders` vs
+`Tan Ho Hien/Subur Atau Dipanggil Subur Tan` di `key_executives`). Backend menormalkan nama
+lewat `canonical_person_name` (buang alias setelah `/`, `a.k.a.`, "yang biasa dipanggil")
+sehingga orang yang sama menjadi **satu** node. Bila orang itu muncul di kedua registri:
+
+- tipe node = `pemegang` (dia benar-benar punya saham — jangan turunkan jadi `orang`),
+- jabatan masuk ke `sub` (mis. `Kepemilikan 0.01% · Director`),
+- **kedua** benang tetap ada (`memegang` + `menjabat`),
+- kedua ejaan asli disimpan di `data.detail` sebagai jejak audit.
+
+**Persen.** `major_shareholders` mengirim campuran (fraksi 0–1 atau persen) sehingga skalanya
+dideteksi; `executives_shareholdings` **selalu** fraksi (×100). `_fmt_pct` mempertahankan
+kepemilikan kecil (`0.0001` fraksi → `0.01%`, bukan `0.0%`).
+
+> **Catatan (1.4.0):** jalur LLM sudah terbukti hidup — jawaban memuat angka papan
+> (mis. Dwimuria 54,9%, red flag konsentrasi level medium) dan bukan hafalan model.
+> Bila LLM absen/gagal, balasan turun ke heuristik kata kunci dengan `mode: "heuristik"`;
+> FE menandainya dengan chip kuning "heuristik" (bukan chip hijau nama model).
 
 ### 3.1 Kode error `trial_failed`
 

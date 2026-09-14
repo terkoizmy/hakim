@@ -11,6 +11,7 @@ import type {
   TickerSectorsResponse,
   TickersResponse,
 } from '../types/contract';
+import type { BoardChatResponse } from '../types/board';
 import { config } from '../config';
 import { ApiError, type RestClient } from './types';
 
@@ -82,7 +83,7 @@ export const restClient: RestClient = {
   },
 
   chatBoard(ticker, message) {
-    return request<{ reply: string }>(`/api/board/${encodeURIComponent(ticker)}/chat`, {
+    return request<BoardChatResponse>(`/api/board/${encodeURIComponent(ticker)}/chat`, {
       method: 'POST',
       body: JSON.stringify({ message }),
     });

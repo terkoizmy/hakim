@@ -14,8 +14,11 @@ import re
 from datetime import date, timedelta
 from typing import Any, Optional
 
+from .config import Settings
 from .db import Database
+from .llm import LLMClient
 from .models import (
+    BoardChatResponse,
     BoardEdge,
     BoardNode,
     BoardNodeData,
@@ -71,6 +74,41 @@ def slugify(text: str) -> str:
     return cleaned[:32].strip("_")
 
 
+# Sectors menuliskan alias di dalam SATU string nama. Bentuk yang benar-benar
+# muncul di data produksi: "Nama Utama/Alias", lalu varian
+# "… Disebut Juga …", "… Atau Dipanggil …".
+_ALIAS_MARKERS = (
+    " disebut juga ",
+    " disebut pula ",
+    " atau dipanggil ",
+    " yang biasa dipanggil ",
+    " yang juga dikenal ",
+    " alias ",
+    " a.k.a. ",
+    " a.k.a ",
+)
+
+
+def canonical_person_name(raw: str) -> str:
+    """Nama utama tanpa bagian alias — dipakai sebagai identitas untuk dedup.
+
+    Bukan untuk ditampilkan mentah-mentah: pemanggil tetap menyimpan ejaan asli
+    di `detail` supaya bisa dilacak balik ke respons Sectors.
+    """
+    name = raw.strip()
+    if "/" in name:
+        head = name.split("/", 1)[0].strip()
+        if len(head) >= 3:
+            name = head
+    haystack = f" {name.lower()} "
+    for marker in _ALIAS_MARKERS:
+        idx = haystack.find(marker)
+        if idx != -1:
+            name = name[:idx]
+            break
+    return name.strip(" ,;-") or raw.strip()
+
+
 def _fmt_rp(value: float | int) -> str:
     """Format Rupiah value into human-readable string."""
     abs_val = abs(value)
@@ -92,6 +130,40 @@ def _safe_float(val: Any, default: float | None = None) -> float | None:
         return float(val)
     except (ValueError, TypeError):
         return default
+
+
+def _pct_from_registry(raw: Any) -> float | None:
+    """Persen kepemilikan dari registri major_shareholders (0–100).
+
+    Sectors kadang mengirim fraksi (0–1) dan kadang sudah persen — jaga
+    perilaku lama: nilai <= 1 dianggap fraksi.
+    """
+    num = _safe_float(raw)
+    if num is None:
+        return None
+    return num * 100 if 0 < num <= 1.0 else num
+
+
+def _pct_from_executive(raw: Any) -> float | None:
+    """Persen dari `executives_shareholdings` — selalu fraksi (0.0004 = 0,04%)."""
+    num = _safe_float(raw)
+    return None if num is None else num * 100
+
+
+def _fmt_pct(pct: float) -> str:
+    """Format persen kepemilikan dengan presisi menyesuaikan besarannya.
+
+    Kalau selalu dibulatkan 1 desimal, pemegang kecil terlihat "0.0%" — padahal
+    registri IDX memang mencatat kepemilikan mereka (mis. 0,006% = 7,8 juta
+    lembar). Informasinya hilang, jadi presisi dinaikkan untuk nilai kecil.
+    """
+    if pct >= 1:
+        return f"{pct:.1f}%"
+    if pct >= 0.01:
+        return f"{pct:.2f}%"
+    if pct > 0:
+        return f"{pct:.3f}%"
+    return "0%"
 
 
 def _get_latest_financials(financials: dict[str, Any]) -> dict[str, Any]:
@@ -350,137 +422,199 @@ async def build_board_for_ticker(
         )
     )
 
-    # ------------------------------------------------------------- 2. Pemegang Saham Nodes
-    sh_names_detected: list[str] = []
-    for i, sh in enumerate(shareholders[:6]):
+    # ------------------------------------------- 2. Pemegang Saham & Orang Kunci
+    # Satu orang bisa terdaftar DUA KALI di data Sectors: di registri pemegang
+    # saham dan di jajaran direksi/komisaris — sering dengan ejaan alias berbeda
+    # ("Tan Ho Hien/Subur Disebut Juga Subur Tan" vs "…/Subur Atau Dipanggil
+    # Subur Tan"). Karena itu keduanya dikumpulkan dulu ke satu registry orang,
+    # baru dipancarkan jadi kartu: papan tidak boleh menampilkan orang yang sama
+    # sebagai dua node terpisah.
+    people: dict[str, dict[str, Any]] = {}
+
+    def _person(raw_name: str) -> dict[str, Any]:
+        canonical = canonical_person_name(raw_name)
+        key = slugify(canonical) or slugify(raw_name) or "orang"
+        person = people.get(key)
+        if person is None:
+            person = {
+                "key": key,
+                "name": canonical,
+                "raw_names": [],
+                "holder_pct": None,
+                "exec_pct": None,
+                "share_amount": None,
+                "share_value": None,
+                "position": None,
+                "cross": False,
+            }
+            people[key] = person
+        raw = raw_name.strip()
+        if raw and raw not in person["raw_names"]:
+            person["raw_names"].append(raw)
+        return person
+
+    for sh in shareholders[:6]:
         if not isinstance(sh, dict):
             continue
-        holder_name = sh.get("name") or sh.get("shareholder_name") or f"Pemegang {i+1}"
-        sh_names_detected.append(holder_name)
-        pct_raw = sh.get("share_percentage") or sh.get("percentage") or 0.0
-        if isinstance(pct_raw, str):
-            try:
-                pct_raw = float(pct_raw)
-            except ValueError:
-                pct_raw = 0.0
-        if isinstance(pct_raw, (int, float)):
-            pct_num = pct_raw * 100 if 0 < pct_raw <= 1.0 else pct_raw
-            pct_str = f"{pct_num:.1f}%"
-        else:
-            pct_str = str(pct_raw)
-
-        # Detect conglomerate affiliation
-        is_cross = any(k in holder_name.lower() for k in CONGLOMERATE_KEYWORDS)
-        group_name = next(
-            (v for k, v in CONGLOMERATE_KEYWORDS.items() if k in holder_name.lower()),
-            None,
+        holder_name = sh.get("name") or sh.get("shareholder_name") or ""
+        if not holder_name:
+            continue
+        person = _person(holder_name)
+        pct_num = _pct_from_registry(sh.get("share_percentage") or sh.get("percentage"))
+        if pct_num is not None and (
+            person["holder_pct"] is None or pct_num > person["holder_pct"]
+        ):
+            person["holder_pct"] = pct_num
+        if sh.get("share_amount"):
+            person["share_amount"] = sh["share_amount"]
+        if sh.get("share_value"):
+            person["share_value"] = sh["share_value"]
+        person["cross"] = person["cross"] or any(
+            k in holder_name.lower() for k in CONGLOMERATE_KEYWORDS
         )
 
-        detail_items = [f"Porsi Saham: {pct_str} di {sym}"]
+    # Kepemilikan saham direksi/komisaris (executives_shareholdings), diindeks
+    # per nama utama supaya cocok walau ejaan aliasnya berbeda.
+    exec_sh_map: dict[str, dict[str, Any]] = {
+        slugify(canonical_person_name(esh["name"])): esh
+        for esh in exec_shareholdings
+        if isinstance(esh, dict) and esh.get("name")
+    }
+
+    for mg in management[:5]:
+        if not isinstance(mg, dict):
+            continue
+        person_name = mg.get("name") or ""
+        if not person_name:
+            continue
+        person = _person(person_name)
+        if not person["position"]:
+            person["position"] = mg.get("position") or mg.get("title") or "Manajemen Kunci"
+        person["cross"] = person["cross"] or any(
+            k in person_name.lower() for k in CONGLOMERATE_KEYWORDS
+        )
+        exec_sh = exec_sh_map.get(person["key"])
+        if exec_sh:
+            pct_num = _pct_from_executive(exec_sh.get("share_percentage"))
+            if pct_num is not None and (
+                person["exec_pct"] is None or pct_num > person["exec_pct"]
+            ):
+                person["exec_pct"] = pct_num
+            if exec_sh.get("share_amount") and not person["share_amount"]:
+                person["share_amount"] = exec_sh["share_amount"]
+
+    # Pancarkan satu kartu per orang. Tipe node mengikuti registri asalnya:
+    # tercatat di registri pemegang saham → `pemegang` (punya `value` = %),
+    # hanya di jajaran manajemen → `orang`. Orang yang ada di keduanya menjadi
+    # `pemegang` dengan jabatan ikut di `sub`, dan membawa DUA benang sekaligus
+    # (`memegang` + `menjabat`) — itu inti "benang merah" papan ini.
+    sh_names_detected: list[str] = []
+    holder_idx = 0
+    exec_idx = 0
+
+    for person in people.values():
+        is_holder = person["holder_pct"] is not None
+        pct_str = _fmt_pct(person["holder_pct"]) if is_holder else None
+        exec_pct_str = (
+            _fmt_pct(person["exec_pct"]) if person["exec_pct"] is not None else None
+        )
+
+        sub_bits: list[str] = []
+        if pct_str:
+            sub_bits.append(f"Kepemilikan {pct_str}")
+        if person["position"]:
+            sub_bits.append(person["position"])
+
+        detail_items: list[str] = []
+        group_name = next(
+            (v for k, v in CONGLOMERATE_KEYWORDS.items() if k in person["name"].lower()),
+            None,
+        )
         if group_name:
-            detail_items.insert(0, f"Afiliasi: {group_name}")
+            detail_items.append(f"Afiliasi: {group_name}")
+        if pct_str:
+            detail_items.append(f"Porsi Saham: {pct_str} di {sym}")
+        if not is_holder and exec_pct_str:
+            detail_items.append(f"Porsi Saham (direksi): {exec_pct_str}")
+        if person["position"]:
+            detail_items.append(f"Jabatan: {person['position']}")
+            detail_items.append(f"Perusahaan: {company_name}")
+        if person["share_amount"]:
+            detail_items.append(
+                f"Jumlah Lembar: {int(person['share_amount']):,}".replace(",", ".")
+            )
+        if person["share_value"]:
+            detail_items.append(f"Nilai: {_fmt_rp(float(person['share_value']))}")
+        # Ejaan asli tetap ditampilkan agar bisa dilacak balik ke Sectors.
+        aliases = [r for r in person["raw_names"] if r != person["name"]]
+        if aliases:
+            detail_items.append(f"Nama tercatat: {'; '.join(aliases)}")
 
-        # Include share_amount if available
-        share_amount = sh.get("share_amount")
-        if share_amount:
-            detail_items.append(f"Jumlah Lembar: {int(share_amount):,}".replace(",", "."))
+        if is_holder:
+            node_id = f"pemegang_{person['key']}"
+            node_xy = {"x": 200, "y": 120 + holder_idx * 80}
+            holder_idx += 1
+            sh_names_detected.append(person["name"])
+        else:
+            node_id = f"orang_{person['key']}"
+            node_xy = {"x": 680, "y": 140 + exec_idx * 85}
+            exec_idx += 1
 
-        share_value = sh.get("share_value")
-        if share_value:
-            detail_items.append(f"Nilai: {_fmt_rp(float(share_value))}")
-
-        node_id = f"pemegang_{slugify(holder_name)}_{i}"
         nodes.append(
             BoardNode(
                 id=node_id,
-                type="pemegang",
-                position={"x": 200, "y": 120 + i * 80},
+                type="pemegang" if is_holder else "orang",
+                position=node_xy,
                 data=BoardNodeData(
-                    type="pemegang",
-                    label=holder_name,
-                    sub=f"Kepemilikan {pct_str}",
+                    type="pemegang" if is_holder else "orang",
+                    label=person["name"],
+                    sub=" · ".join(sub_bits) or None,
                     value=pct_str,
                     detail=detail_items,
-                    source="Sectors Ownership",
-                    cross=is_cross,
+                    source="Sectors Ownership" if is_holder else "Sectors Management",
+                    cross=person["cross"],
                 ),
                 rotate=round(random.uniform(-4.5, 4.5), 1),
             )
         )
-        edges.append(
-            BoardEdge(
-                id=f"edge_p_{node_id}",
-                source=node_id,
-                target=f"emiten_{sym}",
-                type="memegang",
-                label=pct_str,
+
+        if is_holder:
+            edges.append(
+                BoardEdge(
+                    id=f"edge_p_{node_id}",
+                    source=node_id,
+                    target=f"emiten_{sym}",
+                    type="memegang",
+                    label=pct_str,
+                )
             )
-        )
-
-    # ------------------------------------------------------------- 3. Orang Kunci / Direksi Nodes
-    exec_sh_map: dict[str, dict[str, Any]] = {}
-    for esh in exec_shareholdings:
-        if isinstance(esh, dict) and esh.get("name"):
-            exec_sh_map[esh["name"].lower()] = esh
-
-    for i, mg in enumerate(management[:5]):
-        if not isinstance(mg, dict):
-            continue
-        person_name = mg.get("name") or f"Direksi {i+1}"
-        position = mg.get("position") or mg.get("title") or "Manajemen Kunci"
-        is_cross = any(k in person_name.lower() for k in CONGLOMERATE_KEYWORDS)
-
-        detail_items = [f"Jabatan: {position}", f"Perusahaan: {company_name}"]
-
-        # Check if this executive holds shares (from executives_shareholdings)
-        exec_sh = exec_sh_map.get(person_name.lower())
-        if exec_sh:
-            sh_amount = exec_sh.get("share_amount")
-            sh_pct = exec_sh.get("share_percentage")
-            if sh_amount:
-                detail_items.append(f"Kepemilikan Saham: {int(sh_amount):,} lembar".replace(",", "."))
-            if sh_pct:
-                detail_items.append(f"Porsi: {float(sh_pct) * 100:.4f}%")
-
-        node_id = f"orang_{slugify(person_name)}_{i}"
-        nodes.append(
-            BoardNode(
-                id=node_id,
-                type="orang",
-                position={"x": 680, "y": 140 + i * 85},
-                data=BoardNodeData(
-                    type="orang",
-                    label=person_name,
-                    sub=position,
-                    detail=detail_items,
-                    source="Sectors Management",
-                    cross=is_cross,
-                ),
-                rotate=round(random.uniform(-4.0, 4.0), 1),
+        if person["position"]:
+            edges.append(
+                BoardEdge(
+                    id=f"edge_o_{node_id}",
+                    source=node_id,
+                    target=f"emiten_{sym}",
+                    type="menjabat",
+                    label=person["position"][:18],
+                )
             )
-        )
-        edges.append(
-            BoardEdge(
-                id=f"edge_o_{node_id}",
-                source=node_id,
-                target=f"emiten_{sym}",
-                type="menjabat",
-                label=position[:18],
+        # Direksi bersaham yang tidak masuk registri pemegang saham: benang
+        # kepemilikannya tetap digambar agar jejaknya tidak hilang.
+        if not is_holder and (exec_pct_str or person["share_amount"]):
+            label = (
+                f"{int(person['share_amount']):,} lbr".replace(",", ".")
+                if person["share_amount"]
+                else exec_pct_str
             )
-        )
-
-        # If executive has shareholding, create edge to emiten with shareholding info
-        if exec_sh and exec_sh.get("share_amount"):
             edges.append(
                 BoardEdge(
                     id=f"edge_esh_{node_id}",
                     source=node_id,
                     target=f"emiten_{sym}",
                     type="memegang",
-                    label=f"{int(exec_sh['share_amount']):,} lbr".replace(",", "."),
+                    label=label,
                 )
             )
-
     # ------------------------------------------------------------- 4. Red Flag Nodes (dari berbagai sumber)
     red_flags: list[dict[str, Any]] = []
 
@@ -1360,4 +1494,144 @@ async def build_board_for_ticker(
         metricsComparison=metrics_comp,
         riskScore=risk_score,
         thesisSummary=thesis_summary,
+    )
+
+
+# ============================================================ Chat papan bukti
+
+BOARD_CHAT_SYSTEM = (
+    "Anda analis intelijen pasar modal Indonesia yang membacakan PAPAN BUKTI "
+    "investigasi emiten. Jawab HANYA dari bukti pada papan yang diberikan — "
+    "jangan menambah fakta dari luar papan. Gaya: Bahasa Indonesia, ringkas "
+    "(maksimal 4 kalimat), sebut angka bila ada, sebut nama sumber buktinya. "
+    "Bila bukti di papan tidak memuat jawabannya, katakan terus terang bahwa "
+    "bukti itu belum ada di papan. Jangan memberi rekomendasi beli/jual."
+)
+
+_CHAT_LIMIT = 6  # maksimum entri per kategori yang dikirim ke LLM (hemat token)
+
+
+def _chat_context(board: BoardResponse) -> str:
+    """Ringkas graf papan menjadi konteks teks — tanpa id/koordinat, hemat token."""
+    buckets: dict[str, list[str]] = {
+        "pemegang": [],
+        "orang": [],
+        "aliran": [],
+        "redflag": [],
+        "kabar": [],
+        "fakta": [],
+    }
+    for node in board.nodes:
+        d = node.data
+        bucket = buckets.get(d.type)
+        if bucket is None or len(bucket) >= _CHAT_LIMIT:
+            continue
+        bits = [d.label]
+        if d.sub:
+            bits.append(f"({d.sub})")
+        if d.value:
+            bits.append(f"= {d.value}")
+        if d.severity:
+            bits.append(f"[{d.severity}]")
+        bucket.append(" ".join(bits))
+
+    lines = [f"Emiten: {board.ticker} — {board.name}"]
+    category_labels = {
+        "pemegang": "Pemegang saham (registri IDX)",
+        "orang": "Direksi/komisaris",
+        "aliran": "Jejak broker/institusi (bukan pemegang saham)",
+        "redflag": "Red flag",
+        "kabar": "Bukti kabar",
+        "fakta": "Fakta angka",
+    }
+    for key, label in category_labels.items():
+        if buckets[key]:
+            lines.append(f"{label}: " + "; ".join(buckets[key]))
+    if board.thesisSummary:
+        lines.append(f"Ringkasan tesis sidang: {board.thesisSummary}")
+    if board.riskScore:
+        lines.append(f"Skor risiko papan: {board.riskScore.overall}")
+    return "\n".join(lines)
+
+
+def _heuristic_reply(ticker: str, question: str, board: BoardResponse) -> str:
+    """Jawaban cadangan tanpa LLM: heuristik kata kunci atas isi graf.
+
+    Hanya dipakai saat LLM tidak tersedia/gagal. Pemanggil WAJIB menandai
+    responsnya `mode="heuristik"` supaya frontend tidak menyajikannya sebagai
+    analisis AI (CONTRACT §3.2).
+    """
+    q = question.strip().lower()
+    sh_list = [n.data.label for n in board.nodes if n.data.type == "pemegang"]
+    mg_list = [
+        f"{n.data.label} ({n.data.sub})" for n in board.nodes if n.data.type == "orang"
+    ]
+    rf_list = [n.data.label for n in board.nodes if n.data.type == "redflag"]
+
+    if "pemilik" in q or "pemegang" in q or "saham" in q:
+        return (
+            f"Berdasarkan data registri IDX, pemegang saham utama {ticker} meliputi: "
+            f"{', '.join(sh_list) if sh_list else 'Masyarakat / Publik'}."
+        )
+    if "direksi" in q or "komisaris" in q or "manajemen" in q or "orang" in q:
+        return (
+            f"Jajaran pengurus kunci {ticker} saat ini tercatat: "
+            f"{', '.join(mg_list[:4]) if mg_list else 'Belum terindeks'}."
+        )
+    if "red flag" in q or "risiko" in q or "kejanggalan" in q:
+        if rf_list:
+            return f"Temuan risiko penting pada {ticker}: " + " | ".join(rf_list)
+        return (
+            f"Tidak ada temuan red flag berat yang terindikasi pada audit komite "
+            f"sidang terkini {ticker}."
+        )
+    if "valuasi" in q or "harga" in q or "pb" in q or "pe" in q:
+        return board.aiInsights.get(
+            "fakta", f"Valuasi {ticker} saat ini terpantau di papan fakta metrik."
+        )
+    return (
+        f"Investigasi {ticker} ({board.name}): {board.thesisSummary} Anda dapat "
+        f"mengklik node pada papan untuk memperluas jaringan koneksi."
+    )
+
+
+async def answer_board_question(
+    ticker: str,
+    question: str,
+    board: BoardResponse,
+    llm: LLMClient,
+    settings: Settings,
+) -> BoardChatResponse:
+    """Jawab pertanyaan user tentang papan bukti.
+
+    Jalur utama: LLM sungguhan dengan konteks graf papan (0 kredit Sectors —
+    graf dibangun dari cache/arsip, bukan panggilan baru). Bila LLM tidak
+    dikonfigurasi atau gagal, jatuh ke heuristik dan `mode` menandainya.
+    """
+    if llm.available:
+        try:
+            reply = await llm.chat(
+                model=settings.model_analyst,
+                messages=[
+                    {"role": "system", "content": BOARD_CHAT_SYSTEM},
+                    {
+                        "role": "user",
+                        "content": f"{_chat_context(board)}\n\nPertanyaan: {question}",
+                    },
+                ],
+                temperature=0.2,
+                max_tokens=700,
+            )
+            text = (reply or "").strip()
+            if text:
+                return BoardChatResponse(
+                    reply=text, mode="llm", model=settings.model_analyst
+                )
+        except Exception as exc:  # LLMUnavailable, timeout, 429, JSON rusak, dsb.
+            logger.warning(
+                "Chat papan %s gagal via LLM (%s) — jatuh ke heuristik", ticker, exc
+            )
+
+    return BoardChatResponse(
+        reply=_heuristic_reply(ticker, question, board), mode="heuristik"
     )

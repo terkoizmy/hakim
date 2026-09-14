@@ -35,6 +35,11 @@ FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 # keys keep the full query string.
 _FIXTURE_STRIP_PARAMS = {"start", "end", "classifications", "periods"}
 
+
+def _strip_sections(key: str) -> str:
+    """Buang segmen `sections=...` dari kunci fixture (dipakai pencocokan longgar)."""
+    return ":".join(part for part in key.split(":") if not part.startswith("sections="))
+
 # Listed-companies registry (CONTRACT 1.2.0): cached 1 day, refreshed only
 # when empty/expired. Live refresh paginates the screener (max 200/page).
 LISTED_COMPANIES_CACHE_KEY = "listed_companies"
@@ -166,8 +171,18 @@ class SectorsClient:
             if match:
                 ticker = match.group(1).upper()
         table = self._fixtures.get(ticker)
-        if table and fkey in table:
-            return table[fkey]
+        if table:
+            if fkey in table:
+                return table[fkey]
+            # Fixture adalah snapshot mentah satu endpoint: kombinasi `sections`
+            # pada permintaan bisa berbeda dari saat snapshot diambil (mis. papan
+            # meminta `overview` yang tidak ada di snapshot sidang 6-bagian).
+            # Cocokkan name+symbol saja — bagian yang tidak ada di payload
+            # ditangani pemanggil sebagai data kosong, bukan error.
+            base = _strip_sections(fkey)
+            for key, payload in table.items():
+                if _strip_sections(key) == base:
+                    return payload
         # GENERIC fallback: replace the symbol everywhere in the key
         # (symbol position AND any `where=symbol in ['X']` clause).
         gkey = fkey.replace(ticker, "__generic__") if ticker else fkey

@@ -280,3 +280,7 @@ class BoardChatRequest(BaseModel):
 
 class BoardChatResponse(BaseModel):
     reply: str
+    # 'llm' = jawaban LLM dari konteks graf; 'heuristik' = jawaban cadangan saat
+    # LLM tidak tersedia/gagal (FE tidak boleh menyebutnya analisis AI — §3.2).
+    mode: str = "llm"
+    model: Optional[str] = None

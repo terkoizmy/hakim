@@ -42,6 +42,13 @@ const SEV_CLS: Record<string, string> = {
   tinggi: 'text-[#c96a5a] border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)]',
 };
 
+// Grid bersama untuk semua baris legenda: [checkbox][contoh warna/garis][label].
+// Dipakai legenda node, legenda benang, dan baris lintas-emiten supaya label
+// ketiganya mulai pada x yang sama (sebelumnya flex + lebar swatch berbeda
+// membuat teks tidak rata).
+const LEGEND_ROW =
+  'grid grid-cols-[12px_16px_1fr] items-center gap-x-2 cursor-pointer text-[11.5px] transition-colors';
+
 const CENTER_X = 500;
 const CENTER_Y = 360;
 
@@ -709,7 +716,9 @@ export default function DetectiveBoardPage() {
 
   const [crossOnly, setCrossOnly] = useState(false);
   const [chat, setChat] = useState('');
-  const [chatLog, setChatLog] = useState<{ role: 'user' | 'ai'; text: string }[]>([
+  const [chatLog, setChatLog] = useState<
+    { role: 'user' | 'ai'; text: string; mode?: 'llm' | 'heuristik'; model?: string | null }[]
+  >([
     {
       role: 'ai',
       text: `Papan investigasi ${selectedTicker} aktif.`,
@@ -745,11 +754,55 @@ export default function DetectiveBoardPage() {
     [selected, selectedTicker]
   );
 
-  // Cari semua relasi terhubung dari node pusat untuk panel kanan
+  // Benang terhubung untuk panel kanan: hanya edge yang BENAR-BENAR tampil di
+  // kanvas (sudah lolos filter tipe + kedua ujungnya tidak tersembunyi),
+  // bukan seluruh edge mentah papan. Sebelumnya panel menghitung 44 edge
+  // padahal kanvas cuma menggambar sebagian.
+  //
+  // Dikelompokkan per entitas: satu orang bisa terhubung lewat DUA benang
+  // sekaligus (pemegang saham yang juga menjabat). Kalau ditampilkan per edge,
+  // nama yang sama muncul dua kali dan terbaca seperti node ganda — padahal
+  // node-nya cuma satu.
   const related = useMemo(() => {
     if (!selected) return [];
-    return currentBoard.edges.filter((e) => e.source === selected.id || e.target === selected.id);
-  }, [currentBoard, selected]);
+    const dataById = new Map<string, BoardNodeData>();
+    nodes.forEach((n) => dataById.set(n.id, n.data as unknown as BoardNodeData));
+
+    const grouped = new Map<
+      string,
+      { otherId: string; otherLabel: string; threads: { type: EdgeType; label: string }[] }
+    >();
+
+    edges
+      .filter((e) => e.source === selected.id || e.target === selected.id)
+      .forEach((e) => {
+        const otherId = e.source === selected.id ? e.target : e.source;
+        const other = dataById.get(otherId);
+        if (!other) return;
+        const entry =
+          grouped.get(otherId) ??
+          { otherId, otherLabel: other.label, threads: [] as { type: EdgeType; label: string }[] };
+        entry.threads.push({
+          type: (e.data?.type ?? 'fakta') as EdgeType,
+          label: (e.data?.label ?? '') as string,
+        });
+        grouped.set(otherId, entry);
+      });
+
+    return [...grouped.values()];
+  }, [edges, nodes, selected]);
+
+  const relatedThreadCount = related.reduce((sum, r) => sum + r.threads.length, 0);
+
+  // Selisih antara benang di papan vs yang tampil — dipakai empty state supaya
+  // panel jujur menyebut ada berapa benang yang disembunyikan filter.
+  const hiddenRelatedCount = useMemo(() => {
+    if (!selected) return 0;
+    const total = currentBoard.edges.filter(
+      (e) => e.source === selected.id || e.target === selected.id
+    ).length;
+    return Math.max(0, total - relatedThreadCount);
+  }, [currentBoard, selected, relatedThreadCount]);
 
   const onNodeClick = useCallback((_: any, node: Node) => {
     setSelectedId(node.id);
@@ -764,14 +817,18 @@ export default function DetectiveBoardPage() {
     api
       .chatBoard(selectedTicker, q)
       .then((res) => {
-        setChatLog((l) => [...l, { role: 'ai', text: res.reply }]);
+        setChatLog((l) => [
+          ...l,
+          { role: 'ai', text: res.reply, mode: res.mode, model: res.model },
+        ]);
       })
       .catch(() => {
         setChatLog((l) => [
           ...l,
           {
             role: 'ai',
-            text: `Analisis keterkaitan ${selectedTicker}: Ditemukan ${connectedCount} entitas relasi aktif pada fokus ${selected?.data.label ?? selectedTicker}.`,
+            mode: 'heuristik',
+            text: `Analisis keterkaitan ${selectedTicker}: Ditemukan ${connectedCount} entitas relasi aktif pada fokus ${selected?.data.label ?? selectedTicker}. (Jawaban lokal — server tidak terjangkau.)`,
           },
         ]);
       });
@@ -825,7 +882,7 @@ export default function DetectiveBoardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[265px_1fr_310px] gap-4 items-stretch">
           {/* LEFT: emiten list + filter */}
           <Reveal>
-            <div className="flex flex-col gap-3.5 h-[600px]">
+            <div className="flex flex-col gap-3.5 h-[720px]">
               <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase">
@@ -933,41 +990,37 @@ export default function DetectiveBoardPage() {
                 <h3 className="font-mono text-[10.5px] text-text-3 tracking-[1.5px] uppercase mb-2">
                   Filter &amp; Legenda
                 </h3>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                <div className="flex flex-col gap-y-[3px]">
                   {(Object.keys(NODE_TYPE_META) as NodeType[]).map((k) => (
-                    <label
-                      key={k}
-                      className="flex items-center gap-2 cursor-pointer text-[11.5px] text-text-2 hover:text-text-0 transition-colors"
-                    >
+                    <label key={k} className={`${LEGEND_ROW} text-text-2 hover:text-text-0`}>
                       <input
                         type="checkbox"
                         checked={activeNodeTypes[k]}
                         onChange={() => toggleNode(k)}
-                        className="accent-[#c9a24a] w-3 h-3"
+                        className="accent-[#c9a24a] w-3 h-3 m-0"
                       />
                       <span
-                        className="w-2 h-2 rounded-full flex-none"
+                        className="w-2 h-2 rounded-full justify-self-center"
                         style={{ background: NODE_TYPE_META[k].color }}
                       />
-                      <span className="truncate">{NODE_TYPE_META[k].label}</span>
+                      <span className="min-w-0 truncate" title={NODE_TYPE_META[k].label}>
+                        {NODE_TYPE_META[k].label}
+                      </span>
                     </label>
                   ))}
                 </div>
                 <div className="border-t border-[#2a251e] my-2" />
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                <div className="flex flex-col gap-y-[3px]">
                   {(Object.keys(EDGE_META) as EdgeType[]).map((k) => (
-                    <label
-                      key={k}
-                      className="flex items-center gap-2 cursor-pointer text-[11.5px] text-text-2 hover:text-text-0 transition-colors"
-                    >
+                    <label key={k} className={`${LEGEND_ROW} text-text-2 hover:text-text-0`}>
                       <input
                         type="checkbox"
                         checked={activeEdgeTypes[k]}
                         onChange={() => toggleEdge(k)}
-                        className="accent-[#c9a24a] w-3 h-3"
+                        className="accent-[#c9a24a] w-3 h-3 m-0"
                       />
                       <span
-                        className="w-3.5 h-[2px] flex-none"
+                        className="w-3.5 h-[2px] justify-self-center"
                         style={{
                           background: EDGE_META[k].color,
                           ...(k === 'redflag'
@@ -977,19 +1030,24 @@ export default function DetectiveBoardPage() {
                             : {}),
                         }}
                       />
-                      <span className="truncate">{EDGE_META[k].label}</span>
+                      <span className="min-w-0 truncate" title={EDGE_META[k].label}>
+                        {EDGE_META[k].label}
+                      </span>
                     </label>
                   ))}
                 </div>
                 <div className="border-t border-[#2a251e] my-2" />
-                <label className="flex items-center gap-2 cursor-pointer text-[11.5px] text-brass-400">
+                <label className={`${LEGEND_ROW} text-brass-400`}>
                   <input
                     type="checkbox"
                     checked={crossOnly}
                     onChange={() => setCrossOnly((v) => !v)}
-                    className="accent-[#c9a24a] w-3 h-3"
+                    className="accent-[#c9a24a] w-3 h-3 m-0"
                   />
-                  <span>Benang merah lintas emiten</span>
+                  {/* sel contoh garis dikosongkan supaya label ini rata dengan
+                      label legenda di atasnya */}
+                  <span aria-hidden className="block" />
+                  <span className="min-w-0">Benang merah lintas emiten</span>
                 </label>
               </div>
             </div>
@@ -1097,8 +1155,8 @@ export default function DetectiveBoardPage() {
 
           {/* RIGHT: detail + benang */}
           <Reveal delay={80}>
-            <div className="flex flex-col gap-3.5 h-[600px]">
-              <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-1 flex flex-col min-h-0 overflow-y-auto">
+            <div className="flex flex-col gap-3.5 h-[720px]">
+              <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-none max-h-[340px] flex flex-col min-h-0 overflow-y-auto">
                 <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase mb-3 flex-none">
                   Detail Bukti (Pusat Fokus)
                 </h3>
@@ -1148,42 +1206,50 @@ export default function DetectiveBoardPage() {
                 )}
               </div>
 
-              <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-none max-h-[190px] flex flex-col min-h-0">
+              {/* Daftar benang yang tumbuh mengisi kolom — bukan kartu detail yang
+                  melar menyisakan ruang kosong, karena isinya yang panjang. */}
+              <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-1 flex flex-col min-h-0">
                 <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase mb-2 flex-none">
-                  Benang Terhubung ({related.length})
+                  Benang Terhubung ({relatedThreadCount})
                 </h3>
                 {related.length === 0 ? (
-                  <div className="text-text-2 text-xs">Tidak ada koneksi.</div>
+                  <div className="text-text-2 text-xs">
+                    {hiddenRelatedCount > 0
+                      ? `${hiddenRelatedCount} benang tersembunyi oleh filter tipe.`
+                      : 'Tidak ada benang aktif.'}
+                  </div>
                 ) : (
                   <ul className="flex flex-col gap-1 overflow-y-auto pr-1 flex-1">
-                    {related.map((e) => {
-                      const otherId = e.source === selected?.id ? e.target : e.source;
-                      const other = currentBoard.nodes.find((n) => n.id === otherId);
-                      if (!other) return null;
-                      const meta = EDGE_META[e.type];
-                      return (
-                        <li key={e.id}>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedId(otherId)}
-                            className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/40"
-                          >
+                    {related.map((r) => (
+                      <li key={r.otherId}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(r.otherId)}
+                          className="w-full text-left flex flex-col gap-0.5 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/40"
+                        >
+                          {/* baris 1: titik + nama + panah (panah selalu di ujung kanan) */}
+                          <div className="flex items-center gap-2">
                             <span
                               className="w-2 h-2 rounded-full flex-none"
-                              style={{ background: meta.color }}
+                              style={{ background: r.threads[0] ? EDGE_META[r.threads[0].type].color : undefined }}
                             />
-                            <span className="font-mono text-[11.5px] text-text-0 tracking-wide">
-                              {other.data.label}
-                            </span>
-                            <span className="flex-1 text-[10px] text-text-3 truncate">
-                              {meta.label}
-                              {e.label ? ` ${e.label}` : ''}
+                            <span
+                              className="flex-1 min-w-0 truncate font-mono text-[11.5px] text-text-0 tracking-wide"
+                              title={r.otherLabel}
+                            >
+                              {r.otherLabel}
                             </span>
                             <ArrowRightIcon size={12} className="text-text-3 flex-none" />
-                          </button>
-                        </li>
-                      );
-                    })}
+                          </div>
+                          {/* baris 2: semua jenis benang ke entitas ini, rata pada x yang sama */}
+                          <div className="pl-4 text-[10px] text-text-3">
+                            {r.threads
+                              .map((t) => `${EDGE_META[t.type].label}${t.label ? ` ${t.label}` : ''}`)
+                              .join(' · ')}
+                          </div>
+                        </button>
+                      </li>
+                    ))}
                   </ul>
                 )}
               </div>
@@ -1234,8 +1300,26 @@ export default function DetectiveBoardPage() {
                       }`}
                     >
                       {m.role === 'ai' && (
-                        <div className="font-mono text-[10.5px] font-semibold text-brass-400 mb-1.5 flex items-center gap-1.5">
-                          <SparkIcon size={11} /> Analisis Hakim AI:
+                        <div className="font-mono text-[10.5px] font-semibold text-brass-400 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="flex items-center gap-1.5">
+                            <SparkIcon size={11} /> Analisis Hakim AI:
+                          </span>
+                          {/* jujur soal jalur jawaban: model bahasa vs heuristik lokal */}
+                          {m.mode === 'heuristik' ? (
+                            <span
+                              className="font-normal text-[9.5px] uppercase tracking-wide px-1.5 py-[1px] rounded border text-[#d9a441] bg-[#d9a441]/10 border-[#d9a441]/30"
+                              title="LLM tidak tersedia — jawaban disusun dari data papan, bukan oleh model bahasa."
+                            >
+                              heuristik
+                            </span>
+                          ) : m.mode === 'llm' ? (
+                            <span
+                              className="font-normal text-[9.5px] uppercase tracking-wide px-1.5 py-[1px] rounded border text-[#7fb069] bg-[#7fb069]/10 border-[#7fb069]/30"
+                              title={`Dijawab oleh model ${m.model ?? 'LLM'}.`}
+                            >
+                              {m.model ?? 'llm'}
+                            </span>
+                          ) : null}
                         </div>
                       )}
                       {m.text}

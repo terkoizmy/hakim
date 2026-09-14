@@ -14,6 +14,7 @@ import type {
   TickerSectorsResponse,
   TickersResponse,
 } from '../types/contract';
+import type { BoardChatResponse } from '../types/board';
 import { ApiError, type RestClient, type TrialModeInput } from './types';
 import { COMPANY_NAMES, companyNameFor } from './mockData';
 import { mockStore } from './mockStore';
@@ -131,9 +132,9 @@ export const mockRestClient: RestClient = {
     };
   },
 
-  async chatBoard(ticker: string, _message: string): Promise<{ reply: string }> {
+  async chatBoard(ticker: string, _message: string): Promise<BoardChatResponse> {
     const up = ticker.trim().toUpperCase();
-    return { reply: `Analisis keterkaitan ${up} selesai diinvestigasi.` };
+    return { reply: `Analisis keterkaitan ${up} selesai diinvestigasi.`, mode: 'heuristik' };
   },
 };
 
