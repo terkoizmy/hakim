@@ -1,9 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
-import type { CacheStatus, MemoJSON, VerdictCategory } from '../types/contract';
+import type { CacheStatus, MemoJSON, TrialMode, VerdictCategory } from '../types/contract';
 import { formatDate, formatDateTime, formatValue } from '../utils/format';
+import { renderRich, useLabels, useLang } from '../i18n';
+import type { DictKey } from '../i18n/dict';
 import { Markdown } from '../utils/md';
+import { TD_BASE, TH_BASE } from '../components/table';
 import {
   AlertIcon,
   BookIcon,
@@ -16,17 +19,28 @@ import {
   ScaleIcon,
 } from '../components/icons';
 
-/** Label sentence case sesuai mock. */
-const VERDICT_DOC_LABEL: Record<VerdictCategory, { plain: string; em?: string }> = {
-  layak_diteliti_lanjut: { plain: 'Layak diteliti ', em: 'lanjut' },
-  perlu_kehati_hatian: { plain: 'Perlu ', em: 'kehati-hatian' },
-  red_flag_berat: { plain: 'Red flag' },
+/** Warna kata yang ditekankan pada judul putusan, per kategori. Sebelumnya
+ * ini disebar sebagai dua cabang terpisah di dalam JSX (satu untuk kelas <em>,
+ * satu lagi <span> khusus red flag) — sekarang satu tabel. */
+const VERDICT_EM_CLS: Record<VerdictCategory, string> = {
+  layak_diteliti_lanjut: 'italic text-brass-300',
+  perlu_kehati_hatian: 'italic text-[#d9a441]',
+  red_flag_berat: 'italic text-[#c96a5a]',
+};
+
+/** Cincin fokus bersama — kelas yang sama persis dengan AppShell. */
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-0';
+
+/** Badge mode data — nilai `data_mode` dulu dicetak mentah ("fixture"). */
+const MODE_KEY: Record<TrialMode, DictKey> = {
+  fixture: 'memo.head.mode.fixture',
+  live: 'memo.head.mode.live',
 };
 
 // Mock putusan-dokumen: th mono di permukaan lebih gelap, td hairline.
-const TH_CLS =
-  'whitespace-nowrap border-b border-[#3a332a] bg-[#1a1713] px-4 py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[1.2px] text-text-3';
-const TD_CLS = 'border-b border-[#2a251e] px-4 py-[13px] align-top';
+const TH_CLS = `${TH_BASE} px-4 py-3`;
+const TD_CLS = `${TD_BASE} px-4 py-[13px] align-top`;
 
 /** Chip id fakta (f_1 / ev_x) gaya mock — brass outline kecil. */
 function CiteId({ id }: { id: string }) {
@@ -44,7 +58,7 @@ function CiteChip({ cid, fact }: { cid: string; fact?: MemoJSON['key_facts'][num
       <span
         tabIndex={0}
         title={fact ? `${fact.label} · ${formatValue(fact.value, fact.unit)}` : cid}
-        className="inline-flex cursor-default rounded-[6px] border border-brass-600 px-2 py-[2px] font-mono text-[11px] text-brass-400 transition-colors hover:bg-brass-500 hover:text-bg-1"
+        className={`inline-flex cursor-default rounded-[6px] border border-brass-600 px-2 py-[2px] font-mono text-[11px] text-brass-400 transition-colors hover:bg-brass-500 hover:text-bg-1 ${FOCUS}`}
       >
         {cid}
       </span>
@@ -75,6 +89,7 @@ function SecHead({ kicker, title, note }: { kicker: string; title: string; note?
 
 export default function MemoPage() {
   const { trialId } = useParams<{ trialId: string }>();
+  const { t } = useLang();
   const [memo, setMemo] = useState<MemoJSON | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState('');
@@ -92,7 +107,7 @@ export default function MemoPage() {
       })
       .catch((e) => {
         if (!alive) return;
-        setError(e instanceof ApiError ? e.message : 'Memorandum tidak dapat dimuat.');
+        setError(e instanceof ApiError ? e.message : t('memo.error.load'));
         setState('error');
       });
     return () => {
@@ -111,11 +126,11 @@ export default function MemoPage() {
           <span className="mx-auto mb-4 grid h-[50px] w-[50px] place-items-center rounded-pill border border-[rgba(201,162,74,0.34)] bg-[rgba(201,162,74,0.12)] text-brass-300">
             <AlertIcon size={22} />
           </span>
-          <h2 className="mb-2 font-display text-[22px]">Memorandum belum tersedia</h2>
+          <h2 className="mb-2 font-display text-[22px]">{t('memo.error.title')}</h2>
           <p className="text-text-2">{error}</p>
           <div className="mt-4 flex items-center justify-center gap-3">
-            <Link to={`/trial/${trialId}`} className="btn btn-primary"><GavelIcon size={16} /> Kembali ke Sidang</Link>
-            <Link to="/journal" className="btn btn-ghost"><BookIcon size={16} /> Jurnal Sidang</Link>
+            <Link to={`/trial/${trialId}`} className={`btn btn-primary ${FOCUS}`}><GavelIcon size={16} /> {t('memo.error.backTrial')}</Link>
+            <Link to="/journal" className={`btn btn-ghost ${FOCUS}`}><BookIcon size={16} /> {t('memo.error.journal')}</Link>
           </div>
         </section>
       </div>
@@ -127,33 +142,39 @@ export default function MemoPage() {
 
 /** MemoView: render semua field MemoJSON — gaya dokumen mock putusan-dokumen. */
 export function MemoView({ memo }: { memo: MemoJSON }) {
+  const labels = useLabels();
+  const { t } = useLang();
   const verdict = memo.verdict;
   const factsById = keyFactsById(memo);
-  const cat = VERDICT_DOC_LABEL[verdict.category];
+  // Label polos untuk teks salin/tempel dan kalimat biasa; versi berpenekanan
+  // (`verdictDoc`) hanya untuk judul, karena renderRich menghasilkan ReactNode.
+  const vLabel = labels.verdict[verdict.category];
   // Sub-judul hero: kalimat pertama rasional.
   const vSub = stripMd(verdict.rationale_md).split(/(?<=[.!?])\s/)[0] ?? '';
   const [copied, setCopied] = useState(false);
 
   const handleCopySummary = () => {
-    const summaryText = `[MEMORANDUM PUTUSAN SIDANG RISET]
-Emiten: ${memo.ticker} - ${memo.company_name}
-Nomor Perkara: ${memo.memo_id} (Sidang ${memo.trial_id})
-Disahkan: ${formatDateTime(memo.created_at)}
-Putusan: ${cat.plain}${cat.em ?? ''} (Konfidensi: ${Math.round(verdict.confidence * 100)}%)
+    // Kerangka teks salinan milik frontend, jadi ikut bahasa UI; isi prosanya
+    // tetap Bahasa Indonesia karena datang dari backend.
+    const summaryText = `[${t('memo.copy.title')}]
+${t('memo.copy.issuer')}: ${memo.ticker} - ${memo.company_name}
+${t('memo.copy.caseNo')}: ${memo.memo_id} (${t('memo.copy.trial')} ${memo.trial_id})
+${t('memo.copy.signed')}: ${formatDateTime(memo.created_at)}
+${t('memo.copy.verdict')}: ${vLabel} (${t('memo.copy.confidence')}: ${Math.round(verdict.confidence * 100)}%)
 
-RINGKASAN EKSEKUTIF:
+${t('memo.copy.execSummary')}:
 ${stripMd(memo.executive_summary)}
 
-RASIONAL PUTUSAN:
+${t('memo.copy.rationale')}:
 ${stripMd(verdict.rationale_md)}
 
-PERTANYAAN VERIFIKASI WAJIB INVESTOR:
+${t('memo.copy.questions')}:
 ${verdict.verification_questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 
-TEMUAN RED FLAGS:
-${memo.red_flags.map((rf) => `- [${rf.severity.toUpperCase()}] ${stripMd(rf.flag_md)}`).join('\n') || '- Tidak ada red flag'}
+${t('memo.copy.redFlags')}:
+${memo.red_flags.map((rf) => `- [${rf.severity.toUpperCase()}] ${stripMd(rf.flag_md)}`).join('\n') || `- ${t('memo.copy.noRedFlags')}`}
 
-Platform Sidang Riset Pasar Modal (Hakim)`;
+${t('memo.copy.footer')}`;
 
     navigator.clipboard.writeText(summaryText).then(() => {
       setCopied(true);
@@ -170,11 +191,11 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
       <div className="mx-auto w-full max-w-[900px] px-6 pt-10">
         <div className="mb-[26px] flex flex-wrap items-center justify-between gap-3 print:hidden">
           <div className="flex items-center font-mono text-[12px] uppercase tracking-[1px] text-text-3">
-            <Link to="/dashboard" className="text-brass-500 transition-colors hover:text-brass-300">Daftar Perkara</Link>
+            <Link to="/dashboard" className={`text-brass-500 transition-colors hover:text-brass-300 ${FOCUS}`}>{t('memo.crumb.cases')}</Link>
             <span className="mx-[6px]">/</span>
-            <Link to={`/ticker/${memo.ticker}`} className="text-brass-500 transition-colors hover:text-brass-300">{memo.ticker}</Link>
+            <Link to={`/ticker/${memo.ticker}`} className={`text-brass-500 transition-colors hover:text-brass-300 ${FOCUS}`}>{memo.ticker}</Link>
             <span className="mx-[6px]">/</span>
-            <span>Memorandum</span>
+            <span>{t('memo.crumb.here')}</span>
           </div>
 
           {/* Action Buttons: Salin Ringkasan & Cetak / Simpan PDF */}
@@ -182,18 +203,18 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
             <button
               type="button"
               onClick={handleCopySummary}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#3a332a] bg-bg-2 px-3 py-1.5 font-mono text-[11.5px] text-text-2 hover:border-brass-500 hover:text-brass-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/40"
-              title="Salin teks ringkasan memo ke clipboard"
+              className={`inline-flex items-center gap-1.5 rounded-md border border-[#3a332a] bg-bg-2 px-3 py-1.5 font-mono text-[11.5px] text-text-2 hover:border-brass-500 hover:text-brass-300 transition-colors ${FOCUS}`}
+              title={t('memo.action.copyTitle')}
             >
               {copied ? (
                 <>
                   <CheckIcon size={14} className="text-[#7fb069]" />
-                  <span className="text-[#7fb069] font-medium">Tersalin ke Clipboard!</span>
+                  <span className="text-[#7fb069] font-medium">{t('memo.action.copied')}</span>
                 </>
               ) : (
                 <>
                   <CopyIcon size={14} />
-                  <span>Salin Ringkasan</span>
+                  <span>{t('memo.action.copy')}</span>
                 </>
               )}
             </button>
@@ -201,11 +222,11 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 rounded-md border border-brass-600/60 bg-brass-500/10 px-3 py-1.5 font-mono text-[11.5px] font-semibold text-brass-300 hover:bg-brass-500 hover:text-[#14120f] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/40"
-              title="Cetak atau Simpan sebagai PDF"
+              className={`inline-flex items-center gap-1.5 rounded-md border border-brass-600/60 bg-brass-500/10 px-3 py-1.5 font-mono text-[11.5px] font-semibold text-brass-300 hover:bg-brass-500 hover:text-[#14120f] transition-all ${FOCUS}`}
+              title={t('memo.action.printTitle')}
             >
               <PrinterIcon size={14} />
-              <span>Cetak / Simpan PDF</span>
+              <span>{t('memo.action.print')}</span>
             </button>
           </div>
         </div>
@@ -215,8 +236,10 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
           <div className="flex flex-col gap-[10px]">
             <div className="flex flex-wrap items-center gap-[10px]">
               <span className="font-mono text-[12px] tracking-[0.5px] text-text-3">{memo.memo_id}</span>
-              <HeadBadge>Mode data · {memo.data_mode}</HeadBadge>
-              <HeadBadge brass>Info {memo.info_richness}</HeadBadge>
+              <HeadBadge>{t(MODE_KEY[memo.data_mode])}</HeadBadge>
+              <HeadBadge brass>
+                {t('memo.head.richness', { richness: labels.richness[memo.info_richness] })}
+              </HeadBadge>
             </div>
             <div className="font-mono text-[clamp(34px,5vw,52px)] font-medium leading-none tracking-[2px] text-text-0">
               {memo.ticker}
@@ -224,16 +247,19 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
             </div>
             <div className="font-display text-[18px] text-text-2">{memo.company_name}</div>
             <div className="font-mono text-[12px] tracking-[0.5px] text-text-3">
-              Disahkan {formatDateTime(memo.created_at)} · Sidang {memo.trial_id}
+              {t('memo.head.signed', {
+                at: formatDateTime(memo.created_at),
+                trialId: memo.trial_id,
+              })}
             </div>
           </div>
           <div
             aria-hidden="true"
             className="flex-none w-[120px] h-[120px] rounded-full border-2 border-brass-600 text-brass-400 flex flex-col items-center justify-center gap-[2px] text-center -rotate-[8deg] opacity-90 bg-[radial-gradient(circle_at_30%_30%,rgba(201,162,74,0.1),transparent_70%)] max-[640px]:w-[96px] max-[640px]:h-[96px]"
           >
-            <span className="font-mono text-[8.5px] tracking-[2px] uppercase">SIDANG · RISET</span>
-            <span className="font-display text-[15px] font-semibold italic">Disahkan</span>
-            <span className="font-mono text-[8px] tracking-[1px]">KOMITE PUTUSAN</span>
+            <span className="font-mono text-[8.5px] tracking-[2px] uppercase">{t('memo.seal.top')}</span>
+            <span className="font-display text-[15px] font-semibold italic">{t('memo.seal.mid')}</span>
+            <span className="font-mono text-[8px] tracking-[1px]">{t('memo.seal.bottom')}</span>
           </div>
         </header>
 
@@ -244,20 +270,16 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(600px_220px_at_85%_0%,rgba(201,162,74,0.07),transparent_60%)]"
             />
-            <p className="mb-[14px] font-mono text-[11px] uppercase tracking-[3px] text-brass-500">Putusan Komite</p>
+            <p className="mb-[14px] font-mono text-[11px] uppercase tracking-[3px] text-brass-500">{t('memo.hero.kicker')}</p>
             <div className="max-w-[20ch] font-display text-[clamp(26px,4vw,38px)] font-medium leading-[1.15] text-text-0">
-              {cat.plain}
-              {cat.em && (
-                <em className={verdict.category === 'layak_diteliti_lanjut' ? 'italic text-brass-300' : 'italic text-[#d9a441]'}>
-                  {cat.em}
-                </em>
-              )}
-              {verdict.category === 'red_flag_berat' && <span className="text-[#c96a5a]"> berat</span>}
+              {renderRich(labels.verdictDoc[verdict.category], {
+                em: (children) => <em className={VERDICT_EM_CLS[verdict.category]}>{children}</em>,
+              })}
             </div>
             {vSub && <p className="mt-3 max-w-[52ch] text-[13.5px] leading-[1.6] text-text-2">{vSub}</p>}
             <div className="mt-[26px] max-w-[420px]">
               <div className="mb-2 flex items-baseline justify-between">
-                <span className="font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">Konfidensi</span>
+                <span className="font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">{t('memo.hero.confidence')}</span>
                 <span className="font-mono text-[15px] font-medium tabular-nums text-brass-300">
                   {Math.round(verdict.confidence * 100)}%
                 </span>
@@ -280,7 +302,10 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
 
           {/* ---------- RINGKASAN EKSEKUTIF ---------- */}
           <section className="anim-in">
-            <SecHead kicker="Ringkasan" title="Ringkasan Eksekutif" />
+            <SecHead
+              kicker={t('memo.section.summary.kicker')}
+              title={t('memo.section.summary.title')}
+            />
             <div className="exec max-w-[62ch] font-display text-[clamp(17px,2.2vw,20px)] leading-[1.7] text-text-0 [&_p]:mb-4 [&_p:last-child]:mb-0">
               <Markdown source={memo.executive_summary} className="md" />
             </div>
@@ -289,14 +314,14 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
           {/* ---------- RASIONAL + VERIFIKASI ---------- */}
           <section className="anim-in grid grid-cols-1 gap-[26px] max-[820px]:grid-cols-1 md:grid-cols-2">
             <div>
-              <p className="mb-[6px] font-mono text-[11px] uppercase tracking-[1.5px] text-brass-500">Rasional</p>
-              <h3 className="mb-[14px] font-display text-[18px] font-medium text-text-0">Rasional putusan</h3>
+              <p className="mb-[6px] font-mono text-[11px] uppercase tracking-[1.5px] text-brass-500">{t('memo.section.rationale.kicker')}</p>
+              <h3 className="mb-[14px] font-display text-[18px] font-medium text-text-0">{t('memo.section.rationale.title')}</h3>
               <Markdown source={verdict.rationale_md} className="md text-[14px] leading-[1.7] text-text-2" />
             </div>
             <div>
-              <p className="mb-[6px] font-mono text-[11px] uppercase tracking-[1.5px] text-brass-500">Verifikasi</p>
+              <p className="mb-[6px] font-mono text-[11px] uppercase tracking-[1.5px] text-brass-500">{t('memo.section.verify.kicker')}</p>
               <h3 className="mb-[14px] font-display text-[18px] font-medium text-text-0">
-                Wajib Anda jawab sebelum berinvestasi
+                {t('memo.section.verify.title')}
               </h3>
               <ol className="m-0 flex list-none flex-col gap-3 p-0">
                 {verdict.verification_questions.map((q, i) => (
@@ -313,13 +338,21 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
 
           {/* ---------- FAKTA KUNCI ---------- */}
           <section className="anim-in">
-            <SecHead kicker="Fakta" title="Fakta Kunci" note="Tabel tenang · hairline" />
+            <SecHead
+              kicker={t('memo.section.facts.kicker')}
+              title={t('memo.section.facts.title')}
+              note={t('memo.section.facts.note')}
+            />
             <FactTable memo={memo} />
           </section>
 
           {/* ---------- TESIS BERHADAPAN ---------- */}
           <section className="anim-in">
-            <SecHead kicker="Perdebatan" title="Tesis Berhadapan" note="Arahkan kursor ke sitasi untuk melihat nilai" />
+            <SecHead
+              kicker={t('memo.section.debate.kicker')}
+              title={t('memo.section.debate.title')}
+              note={t('memo.section.debate.note')}
+            />
             <div className="grid grid-cols-1 gap-[14px] md:grid-cols-2">
               <ThesisCard
                 side="bear"
@@ -336,9 +369,12 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
 
           {/* ---------- SMART MONEY & INSIDER ---------- */}
           <section className="anim-in">
-            <SecHead kicker="Arus" title="Smart Money & Insider" />
+            <SecHead kicker={t('memo.section.flow.kicker')} title={t('memo.section.flow.title')} />
             <div className="grid grid-cols-1 gap-[14px] md:grid-cols-2">
-              <FlowCol title="Smart Money" kicker="Aliran institusi">
+              <FlowCol
+                title={t('memo.flow.smartmoney.title')}
+                kicker={t('memo.flow.smartmoney.kicker')}
+              >
                 {memo.smart_money_findings.map((f, i) => (
                   <li key={i}>
                     <DirChip direction={f.direction} kind="smartmoney" />
@@ -346,7 +382,7 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
                   </li>
                 ))}
               </FlowCol>
-              <FlowCol title="Insider" kicker="Transaksi direksi">
+              <FlowCol title={t('memo.flow.insider.title')} kicker={t('memo.flow.insider.kicker')}>
                 {memo.insider_findings.map((f, i) => (
                   <li key={i}>
                     <DirChip direction={f.direction} kind="insider" />
@@ -359,7 +395,10 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
 
           {/* ---------- RED FLAGS ---------- */}
           <section className="anim-in">
-            <SecHead kicker="Peringatan" title="Red Flags" />
+            <SecHead
+              kicker={t('memo.section.redflags.kicker')}
+              title={t('memo.section.redflags.title')}
+            />
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
               {memo.red_flags.map((f, i) => (
                 <li
@@ -371,8 +410,8 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
                 </li>
               ))}
               {memo.red_flags.length === 0 && (
-                <li className="rounded-lg border border-[#2a251e] bg-bg-2 px-[14px] py-3 text-[13.5px] text-text-3">
-                  Tidak ada red flag tercatat.
+                <li className="rounded-[14px] border border-dashed border-[#2a251e] bg-bg-2 px-6 py-8 text-center text-[13.5px] text-text-3">
+                  {t('memo.redflags.empty')}
                 </li>
               )}
             </ul>
@@ -381,26 +420,34 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
           {/* ---------- SUMBER DATA ---------- */}
           <section className="anim-in">
             <SecHead
-              kicker="Audit"
-              title="Sumber Data"
-              note={memo.tool_calls?.length ? 'Panggilan Sectors nyata · cache' : 'Endpoint Sectors · cache'}
+              kicker={t('memo.section.audit.kicker')}
+              title={t('memo.section.audit.title')}
+              note={
+                memo.tool_calls?.length
+                  ? t('memo.section.audit.noteReal')
+                  : t('memo.section.audit.noteFallback')
+              }
             />
             <div className="overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2">
+              {/* Kartu membulat ini `overflow-hidden` demi sudutnya, jadi tabel
+                  yang lebih lebar dari kartu akan TERPOTONG tanpa cara menggulir.
+                  Pembungkus `overflow-x-auto` di dalamnya yang menggulirkan. */}
+              <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[13.5px]">
                 <thead>
                   <tr>
-                    <th className={TH_CLS}>Endpoint</th>
-                    <th className={TH_CLS}>Param</th>
-                    <th className={TH_CLS}>Cache</th>
-                    <th className={TH_CLS}>Diambil</th>
+                    <th className={TH_CLS}>{t('memo.audit.table.endpoint')}</th>
+                    <th className={TH_CLS}>{t('memo.audit.table.param')}</th>
+                    <th className={TH_CLS}>{t('memo.audit.table.cache')}</th>
+                    <th className={TH_CLS}>{t('memo.audit.table.retrieved')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {auditRowsOf(memo).map((r, i) => (
                     <tr key={`${r.endpoint}-${r.at}-${i}`} className="transition-colors hover:bg-[#1a1713]">
-                      <td className={`${TD_CLS} font-mono text-[11px] text-text-3`} title={r.agent ? `dipanggil oleh ${r.agent}` : r.endpoint}>{r.endpoint}</td>
+                      <td className={`${TD_CLS} font-mono text-[11px] text-text-3`} title={r.agent ? t('memo.audit.calledBy', { agent: labels.agent[r.agent] ?? r.agent }) : r.endpoint}>{r.endpoint}</td>
                       <td className={`${TD_CLS} break-all font-mono text-[12.5px] text-text-3`}>{r.params || '—'}</td>
-                      <td className={`${TD_CLS} font-mono text-[12.5px]`} title={r.cache === 'hit' ? 'Data masih tersimpan di cache lokal (7 hari) — 0 kredit' : 'Diambil langsung dari API Sectors — kredit terpakai'}>
+                      <td className={`${TD_CLS} font-mono text-[12.5px]`} title={r.cache === 'hit' ? t('memo.audit.cacheHitTitle') : t('memo.audit.cacheMissTitle')}>
                         <span className={r.cache === 'hit' ? 'text-[#7fb069]' : 'text-[#c96a5a]'}>{r.cache}</span>
                       </td>
                       <td className={`${TD_CLS} whitespace-nowrap font-mono text-[12.5px] text-text-3`}>{formatDateTime(r.at)}</td>
@@ -408,85 +455,92 @@ Platform Sidang Riset Pasar Modal (Hakim)`;
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
+            {/* Penanda <b>/<em> di sini kait warna (hijau/merah), bukan penekanan:
+                satu kalimat tetap utuh supaya urutan katanya bebas berbeda. */}
             <p className="mt-3 font-mono text-[11px] leading-relaxed text-text-3">
-              <span className="text-[#7fb069]">hit</span> = data dari cache lokal (TTL 7 hari, 0 kredit) ·{' '}
-              <span className="text-[#c96a5a]">miss</span> = diambil langsung dari API Sectors (kredit terpakai).{' '}
-              Sidang pertama sebuah emiten memang hampir seluruhnya miss — cache menghemat kredit pada endpoint
-              yang dipakai bersama (indeks, top-changes, daftar emiten).
+              {renderRich(t('memo.audit.legend'), {
+                b: (children) => <span className="text-[#7fb069]">{children}</span>,
+                em: (children) => <span className="text-[#c96a5a]">{children}</span>,
+              })}
             </p>
           </section>
 
           {/* ---------- TINDAKAN & INVESTIGASI LANJUTAN ---------- */}
           <section className="anim-in print:hidden border-t border-[#3a332a] pt-8">
-            <SecHead kicker="Eksplorasi" title="Tindakan & Investigasi Lanjutan" note="Langkah analisis berikutnya" />
+            <SecHead
+              kicker={t('memo.section.explore.kicker')}
+              title={t('memo.section.explore.title')}
+              note={t('memo.section.explore.note')}
+            />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Link
                 to={`/ticker/${memo.ticker}`}
-                className="group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-accent hover:bg-[#1a1713]"
+                className={`group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-accent hover:bg-[#1a1713] ${FOCUS}`}
               >
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-accent">
-                      <SparkIcon className="h-3.5 w-3.5" /> Berkas Perkara
+                      <SparkIcon className="h-3.5 w-3.5" /> {t('memo.next.profile.kicker')}
                     </span>
                     <ArrowRightIcon className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-1 group-hover:text-accent" />
                   </div>
                   <h4 className="mt-2 font-serif text-[15px] font-medium text-text-1">
-                    Profil Lengkap {memo.ticker}
+                    {t('memo.next.profile.title', { ticker: memo.ticker })}
                   </h4>
                   <p className="mt-1 text-[12.5px] leading-relaxed text-text-3">
-                    Buka dossier keuangan mendalam, pergerakan valuasi historis, dan ringkasan fundamental {memo.ticker}.
+                    {t('memo.next.profile.desc', { ticker: memo.ticker })}
                   </p>
                 </div>
                 <div className="mt-4 flex items-center gap-1 font-mono text-[11.5px] text-accent">
-                  Buka Profil Ticker &rarr;
+                  {t('memo.next.profile.cta')}
                 </div>
               </Link>
 
               <Link
                 to="/board"
-                className="group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-accent hover:bg-[#1a1713]"
+                className={`group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-accent hover:bg-[#1a1713] ${FOCUS}`}
               >
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#d4a373]">
-                      🔍 Papan Bukti
+                      {t('memo.next.board.kicker')}
                     </span>
                     <ArrowRightIcon className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-1 group-hover:text-[#d4a373]" />
                   </div>
                   <h4 className="mt-2 font-serif text-[15px] font-medium text-text-1">
-                    Papan Detektif / Jaringan
+                    {t('memo.next.board.title')}
                   </h4>
                   <p className="mt-1 text-[12.5px] leading-relaxed text-text-3">
-                    Visualisasikan benang merah keterkaitan kepemilikan konglomerasi, klaster sektor, dan anomali pasar.
+                    {t('memo.next.board.desc')}
                   </p>
                 </div>
                 <div className="mt-4 flex items-center gap-1 font-mono text-[11.5px] text-[#d4a373]">
-                  Investigasi di Detective Board &rarr;
+                  {t('memo.next.board.cta')}
                 </div>
               </Link>
 
               <Link
                 to={`/journal/${memo.memo_id}/postmortem`}
-                className="group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-[#7fb069] hover:bg-[#1a1713]"
+                className={`group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-[#7fb069] hover:bg-[#1a1713] ${FOCUS}`}
               >
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#7fb069]">
-                      <ScaleIcon className="h-3.5 w-3.5" /> Evaluasi Putusan
+                      <ScaleIcon className="h-3.5 w-3.5" /> {t('memo.next.postmortem.kicker')}
                     </span>
                     <ArrowRightIcon className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-1 group-hover:text-[#7fb069]" />
                   </div>
                   <h4 className="mt-2 font-serif text-[15px] font-medium text-text-1">
-                    Postmortem & Track Record
+                    {t('memo.next.postmortem.title')}
                   </h4>
                   <p className="mt-1 text-[12.5px] leading-relaxed text-text-3">
-                    Uji akurasi tesis putusan {cat.plain}{cat.em || ''} terhadap realisasi harga pasar dari waktu ke waktu.
+                    {t('memo.next.postmortem.desc', { verdict: vLabel })}
                   </p>
                 </div>
                 <div className="mt-4 flex items-center gap-1 font-mono text-[11.5px] text-[#7fb069]">
-                  Audit Akurasi Putusan &rarr;
+                  {t('memo.next.postmortem.cta')}
                 </div>
               </Link>
             </div>
@@ -557,23 +611,27 @@ function stripMd(s: string): string {
 }
 
 function FactTable({ memo }: { memo: MemoJSON }) {
+  const { t } = useLang();
   if (memo.key_facts.length === 0) {
     return (
-      <div className="rounded-[14px] border border-[#3a332a] bg-bg-2 px-4 py-5 text-[13px] text-text-3">
-        Tidak ada fakta kunci tercatat.
+      <div className="rounded-[14px] border border-dashed border-[#3a332a] bg-bg-2 px-6 py-8 text-center text-[13px] text-text-3">
+        {t('memo.facts.empty')}
       </div>
     );
   }
   return (
     <div className="overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2">
+      {/* Lihat catatan di tabel audit: pembungkus gulir diletakkan DI DALAM kartu
+          membulat, karena `overflow-hidden` kartu memotong tabel yang lebih lebar. */}
+      <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[13.5px]">
         <thead>
           <tr>
-            <th className={TH_CLS}>Id</th>
-            <th className={TH_CLS}>Metrik</th>
-            <th className={TH_CLS}>Nilai</th>
-            <th className={TH_CLS}>Per Tanggal</th>
-            <th className={TH_CLS}>Sumber</th>
+            <th className={TH_CLS}>{t('memo.facts.table.id')}</th>
+            <th className={TH_CLS}>{t('memo.facts.table.metric')}</th>
+            <th className={TH_CLS}>{t('memo.facts.table.value')}</th>
+            <th className={TH_CLS}>{t('memo.facts.table.asOf')}</th>
+            <th className={TH_CLS}>{t('memo.facts.table.source')}</th>
           </tr>
         </thead>
         <tbody>
@@ -592,6 +650,7 @@ function FactTable({ memo }: { memo: MemoJSON }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -606,6 +665,7 @@ function ThesisCard({
   points: MemoJSON['bear_case']['points'];
   factsById: Map<string, MemoJSON['key_facts'][number]>;
 }) {
+  const { t } = useLang();
   const isBull = side === 'bull';
   return (
     <article
@@ -616,7 +676,9 @@ function ThesisCard({
       style={{ borderTopStyle: 'solid' }}
     >
       <div className="flex items-center gap-3">
-        <span className="font-display text-[18px] font-medium text-text-0">{isBull ? 'Pembela' : 'Jaksa'}</span>
+        <span className="font-display text-[18px] font-medium text-text-0">
+          {isBull ? t('memo.thesis.bull.role') : t('memo.thesis.bear.role')}
+        </span>
         <span
           className={
             'rounded-[6px] px-[9px] py-[3px] font-mono text-[11px] uppercase tracking-[1px] ' +
@@ -625,7 +687,7 @@ function ThesisCard({
               : 'border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] text-[#c96a5a]')
           }
         >
-          {isBull ? 'Bull' : 'Bear'}
+          {isBull ? t('memo.thesis.bull.tag') : t('memo.thesis.bear.tag')}
         </span>
       </div>
       <ul className="m-0 flex list-none flex-col gap-[10px] p-0">
@@ -671,20 +733,11 @@ function FlowCol({
 
 /** Chip arah (Akumulasi/Distribusi/Beli/Jual) gaya mock .dir. */
 function DirChip({ direction, kind }: { direction: string; kind: 'smartmoney' | 'insider' }) {
+  const labels = useLabels();
   const bull = kind === 'smartmoney' ? direction === 'akumulasi' : direction === 'beli';
   const bear = kind === 'smartmoney' ? direction === 'distribusi' : direction === 'jual';
-  const label =
-    kind === 'smartmoney'
-      ? direction === 'akumulasi'
-        ? 'Akumulasi'
-        : direction === 'distribusi'
-          ? 'Distribusi'
-          : direction
-      : direction === 'beli'
-        ? 'Beli'
-        : direction === 'jual'
-          ? 'Jual'
-          : direction;
+  // Arah yang tidak dikenal dikembalikan apa adanya — perilaku lama dipertahankan.
+  const label = labels.direction[direction] ?? direction;
   const cls = bull
     ? 'border border-[rgba(127,176,105,0.4)] bg-[rgba(127,176,105,0.06)] text-[#7fb069]'
     : bear
@@ -699,15 +752,16 @@ function DirChip({ direction, kind }: { direction: string; kind: 'smartmoney' | 
 
 /** Chip severity red flag gaya mock .sev. */
 function SevChip({ severity }: { severity: 'low' | 'medium' | 'high' }) {
-  const cfg =
+  const labels = useLabels();
+  const cls =
     severity === 'high'
-      ? { label: 'Tinggi', cls: 'border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] text-[#c96a5a]' }
+      ? 'border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] text-[#c96a5a]'
       : severity === 'medium'
-        ? { label: 'Sedang', cls: 'border border-[rgba(217,164,65,0.4)] bg-[rgba(217,164,65,0.06)] text-[#d9a441]' }
-        : { label: 'Rendah', cls: 'border border-[#3a332a] bg-[#1a1713] text-text-2' };
+        ? 'border border-[rgba(217,164,65,0.4)] bg-[rgba(217,164,65,0.06)] text-[#d9a441]'
+        : 'border border-[#3a332a] bg-[#1a1713] text-text-2';
   return (
-    <span className={'flex-none rounded-[5px] px-2 py-[2px] font-mono text-[10px] uppercase tracking-[0.5px] ' + cfg.cls}>
-      {cfg.label}
+    <span className={'flex-none rounded-[5px] px-2 py-[2px] font-mono text-[10px] uppercase tracking-[0.5px] ' + cls}>
+      {labels.severity[severity]}
     </span>
   );
 }

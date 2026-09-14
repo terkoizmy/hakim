@@ -18,11 +18,9 @@ import type {
   TrialFailedPayload,
   TrialStartedPayload,
 } from '../types/contract';
-import { AGENT_LABEL } from '../types/contract';
 
 export interface AnalystUi {
   agentId: string;
-  displayName: string;
   status: 'queued' | 'working' | 'done';
   dataRichness?: DataRichness;
   summaryMd?: string;
@@ -65,7 +63,6 @@ export const ANALYST_IDS = ['fundamental', 'price', 'smartmoney', 'insider', 'an
 
 const initialAnalyst = (id: string): AnalystUi => ({
   agentId: id,
-  displayName: AGENT_LABEL[id] ?? id,
   status: 'queued',
   toolCalls: [],
   evidence: [],
@@ -122,7 +119,7 @@ export function trialReducer(state: TrialUiState, action: TrialAction): TrialUiS
           ...state,
           analysts: {
             ...state.analysts,
-            [p.agent_id]: { ...current, status: 'working', model: p.model, displayName: p.display_name },
+            [p.agent_id]: { ...current, status: 'working', model: p.model },
           },
         };
       }

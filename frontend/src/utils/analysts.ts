@@ -1,22 +1,24 @@
-/** Metadata tetap 5 analis — dipakai kartu LiveFeed. */
+/** Metadata tetap 5 analis — dipakai kartu LiveFeed.
+ *
+ * Nama dan tagline TIDAK ada di sini: keduanya bergantung bahasa dan tinggal
+ * di kamus (`enum.analyst.<id>.name|tagline`, dibaca lewat `useLabels()`).
+ * Yang tersisa di sini murni visual — monogram dan ikon — supaya berkas ini
+ * tetap bebas bahasa.
+ */
 import type { AgentId } from '../types/contract';
 
 export interface AnalystMeta {
   id: AgentId;
-  /** Nama pendek pada kartu (mock: "Fundamental", "Harga", …). */
-  name: string;
   /** Monogram pada avatar (1–2 huruf). */
   monogram: string;
-  /** Satu baris tagline fungsi analis. */
-  tagline: string;
   /** Ikon (key ikon set icons.tsx). */
   icon: 'fundamental' | 'price' | 'smartmoney' | 'insider' | 'gorengan';
 }
 
 export const ANALYST_META: AnalystMeta[] = [
-  { id: 'fundamental', name: 'Fundamental', monogram: 'FD', tagline: 'Laba & valuasi', icon: 'fundamental' },
-  { id: 'price', name: 'Harga', monogram: 'PR', tagline: 'Momentum & volume', icon: 'price' },
-  { id: 'smartmoney', name: 'Smart Money', monogram: 'SM', tagline: 'Arus institusi', icon: 'smartmoney' },
-  { id: 'insider', name: 'Insider', monogram: 'IN', tagline: 'Transaksi direksi', icon: 'insider' },
-  { id: 'antigorengan', name: 'Anti-Gorengan', monogram: 'AG', tagline: 'Deteksi manipulasi', icon: 'gorengan' },
+  { id: 'fundamental', monogram: 'FD', icon: 'fundamental' },
+  { id: 'price', monogram: 'PR', icon: 'price' },
+  { id: 'smartmoney', monogram: 'SM', icon: 'smartmoney' },
+  { id: 'insider', monogram: 'IN', icon: 'insider' },
+  { id: 'antigorengan', monogram: 'AG', icon: 'gorengan' },
 ];

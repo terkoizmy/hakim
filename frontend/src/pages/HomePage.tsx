@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import Reveal from '../components/Reveal';
+import { renderRich, useLabels, useLang } from '../i18n';
 import {
   AlertIcon,
   ArrowRightIcon,
@@ -14,6 +15,11 @@ import {
 } from '../components/icons';
 
 const TICKER_RE = /^[A-Za-z]{4}$/;
+
+/** Cincin fokus bersama — pola yang sama dengan AppShell (satu sumber, supaya
+ * navigasi keyboard tidak pernah kehilangan penanda fokus). */
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-0';
 
 // Reveal diimpor dari komponen bersama — sebelumnya halaman ini punya salinan
 // lokal sendiri yang memakai IntersectionObserver `threshold: 0.12` tanpa
@@ -30,7 +36,14 @@ function SecHead({ num, title }: { num: string; title: React.ReactNode }) {
       <span className="whitespace-nowrap font-mono text-[13px] tracking-[1px] text-brass-500">
         {num}
       </span>
-      <h2 className="whitespace-nowrap font-display text-[clamp(28px,4vw,40px)] font-normal leading-[1.1] text-text-0">
+      {/* Judul seksi BOLEH melipat; nomornya tidak.
+       *
+       * `whitespace-nowrap` di sini semula dipasang agar judul tetap satu baris
+       * di desktop — tapi ia juga melarang judul melipat di layar sempit, dan
+       * judul Indonesia lebih panjang daripada Inggris ("Tiga babak
+       * persidangan." meluber ~100px di 390px). Tanpa nowrap ia tetap satu
+       * baris selama memang muat; yang berubah hanya izin melipat saat tidak muat. */}
+      <h2 className="font-display text-[clamp(28px,4vw,40px)] font-normal leading-[1.1] text-text-0">
         {title}
       </h2>
       <span
@@ -44,6 +57,8 @@ function SecHead({ num, title }: { num: string; title: React.ReactNode }) {
 /** Landing page (/) — pitch produk, 1 halaman penuh. */
 export default function HomePage() {
   const navigate = useNavigate();
+  const { t } = useLang();
+  const labels = useLabels();
   const [value, setValue] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,15 +72,16 @@ export default function HomePage() {
     if (error) setError(null);
   }
 
-  async function startTrial(t: string) {
+  // Parameternya bernama `code`, bukan `t`: nama `t` dipakai fungsi terjemah.
+  async function startTrial(code: string) {
     if (submitting) return;
     setSubmitting(true);
     setError(null);
     try {
-      const trial = await api.createTrial(t, 'auto');
+      const trial = await api.createTrial(code, 'auto');
       navigate(`/trial/${trial.trial_id}`);
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : 'Gagal memulai sidang. Coba lagi.';
+      const msg = e instanceof ApiError ? e.message : t('home.error.start');
       setError(msg);
       setSubmitting(false);
     }
@@ -81,17 +97,17 @@ export default function HomePage() {
           <Reveal className="flex flex-col items-center text-center">
             <span className="inline-flex items-center gap-2 rounded-pill border border-[#3a332a] bg-[rgba(201,162,74,0.05)] px-4 py-2 font-mono text-[12px] uppercase tracking-[1.5px] text-brass-300">
               <span className="h-1.5 w-1.5 rounded-full bg-brass-500" aria-hidden="true" />
-              Multi-Agent · Data Sectors · Bahasa Indonesia
+              {t('home.hero.badge')}
             </span>
             <h1 className="mx-auto mt-[34px] max-w-[16ch] font-display text-[clamp(44px,7vw,84px)] font-normal leading-[1.02] tracking-[-1px] text-text-0">
-              Sebelum beli, <em className="italic text-brass-500">aduli</em> dulu.
+              {renderRich(t('home.hero.title'), {
+                em: (c) => <em className="italic text-brass-500">{c}</em>,
+              })}
             </h1>
             <p className="mx-auto mt-[26px] max-w-[56ch] text-[18px] leading-[1.7] text-text-2">
-              Lima analis menggali bukti dari data Sectors —{' '}
-              <strong className="font-medium text-text-0">jaksa bear</strong> berdebat melawan{' '}
-              <strong className="font-medium text-text-0">pembela bull</strong> dalam dua ronde, lalu{' '}
-              <strong className="font-medium text-text-0">hakim menulis memorandum riset</strong>.
-              Semua tayang, semua tersimpan.
+              {renderRich(t('home.hero.lead'), {
+                b: (c) => <strong className="font-medium text-text-0">{c}</strong>,
+              })}
             </p>
 
             <form
@@ -107,11 +123,11 @@ export default function HomePage() {
                   className="min-w-0 flex-1 border-none bg-transparent py-3 font-mono text-base uppercase tracking-[2px] text-text-0 outline-none placeholder:tracking-[1px] placeholder:text-text-3 focus-visible:outline-none"
                   value={value}
                   onChange={(e) => onTickerChange(e.target.value)}
-                  placeholder="KODE SAHAM"
+                  placeholder={t('home.form.tickerPlaceholder')}
                   maxLength={4}
                   autoComplete="off"
                   spellCheck={false}
-                  aria-label="Kode saham 4 huruf"
+                  aria-label={t('home.form.tickerLabel')}
                   autoFocus
                 />
               </div>
@@ -120,40 +136,48 @@ export default function HomePage() {
                 type="submit"
                 disabled={!validTicker || submitting}
               >
-                {submitting ? <span className="spinner-glow" /> : 'Mulai Sidang'}
+                {submitting ? <span className="spinner-glow" /> : t('home.form.submit')}
               </button>
             </form>
             <p className="mt-3 font-mono text-[12px] tracking-[0.3px] text-text-3">
-              ±3 menit · tanpa akun · tanpa biaya
+              {t('home.form.note')}
             </p>
 
             {error && (
-              <div className="mt-4 flex items-center gap-2 text-[13.5px] text-[#c96a5a]" role="alert">
+              <div
+                className="mt-4 flex w-full max-w-[560px] items-center justify-center gap-2 rounded-[14px] border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] px-[18px] py-[14px] text-[13.5px] text-[#c96a5a]"
+                role="alert"
+              >
                 <AlertIcon size={16} />
-                <span>{error} — pastikan 4 huruf kode emiten IDX.</span>
+                <span>
+                  {error} {t('home.form.errorHint')}
+                </span>
               </div>
             )}
             {!validTicker && value.length === 4 && (
-              <div className="mt-4 flex items-center gap-2 text-[13.5px] text-[#c96a5a]" role="alert">
+              <div
+                className="mt-4 flex w-full max-w-[560px] items-center justify-center gap-2 rounded-[14px] border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] px-[18px] py-[14px] text-[13.5px] text-[#c96a5a]"
+                role="alert"
+              >
                 <AlertIcon size={16} />
-                <span>Kode harus 4 huruf (contoh: BBCA, CUAN).</span>
+                <span>{t('home.form.invalid')}</span>
               </div>
             )}
 
             <div className="mt-[26px] flex flex-wrap justify-center gap-7">
               <Link
                 to="/dashboard"
-                className="inline-flex items-center gap-2 text-[14px] text-text-2 transition-colors hover:text-brass-300"
+                className={`inline-flex items-center gap-2 rounded-xs text-[14px] text-text-2 transition-colors hover:text-brass-300 ${FOCUS}`}
               >
                 <FileIcon size={15} />
-                Lihat Daftar Perkara
+                {t('home.links.cases')}
               </Link>
               <Link
                 to="/journal"
-                className="inline-flex items-center gap-2 text-[14px] text-text-2 transition-colors hover:text-brass-300"
+                className={`inline-flex items-center gap-2 rounded-xs text-[14px] text-text-2 transition-colors hover:text-brass-300 ${FOCUS}`}
               >
                 <BookIcon size={15} />
-                Jurnal Sidang
+                {t('home.links.journal')}
               </Link>
             </div>
           </Reveal>
@@ -164,12 +188,10 @@ export default function HomePage() {
       <section className="py-[84px] max-[560px]:py-16" id="putusan">
         <div className="container">
           <SecHead
-            num="I · PUTUSAN"
-            title={
-              <>
-                Lihat <em className="italic text-brass-500">produknya</em> dulu.
-              </>
-            }
+            num={t('home.showcase.num')}
+            title={renderRich(t('home.showcase.title'), {
+              em: (c) => <em className="italic text-brass-500">{c}</em>,
+            })}
           />
 
           <div className="grid grid-cols-[1.35fr_1fr] items-stretch gap-5 max-[900px]:grid-cols-1">
@@ -177,7 +199,7 @@ export default function HomePage() {
               <article className="relative flex flex-col gap-[18px] overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2 p-7 before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:content-[''] before:bg-[linear-gradient(90deg,var(--brass-500),transparent_70%)]">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="font-mono text-[12px] tracking-[0.5px] text-text-3">
-                    PERKARA No. 2024-118 · SEKTOR PERBANKAN
+                    {t('home.showcase.caseMeta')}
                   </span>
                   <span className="flex items-center gap-3">
                     <span className="font-display text-[26px] font-medium text-text-0">
@@ -188,15 +210,18 @@ export default function HomePage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="rounded-[6px] border border-[rgba(127,176,105,0.4)] px-[10px] py-[5px] font-mono text-[13px] tracking-[0.5px] text-[#7fb069]">
-                    Layak Diteliti
+                    {labels.verdict.layak_diteliti_lanjut}
                   </span>
-                  <span className="rounded-[6px] border border-[#3a332a] px-[9px] py-[5px] font-mono text-[12px] tracking-[0.5px] text-text-3">
-                    INFO A
+                  <span
+                    className="rounded-[6px] border border-[#3a332a] px-[9px] py-[5px] font-mono text-[12px] tracking-[0.5px] text-text-3"
+                    title={t('enum.richness.title', { grade: labels.richness.A })}
+                  >
+                    {labels.richness.A}
                   </span>
                 </div>
                 <div className="flex items-center gap-3.5">
                   <span className="whitespace-nowrap font-mono text-[12px] tracking-[0.5px] text-text-2">
-                    KONFIDENSI
+                    {t('home.showcase.confidence')}
                   </span>
                   <div className="h-2 flex-1 overflow-hidden rounded-pill bg-[#2a251e]">
                     <div className="h-full w-[78%] rounded-pill bg-[linear-gradient(90deg,#9a7a36,#c9a24a)]" />
@@ -205,33 +230,33 @@ export default function HomePage() {
                 </div>
                 <div className="flex flex-col gap-[6px] border-t border-[#2a251e] pt-[18px]">
                   <div className="mb-[6px] font-mono text-[11px] uppercase tracking-[1px] text-text-3">
-                    Bukti yang dikutip
+                    {t('home.showcase.cited')}
                   </div>
                   <div className="flex items-start gap-3 py-[3px]">
                     <span className="flex-none pt-0.5 font-mono text-[11px] text-brass-500">[S1]</span>
                     <span className="text-[13.5px] leading-[1.5] text-text-2">
-                      Margin bunga bersih stabil di kuartal terakhir, didukung pertumbuhan kredit ritel.
+                      {t('home.showcase.evidence1')}
                     </span>
                   </div>
                   <div className="flex items-start gap-3 py-[3px]">
                     <span className="flex-none pt-0.5 font-mono text-[11px] text-brass-500">[S2]</span>
                     <span className="text-[13.5px] leading-[1.5] text-text-2">
-                      Rasio NPL terkendali di bawah rata-rata sektor; cadangan memadai.
+                      {t('home.showcase.evidence2')}
                     </span>
                   </div>
                   <div className="flex items-start gap-3 py-[3px]">
                     <span className="flex-none pt-0.5 font-mono text-[11px] text-brass-500">[S3]</span>
                     <span className="text-[13.5px] leading-[1.5] text-text-2">
-                      Valuasi berada di kisaran historis, tanpa lonjakan volume yang mencurigakan.
+                      {t('home.showcase.evidence3')}
                     </span>
                   </div>
                 </div>
                 <div className="mt-auto flex flex-wrap justify-between gap-3 border-t border-[#2a251e] pt-4">
                   <span className="font-mono text-[11.5px] tracking-[0.5px] text-text-3">
-                    DITULIS OLEH HAKIM · 2 RONDE DEBAT
+                    {t('home.showcase.byline')}
                   </span>
                   <span className="font-mono text-[11.5px] tracking-[0.5px] text-text-2">
-                    ARSIP TERBUKA
+                    {t('home.showcase.archive')}
                   </span>
                 </div>
               </article>
@@ -243,13 +268,16 @@ export default function HomePage() {
                   <span className="mt-1.5 h-2.5 w-2.5 flex-none rounded-full bg-[#7fb069]" />
                   <div>
                     <h4 className="mb-1 font-display text-[18px] font-medium text-text-0">
-                      Layak Diteliti
+                      {labels.verdict.layak_diteliti_lanjut}
                     </h4>
                     <p className="text-[13.5px] leading-[1.55] text-text-2">
-                      Bukti seimbang, fundamental sehat. Masuk daftar pantau untuk riset lanjutan.
+                      {t('home.showcase.card1.body')}
                     </p>
-                    <div className="mt-2 font-mono text-[11px] tracking-[0.5px] text-text-3">
-                      CONTOH · TLKM · INFO A
+                    <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.5px] text-text-3">
+                      {t('home.showcase.sampleTicker', {
+                        ticker: 'TLKM',
+                        grade: labels.richness.A,
+                      })}
                     </div>
                   </div>
                 </article>
@@ -259,13 +287,16 @@ export default function HomePage() {
                   <span className="mt-1.5 h-2.5 w-2.5 flex-none rounded-full bg-[#d9a441]" />
                   <div>
                     <h4 className="mb-1 font-display text-[18px] font-medium text-text-0">
-                      Perlu Kehati-hatian
+                      {labels.verdict.perlu_kehati_hatian}
                     </h4>
                     <p className="text-[13.5px] leading-[1.55] text-text-2">
-                      Ada sinyal campur — pertumbuhan ada, tapi risiko terukur. Perlu verifikasi.
+                      {t('home.showcase.card2.body')}
                     </p>
-                    <div className="mt-2 font-mono text-[11px] tracking-[0.5px] text-text-3">
-                      CONTOH · GOTO · INFO B
+                    <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.5px] text-text-3">
+                      {t('home.showcase.sampleTicker', {
+                        ticker: 'GOTO',
+                        grade: labels.richness.B,
+                      })}
                     </div>
                   </div>
                 </article>
@@ -275,13 +306,13 @@ export default function HomePage() {
                   <span className="mt-1.5 h-2.5 w-2.5 flex-none rounded-full bg-[#c96a5a]" />
                   <div>
                     <h4 className="mb-1 font-display text-[18px] font-medium text-text-0">
-                      Red Flag
+                      {labels.verdict.red_flag_berat}
                     </h4>
                     <p className="text-[13.5px] leading-[1.55] text-text-2">
-                      Anomali terdeteksi pada beberapa metrik. Disarankan tidak dilanjutkan.
+                      {t('home.showcase.card3.body')}
                     </p>
-                    <div className="mt-2 font-mono text-[11px] tracking-[0.5px] text-text-3">
-                      CONTOH · INFO C
+                    <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.5px] text-text-3">
+                      {t('home.showcase.sampleGrade', { grade: labels.richness.C })}
                     </div>
                   </div>
                 </article>
@@ -295,54 +326,58 @@ export default function HomePage() {
       <section className="py-[84px] max-[560px]:py-16" id="cara-kerja">
         <div className="container">
           <SecHead
-            num="II · CARA KERJA"
-            title={
-              <>
-                Tiga babak <em className="italic text-brass-500">persidangan</em>.
-              </>
-            }
+            num={t('home.how.num')}
+            title={renderRich(t('home.how.title'), {
+              em: (c) => <em className="italic text-brass-500">{c}</em>,
+            })}
           />
 
           <div className="grid grid-cols-3 gap-5 max-[900px]:grid-cols-1">
             <Reveal>
               <article className="relative rounded-[14px] border border-[#3a332a] bg-bg-2 p-7">
-                <span className="font-mono text-[12px] tracking-[1px] text-brass-500">BABAK 01</span>
+                <span className="font-mono text-[12px] tracking-[1px] text-brass-500">
+                  {t('home.how.act', { n: '01' })}
+                </span>
                 <span className="mb-4 mt-[18px] block w-[44px] text-brass-300">
                   <SparkIcon size={40} />
                 </span>
                 <h3 className="mb-2 font-display text-[20px] font-medium text-text-0">
-                  Lima analis menggali bukti
+                  {t('home.how.step1.title')}
                 </h3>
                 <p className="text-[14px] leading-[1.6] text-text-2">
-                  Setiap angka yang dipakai selalu bersitasi ke endpoint Sectors API.
+                  {t('home.how.step1.body')}
                 </p>
               </article>
             </Reveal>
             <Reveal>
               <article className="relative rounded-[14px] border border-[#3a332a] bg-bg-2 p-7">
-                <span className="font-mono text-[12px] tracking-[1px] text-brass-500">BABAK 02</span>
+                <span className="font-mono text-[12px] tracking-[1px] text-brass-500">
+                  {t('home.how.act', { n: '02' })}
+                </span>
                 <span className="mb-4 mt-[18px] block w-[44px] text-brass-300">
                   <ScaleIcon size={40} />
                 </span>
                 <h3 className="mb-2 font-display text-[20px] font-medium text-text-0">
-                  Debat dua ronde tayang langsung
+                  {t('home.how.step2.title')}
                 </h3>
                 <p className="text-[14px] leading-[1.6] text-text-2">
-                  Jaksa bear vs pembela bull — bukan kotak hitam, semua bisa disimak.
+                  {t('home.how.step2.body')}
                 </p>
               </article>
             </Reveal>
             <Reveal>
               <article className="relative rounded-[14px] border border-[#3a332a] bg-bg-2 p-7">
-                <span className="font-mono text-[12px] tracking-[1px] text-brass-500">BABAK 03</span>
+                <span className="font-mono text-[12px] tracking-[1px] text-brass-500">
+                  {t('home.how.act', { n: '03' })}
+                </span>
                 <span className="mb-4 mt-[18px] block w-[44px] text-brass-300">
                   <FileIcon size={40} />
                 </span>
                 <h3 className="mb-2 font-display text-[20px] font-medium text-text-0">
-                  Hakim menulis memorandum
+                  {t('home.how.step3.title')}
                 </h3>
                 <p className="text-[14px] leading-[1.6] text-text-2">
-                  Rangkuman riset final dengan kategori dan konfidensi yang jelas.
+                  {t('home.how.step3.body')}
                 </p>
               </article>
             </Reveal>
@@ -360,10 +395,10 @@ export default function HomePage() {
               </span>
               <div>
                 <h4 className="mb-[5px] font-display text-[17px] font-medium text-text-0">
-                  Setiap angka bersitasi
+                  {t('home.cred.cite.title')}
                 </h4>
                 <p className="text-[13.5px] leading-[1.55] text-text-2">
-                  Semua klaim menunjuk ke endpoint Sectors API — bisa diverifikasi ulang.
+                  {t('home.cred.cite.body')}
                 </p>
               </div>
             </div>
@@ -373,10 +408,10 @@ export default function HomePage() {
               </span>
               <div>
                 <h4 className="mb-[5px] font-display text-[17px] font-medium text-text-0">
-                  Proses transparan &amp; terarsip
+                  {t('home.cred.transparent.title')}
                 </h4>
                 <p className="text-[13.5px] leading-[1.55] text-text-2">
-                  Debat dan memorandum tersimpan, tidak ada proses yang disembunyikan.
+                  {t('home.cred.transparent.body')}
                 </p>
               </div>
             </div>
@@ -386,10 +421,10 @@ export default function HomePage() {
               </span>
               <div>
                 <h4 className="mb-[5px] font-display text-[17px] font-medium text-text-0">
-                  Tanpa rekomendasi beli/jual
+                  {t('home.cred.noAdvice.title')}
                 </h4>
                 <p className="text-[13.5px] leading-[1.55] text-text-2">
-                  Hanya kategori riset — keputusan tetap sepenuhnya di tangan Anda.
+                  {t('home.cred.noAdvice.body')}
                 </p>
               </div>
             </div>
@@ -402,20 +437,21 @@ export default function HomePage() {
         <div className="container">
           <Reveal className="relative overflow-hidden rounded-[14px] border border-[#3a332a] bg-[linear-gradient(135deg,var(--bg-3),var(--bg-2))] px-12 py-16 text-center before:pointer-events-none before:absolute before:inset-0 before:content-[''] before:bg-[radial-gradient(600px_300px_at_50%_0%,rgba(201,162,74,0.08),transparent_70%)] max-[560px]:px-6 max-[560px]:py-12">
             <span className="relative font-mono text-[12px] uppercase tracking-[1.5px] text-brass-500">
-              Jurnal Sidang
+              {t('home.journal.eyebrow')}
             </span>
             <h2 className="relative mx-auto mt-[18px] max-w-[20ch] font-display text-[clamp(30px,4.5vw,46px)] font-normal leading-[1.1] text-text-0">
-              Semua putusan <em className="italic text-brass-500">terarsip</em>. Postmortem vs harga kini.
+              {renderRich(t('home.journal.title'), {
+                em: (c) => <em className="italic text-brass-500">{c}</em>,
+              })}
             </h2>
             <p className="relative mx-auto mt-5 max-w-[52ch] text-[16px] text-text-2">
-              Setiap perkara yang pernah disidangkan tersimpan rapi. Kembali lagi nanti, bandingkan putusan
-              dengan pergerakan harga — dan pelajari di mana risetnya tepat atau meleset.
+              {t('home.journal.body')}
             </p>
             <Link
               to="/journal"
-              className="relative mt-8 inline-flex items-center gap-2.5 rounded-[9px] border border-brass-600 px-[26px] py-[14px] font-mono text-[14px] tracking-[0.5px] text-brass-300 transition-all hover:border-brass-500 hover:bg-brass-500 hover:text-[#14120f]"
+              className={`relative mt-8 inline-flex items-center gap-2.5 rounded-[9px] border border-brass-600 px-[26px] py-[14px] font-mono text-[14px] tracking-[0.5px] text-brass-300 transition-all hover:border-brass-500 hover:bg-brass-500 hover:text-[#14120f] ${FOCUS}`}
             >
-              Buka Jurnal Sidang
+              {t('home.journal.cta')}
               <ArrowRightIcon size={16} />
             </Link>
           </Reveal>

@@ -18,6 +18,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import VerdictBadge from '../components/VerdictBadge';
+import { renderRich, severityKey, useLabels, useLang } from '../i18n';
 import Reveal from '../components/Reveal';
 import PriceChart from '../components/PriceChart';
 import { SparkIcon, ArrowRightIcon, RefreshIcon, ClockIcon, SearchIcon } from '../components/icons';
@@ -49,6 +50,16 @@ const SEV_CLS: Record<string, string> = {
 // membuat teks tidak rata).
 const LEGEND_ROW =
   'grid grid-cols-[12px_16px_1fr] items-center gap-x-2 cursor-pointer text-[11.5px] transition-colors';
+
+// Cincin fokus bersama — string yang SAMA dengan `FOCUS` di AppShell.tsx, jadi
+// kontrol di halaman ini tidak berkedip beda dari kerangka aplikasi.
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-0';
+
+// Satu bentuk untuk semua blok kosong / memuat / galat: di tengah, sudut 14px,
+// berbingkai, dengan padding lega — supaya keadaan sepi tidak tampil sebagai
+// teks telanjang yang berbeda-beda di tiap panel.
+const STATE_BOX = 'rounded-[14px] border border-[#3a332a] px-4 py-6 text-center';
 
 const CENTER_X = 500;
 const CENTER_Y = 360;
@@ -468,7 +479,13 @@ function calculateFocusLayout(
 }
 
 function BoardCard({ data, selected, isCenter }: { data: BoardNodeData; selected: boolean; isCenter?: boolean }) {
-  const t = NODE_TYPE_META[data.type];
+  const labels = useLabels();
+  const { t } = useLang();
+  // `meta`, bukan `t`: `t` di komponen ini milik kamus.
+  const meta = NODE_TYPE_META[data.type];
+  // Data papan memakai nilai Indonesia ('tinggi'), memo memakai nilai Inggris
+  // ('high'). Dinormalkan supaya keduanya memakai label yang sama.
+  const sev = severityKey(data.severity);
   return (
     <div
       className={`w-[248px] rounded-[10px] border bg-[#1a1713] shadow-[0_14px_32px_rgba(0,0,0,.75)] transition-all duration-300 select-none ${
@@ -481,12 +498,13 @@ function BoardCard({ data, selected, isCenter }: { data: BoardNodeData; selected
     >
       <div
         className="h-2 rounded-t-[9px]"
-        style={{ background: data.type === 'emiten' ? 'var(--brass-500)' : t.color }}
+        style={{ background: data.type === 'emiten' ? 'var(--brass-500)' : meta.color }}
       />
       <div className="p-4">
         {isCenter && (
           <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-brass-500/20 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-brass-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-brass-400 animate-pulse-dot" /> Pusat Fokus
+            <span className="h-1.5 w-1.5 rounded-full bg-brass-400 animate-pulse-dot" />{' '}
+            {t('board.card.center')}
           </div>
         )}
         {data.type === 'emiten' && (
@@ -498,7 +516,7 @@ function BoardCard({ data, selected, isCenter }: { data: BoardNodeData; selected
           <span
             className={`inline-flex items-center border rounded-md px-2 py-0.5 font-mono text-[10.5px] font-bold leading-4 tracking-wide ${SEV_CLS[data.severity]}`}
           >
-            {data.severity.toUpperCase()}
+            {sev ? labels.severity[sev] : data.severity}
           </span>
         )}
         {data.type === 'kabar' && data.date && (
@@ -513,16 +531,18 @@ function BoardCard({ data, selected, isCenter }: { data: BoardNodeData; selected
         )}
         {data.cross && (
           <div className="mt-2 inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-brass-300 tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-brass-500" /> lintas emiten
+            <span className="w-2 h-2 rounded-full bg-brass-500" /> {t('board.card.cross')}
           </div>
         )}
         {data.retrievedAt && (
           <div className="mt-2.5 pt-2 border-t border-[#2e271f] flex items-center gap-1.5 text-[10px] font-mono text-text-3">
             <ClockIcon size={11} className="text-brass-500/80 flex-none" />
-            <span className="truncate">Sumber diambil {formatDate(data.retrievedAt)}</span>
+            <span className="truncate">
+              {t('board.card.retrieved', { date: formatDate(data.retrievedAt) })}
+            </span>
             {data.cache === 'hit' && (
               <span className="ml-auto flex-none rounded-sm border border-[#3a332a] px-1 text-[9px] uppercase tracking-wide text-text-3">
-                arsip
+                {t('board.card.archive')}
               </span>
             )}
           </div>
@@ -559,7 +579,10 @@ function BoardNodeCard({ data }: NodeProps) {
 const nodeTypes: NodeTypes = { board: BoardNodeCard };
 
 function BoardEdge({ sourceX, sourceY, targetX, targetY, data }: any) {
-  const meta = (data?.type && EDGE_META[data.type as EdgeType]) || { label: 'relasi', color: '#c4b5a0' };
+  // Catatan: label benang di sini datang dari payload backend (`data.label`),
+  // bukan dari kamus — jenisnya sudah dinormalkan server. Karena itu tidak ada
+  // teks yang perlu diambil dari `labels` di komponen ini.
+  const meta = (data?.type && EDGE_META[data.type as EdgeType]) || { color: '#c4b5a0' };
   const label = data?.label as string | undefined;
   // Posisi pil dihitung sekali untuk semua benang oleh `planEdgeLabels`
   // (lihat FocusBoardFlow) supaya pil tidak saling menimpa; `null` = tidak ada
@@ -632,6 +655,7 @@ function FocusBoardFlow({
   onNodeClick: (_: any, node: Node) => void;
 }) {
   const { fitView, getZoom } = useReactFlow();
+  const { t } = useLang();
 
   // Ukuran kartu baru diketahui setelah React Flow selesai mengukur, dan
   // penempatan pil perlu tahu ukuran semua kartu — jadi `useStore` di sini,
@@ -716,31 +740,35 @@ function FocusBoardFlow({
         <button
           type="button"
           onClick={() => centerOnFocused()}
-          className="rounded border border-[#3a332a] bg-[#12100d]/95 px-2.5 py-1 font-mono text-[11px] text-brass-300 hover:border-brass-500 transition-colors"
-          title="Perbesar ke kartu fokus (skala terbaca)"
+          className={`rounded border border-[#3a332a] bg-[#12100d]/95 px-2.5 py-1 font-mono text-[11px] text-brass-300 hover:border-brass-500 transition-colors ${FOCUS}`}
+          title={t('board.canvas.centerTitle')}
         >
-          Pusatkan
+          {t('board.canvas.center')}
         </button>
         <button
           type="button"
           onClick={() => fitAll()}
-          className="rounded border border-[#3a332a] bg-[#12100d]/95 px-2.5 py-1 font-mono text-[11px] text-text-2 hover:border-brass-500 hover:text-brass-300 transition-colors"
-          title="Tampilkan seluruh jaringan (kartu mengecil)"
+          className={`rounded border border-[#3a332a] bg-[#12100d]/95 px-2.5 py-1 font-mono text-[11px] text-text-2 hover:border-brass-500 hover:text-brass-300 transition-colors ${FOCUS}`}
+          title={t('board.canvas.fitAllTitle')}
         >
-          Fit semua
+          {t('board.canvas.fitAll')}
         </button>
       </Panel>
       {/* Petunjuk gulir/zoom: roda sengaja TIDAK mengezum kanvas lagi (lihat
           catatan di atas) supaya halaman tetap bisa digulir di atas graf. */}
       <Panel position="bottom-left" className="!m-3">
         <span className="pointer-events-none select-none font-mono text-[10.5px] text-text-3">
-          Roda gulir = gulir halaman · Ctrl + roda = zoom kanvas
+          {t('board.canvas.scrollHint')}
         </span>
       </Panel>
     </ReactFlow>
   );
 }
 
+/** Saran pertanyaan: teksnya adalah ISI PESAN yang dikirim ke backend chat —
+ * backend itu hanya berbahasa Indonesia, jadi chip sengaja TIDAK masuk kamus
+ * (menerjemahkannya membuat percakapan campur bahasa). Keterangan kejujuran
+ * `board.chatNote` di panel chat yang menjelaskan hal ini ke pembaca mode EN. */
 function getSmartPromptChips(selectedNode: BoardNode | undefined, ticker: string): string[] {
   if (!selectedNode) {
     return [
@@ -808,6 +836,8 @@ interface VettedEmitenItem {
 }
 
 export default function DetectiveBoardPage() {
+  const labels = useLabels();
+  const { t } = useLang();
   const [selectedTicker, setSelectedTicker] = useState<string>('BBCA');
   const [searchQuery, setSearchQuery] = useState('');
   const [boardData, setBoardData] = useState<TickerBoardData | null>(null);
@@ -876,14 +906,18 @@ export default function DetectiveBoardPage() {
         setChatLog([
           {
             role: 'ai',
-            text: data.initialChat || `Papan investigasi ${selectedTicker} aktif. Silakan tanyakan kepemilikan, direksi, atau fakta audit.`,
+            // `initialChat` datang dari backend (Indonesia); teks cadangan di
+            // bawah ini milik frontend, jadi ikut bahasa antarmuka.
+            text: data.initialChat || t('board.chat.greeting', { ticker: selectedTicker }),
           },
         ]);
       })
       .catch((err) => {
         console.error(`[DetectiveBoard] Gagal fetchBoard ${selectedTicker} dari backend:`, err);
         if (!alive) return;
-        setBoardError(err?.message || `Gagal memuat data investigasi ${selectedTicker} dari server.`);
+        setBoardError(
+          err?.message || t('board.error.loadFailedTicker', { ticker: selectedTicker }),
+        );
       })
       .finally(() => {
         if (alive) setLoadingBoard(false);
@@ -892,6 +926,9 @@ export default function DetectiveBoardPage() {
     return () => {
       alive = false;
     };
+    // `t` sengaja BUKAN dependensi: mengganti bahasa tidak boleh memicu ulang
+    // penarikan papan — teks yang sudah tersimpan di log chat juga tidak ikut
+    // berganti bahasa (balasannya memang Indonesia).
   }, [selectedTicker]);
 
   const currentBoard = useMemo<TickerBoardData>(() => {
@@ -901,10 +938,10 @@ export default function DetectiveBoardPage() {
       name: `${selectedTicker} Tbk`,
       nodes: [],
       edges: [],
-      initialChat: `Memuat data investigasi ${selectedTicker}...`,
+      initialChat: t('board.chat.loadingInitial', { ticker: selectedTicker }),
       aiInsights: {},
     };
-  }, [boardData, selectedTicker]);
+  }, [boardData, selectedTicker, t]);
 
   const filteredEmiten = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -957,7 +994,7 @@ export default function DetectiveBoardPage() {
   >([
     {
       role: 'ai',
-      text: `Papan investigasi ${selectedTicker} aktif.`,
+      text: t('board.chat.greetingShort', { ticker: selectedTicker }),
     },
   ]);
 
@@ -1078,7 +1115,11 @@ export default function DetectiveBoardPage() {
         settle({
           role: 'ai',
           mode: 'heuristik',
-          text: `Analisis keterkaitan ${selectedTicker}: Ditemukan ${connectedCount} entitas relasi aktif pada fokus ${selected?.data.label ?? selectedTicker}. (Jawaban lokal — server tidak terjangkau.)`,
+          text: t('board.chat.localFallback', {
+            ticker: selectedTicker,
+            n: connectedCount,
+            focus: selected?.data.label ?? selectedTicker,
+          }),
         });
       });
   };
@@ -1109,21 +1150,38 @@ export default function DetectiveBoardPage() {
 
   const isFocusingNonMain = selectedId !== mainDefaultId;
 
+  /* Inspektur simpul tidak punya tombol tutup — "menutupnya" berarti
+     mengembalikan fokus ke emiten utama, jadi Escape masuk akal di sini.
+     Diabaikan saat kursor ada di kolom isian supaya Escape di kotak chat tidak
+     ikut melempar fokus papan. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !isFocusingNonMain) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+      setSelectedId(mainDefaultId);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFocusingNonMain, mainDefaultId]);
+
   return (
     <div className="py-8">
       <div className="mx-auto max-w-[1400px] px-6">
         <Reveal>
           <header className="mb-6">
             <div className="flex items-center gap-2 font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase mb-2">
-              <span>Analisis lanjutan</span>
+              <span>{t('board.header.kicker')}</span>
               <span className="text-brass-500">/</span>
-              <span className="text-brass-400">Papan Bukti Detektif</span>
+              <span className="text-brass-400">{t('board.header.crumb')}</span>
             </div>
             <h1 className="font-display font-normal text-[clamp(28px,4vw,40px)] leading-[1.05] text-text-0">
-              Papan Bukti <em className="italic text-brass-500">Detektif</em>
+              {renderRich(t('board.title'), {
+                em: (children) => <em className="italic text-brass-500">{children}</em>,
+              })}
             </h1>
             <p className="mt-2 text-text-2 max-w-[62ch] text-[15px]">
-              Eksplorasi grafis relasi kepemilikan, orang kunci, dan bukti red flag untuk <strong>emiten yang telah lolos sidang</strong> (Vonis Layak &amp; Kehati-hatian).
+              {renderRich(t('board.subtitle'))}
             </p>
           </header>
         </Reveal>
@@ -1135,15 +1193,20 @@ export default function DetectiveBoardPage() {
               <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase">
-                    Emiten Lolos Sidang
+                    {t('board.emiten.title')}
                   </h3>
                   <span className="font-mono text-[10px] text-brass-400 bg-brass-500/10 px-2 py-0.5 rounded border border-brass-500/20">
-                    {filteredEmiten.length} perkara
+                    {t('board.emiten.count', { n: filteredEmiten.length })}
                   </span>
                 </div>
 
                 <p className="text-[11px] text-text-3 mb-2.5 leading-relaxed">
-                  Hanya menampilkan emiten dengan vonis <span className="text-[#7fb069] font-medium">Layak</span> atau <span className="text-[#d9a441] font-medium">Hati-Hati</span>.
+                  {renderRich(t('board.emiten.note', {
+                    layak: labels.verdict.layak_diteliti_lanjut,
+                    hati: labels.verdict.perlu_kehati_hatian,
+                  }), {
+                    b: (children) => <span className="font-medium text-[#7fb069]">{children}</span>,
+                  })}
                 </p>
 
                 {/* Search Box */}
@@ -1153,15 +1216,16 @@ export default function DetectiveBoardPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari emiten sidang..."
+                    placeholder={t('board.emiten.search')}
                     className="w-full bg-bg-1 border border-[#3a332a] rounded-md pl-8 pr-7 py-1.5 font-mono text-[11.5px] text-text-0 placeholder:text-text-3 focus-visible:border-brass-500 focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_rgba(201,162,74,0.15)] transition-all"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-text-3 hover:text-text-0 font-mono text-xs px-1"
-                      title="Hapus filter"
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 text-text-3 hover:text-text-0 font-mono text-xs px-1 rounded ${FOCUS}`}
+                      title={t('board.emiten.clear')}
+                      aria-label={t('board.emiten.clear')}
                     >
                       ✕
                     </button>
@@ -1171,8 +1235,8 @@ export default function DetectiveBoardPage() {
                 {/* Emiten List */}
                 <div className="flex-1 overflow-y-auto pr-1">
                   {filteredEmiten.length === 0 ? (
-                    <div className="py-8 text-center text-text-3 font-mono text-xs leading-relaxed px-2">
-                      Tidak ada emiten lolos sidang yang cocok dengan pencarian &quot;{searchQuery}&quot;.
+                    <div className={`${STATE_BOX} text-text-3 font-mono text-xs leading-relaxed`}>
+                      {t('board.emiten.empty', { q: searchQuery })}
                     </div>
                   ) : (
                     <ul className="flex flex-col gap-1.5">
@@ -1188,7 +1252,7 @@ export default function DetectiveBoardPage() {
                                   setSelectedTicker(e.ticker);
                                 }
                               }}
-                              className={`w-full text-left flex flex-col gap-1 px-2.5 py-2 rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/40 ${
+                              className={`w-full text-left flex flex-col gap-1 px-2.5 py-2 rounded-md transition-all ${FOCUS} ${
                                 isCurrent
                                   ? 'bg-brass-500/15 border border-brass-500/40 text-brass-300 shadow-sm'
                                   : 'hover:bg-white/[0.04] text-text-0 border border-transparent'
@@ -1205,14 +1269,18 @@ export default function DetectiveBoardPage() {
                                       : 'text-[#d9a441] bg-[#d9a441]/10 border-[#d9a441]/30'
                                   }`}
                                 >
-                                  {isLayak ? 'Layak' : 'Hati-Hati'}
+                                  {labels.verdict[
+                                    isLayak ? 'layak_diteliti_lanjut' : 'perlu_kehati_hatian'
+                                  ]}
                                 </span>
                               </div>
                               <div className="text-[11px] text-text-3 truncate">{e.name}</div>
                               {(e.createdAt || e.infoRichness || e.sector) && (
                                 <div className="flex items-center gap-1.5 text-[9.5px] font-mono text-text-3">
                                   {e.infoRichness && (
-                                    <span className="text-brass-400">Richness {e.infoRichness}</span>
+                                    <span className="text-brass-400">
+                                      {t('board.emiten.richness', { grade: e.infoRichness })}
+                                    </span>
                                   )}
                                   {e.createdAt && (
                                     <>
@@ -1237,7 +1305,7 @@ export default function DetectiveBoardPage() {
               {/* Filter & Legenda */}
               <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-none">
                 <h3 className="font-mono text-[10.5px] text-text-3 tracking-[1.5px] uppercase mb-2">
-                  Filter &amp; Legenda
+                  {t('board.legend.title')}
                 </h3>
                 <div className="flex flex-col gap-y-[3px]">
                   {(Object.keys(NODE_TYPE_META) as NodeType[]).map((k) => (
@@ -1252,8 +1320,8 @@ export default function DetectiveBoardPage() {
                         className="w-2 h-2 rounded-full justify-self-center"
                         style={{ background: NODE_TYPE_META[k].color }}
                       />
-                      <span className="min-w-0 truncate" title={NODE_TYPE_META[k].label}>
-                        {NODE_TYPE_META[k].label}
+                      <span className="min-w-0 truncate" title={labels.nodeType[k]}>
+                        {labels.nodeType[k]}
                       </span>
                     </label>
                   ))}
@@ -1279,8 +1347,8 @@ export default function DetectiveBoardPage() {
                           ...(dashSample(EDGE_META[k].dash, EDGE_META[k].color) ?? {}),
                         }}
                       />
-                      <span className="min-w-0 truncate" title={EDGE_META[k].label}>
-                        {EDGE_META[k].label}
+                      <span className="min-w-0 truncate" title={labels.edge[k]}>
+                        {labels.edge[k]}
                       </span>
                     </label>
                   ))}
@@ -1293,7 +1361,7 @@ export default function DetectiveBoardPage() {
                     ada. Daripada berbohong, dimatikan dengan alasan tertulis. */}
                 <label
                   className={`${LEGEND_ROW} text-text-3 cursor-not-allowed`}
-                  title="Belum tersedia: papan hanya memuat satu emiten, jadi belum ada benang antar-emiten yang bisa digambar."
+                  title={t('board.legend.crossTitle')}
                 >
                   <input
                     type="checkbox"
@@ -1304,10 +1372,13 @@ export default function DetectiveBoardPage() {
                   />
                   <span aria-hidden className="block" />
                   <span className="min-w-0 truncate">
-                    Benang merah lintas emiten{' '}
-                    <span className="font-mono text-[10px] tracking-wide text-text-3/80">
-                      · belum tersedia
-                    </span>
+                    {renderRich(t('board.legend.cross'), {
+                      em: (children) => (
+                        <span className="font-mono text-[10px] tracking-wide text-text-3/80">
+                          {children}
+                        </span>
+                      ),
+                    })}
                   </span>
                 </label>
               </div>
@@ -1320,45 +1391,51 @@ export default function DetectiveBoardPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-[#2a251e] bg-bg-2 flex-none">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase">
-                    Papan · <b className="font-semibold text-brass-400">{selectedTicker}</b>
+                    {renderRich(t('board.canvas.title', { ticker: selectedTicker }), {
+                      b: (children) => <b className="font-semibold text-brass-400">{children}</b>,
+                    })}
                   </span>
                   <span className="text-text-3 text-xs">/</span>
                   <span className="inline-flex items-center gap-1.5 rounded-pill border border-brass-600/40 bg-brass-500/10 px-2 py-0.5 font-mono text-[11px] text-brass-300">
                     <span className="h-1.5 w-1.5 rounded-full bg-brass-400 animate-pulse-dot" />
-                    Fokus: {selected?.data.label ?? selectedTicker}
+                    {t('board.canvas.focus', { name: selected?.data.label ?? selectedTicker })}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3">
+                  {/* Saklar ini yang membuka/menutup jenis bukti di legenda —
+                      jadi `aria-pressed`-nya ada di sini, bukan di panel kiri. */}
                   <button
                     type="button"
                     onClick={toggleAllTypes}
-                    className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 font-mono text-[11px] transition-colors ${
+                    aria-pressed={allTypesOn}
+                    className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 font-mono text-[11px] transition-colors ${FOCUS} ${
                       allTypesOn
                         ? 'border-[#3a332a] bg-bg-1 text-text-3 hover:border-brass-500 hover:text-brass-300'
                         : 'border-brass-600/50 bg-brass-500/10 text-brass-300 hover:border-brass-500'
                     }`}
                     title={
                       allTypesOn
-                        ? 'Kembali ke tampilan ringkas (emiten, pemegang saham, orang kunci)'
-                        : 'Tampilkan seluruh bukti: red flag, bukti kabar, fakta angka, jejak broker'
+                        ? t('board.canvas.compactTitle')
+                        : t('board.canvas.expandTitle')
                     }
                   >
                     <SparkIcon size={12} />
-                    {allTypesOn ? 'Ringkas' : 'Perluas jaringan'}
+                    {allTypesOn ? t('board.canvas.compact') : t('board.canvas.expand')}
                   </button>
                   {isFocusingNonMain && (
                     <button
                       type="button"
                       onClick={() => setSelectedId(mainDefaultId)}
-                      className="inline-flex items-center gap-1.5 rounded border border-[#3a332a] bg-bg-1 px-2.5 py-1 font-mono text-[11px] text-brass-400 hover:border-brass-500 hover:text-brass-300 transition-colors"
-                      title={`Reset fokus ke emiten utama ${selectedTicker}`}
+                      className={`inline-flex items-center gap-1.5 rounded border border-[#3a332a] bg-bg-1 px-2.5 py-1 font-mono text-[11px] text-brass-400 hover:border-brass-500 hover:text-brass-300 transition-colors ${FOCUS}`}
+                      title={t('board.canvas.resetTitle', { ticker: selectedTicker })}
                     >
-                      <RefreshIcon size={12} /> Reset ke {selectedTicker}
+                      <RefreshIcon size={12} />{' '}
+                      {t('board.canvas.reset', { ticker: selectedTicker })}
                     </button>
                   )}
                   <span className="font-mono text-[11px] text-text-3 tracking-wide">
-                    {nodes.length} kartu aktif · {edges.length} benang
+                    {t('board.canvas.stats', { cards: nodes.length, threads: edges.length })}
                   </span>
                 </div>
               </div>
@@ -1366,41 +1443,49 @@ export default function DetectiveBoardPage() {
               <div className="flex-1 w-full board-canvas bg-[#080706] relative">
                 {boardError && !loadingBoard && (
                   <div className="absolute inset-0 bg-[#080706]/95 z-20 flex flex-col items-center justify-center gap-3 p-6 text-center">
-                    <div className="text-[#c96a5a] font-mono text-sm font-bold">
-                      ⚠ Gagal Memuat Data Investigasi
+                    <div className={`${STATE_BOX} flex max-w-[420px] flex-col items-center gap-3 text-[#c96a5a]`}>
+                      <div className="font-mono text-sm font-bold">
+                        {t('board.error.title')}
+                      </div>
+                      <p className="font-mono text-xs text-text-3 max-w-[400px]">
+                        {boardError}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBoardError(null);
+                          setLoadingBoard(true);
+                          api
+                            .fetchBoard(selectedTicker)
+                            .then((data) => {
+                              setBoardData(data);
+                              const mainNode =
+                                data.nodes.find((n: BoardNode) => n.data.type === 'emiten' && !n.data.cross) ??
+                                data.nodes[0];
+                              if (mainNode) setSelectedId(mainNode.id);
+                            })
+                            .catch((err) =>
+                              setBoardError(err?.message || t('board.error.loadFailed')),
+                            )
+                            .finally(() => setLoadingBoard(false));
+                        }}
+                        className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-brass-500/40 bg-brass-500/10 font-mono text-xs text-brass-300 hover:bg-brass-500/20 transition-colors ${FOCUS}`}
+                      >
+                        <RefreshIcon size={13} /> {t('board.error.retry')}
+                      </button>
                     </div>
-                    <p className="font-mono text-xs text-text-3 max-w-[400px]">
-                      {boardError}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBoardError(null);
-                        setLoadingBoard(true);
-                        api
-                          .fetchBoard(selectedTicker)
-                          .then((data) => {
-                            setBoardData(data);
-                            const mainNode =
-                              data.nodes.find((n: BoardNode) => n.data.type === 'emiten' && !n.data.cross) ??
-                              data.nodes[0];
-                            if (mainNode) setSelectedId(mainNode.id);
-                          })
-                          .catch((err) => setBoardError(err?.message || 'Gagal memuat data'))
-                          .finally(() => setLoadingBoard(false));
-                      }}
-                      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-brass-500/40 bg-brass-500/10 font-mono text-xs text-brass-300 hover:bg-brass-500/20 transition-colors"
-                    >
-                      <RefreshIcon size={13} /> Coba Muat Ulang
-                    </button>
                   </div>
                 )}
                 {loadingBoard && (
-                  <div className="absolute inset-0 bg-[#080706]/80 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center gap-3">
-                    <div className="w-7 h-7 border-2 border-brass-500/30 border-t-brass-500 rounded-full animate-spin" />
-                    <span className="font-mono text-xs text-text-2 tracking-wide">
-                      Menyusun berkas investigasi <b className="text-brass-300">{selectedTicker}</b> dari sidang &amp; Sectors...
-                    </span>
+                  <div className="absolute inset-0 bg-[#080706]/80 backdrop-blur-[2px] z-20 flex items-center justify-center p-6">
+                    <div className={`${STATE_BOX} flex max-w-[420px] flex-col items-center gap-3`}>
+                      <div className="w-7 h-7 border-2 border-brass-500/30 border-t-brass-500 rounded-full animate-spin" />
+                      <span className="font-mono text-xs text-text-2 tracking-wide">
+                        {renderRich(t('board.loading', { ticker: selectedTicker }), {
+                          b: (children) => <b className="text-brass-300">{children}</b>,
+                        })}
+                      </span>
+                    </div>
                   </div>
                 )}
                 <ReactFlowProvider>
@@ -1419,7 +1504,7 @@ export default function DetectiveBoardPage() {
             <div className="flex flex-col gap-3.5 h-[720px]">
               <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-none max-h-[340px] flex flex-col min-h-0 overflow-y-auto">
                 <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase mb-3 flex-none">
-                  Detail Bukti (Pusat Fokus)
+                  {t('board.inspector.title')}
                 </h3>
                 {selected ? (
                   <div>
@@ -1433,7 +1518,7 @@ export default function DetectiveBoardPage() {
                       </span>
                     </div>
                     <div className="text-[12px] text-text-2 mb-2.5">
-                      {NODE_TYPE_META[selected.data.type].label}
+                      {labels.nodeType[selected.data.type]}
                       {selected.data.sub ? ` · ${selected.data.sub}` : ''}
                     </div>
                     {selected.data.value && (
@@ -1454,16 +1539,29 @@ export default function DetectiveBoardPage() {
                     </ul>
                     {selected.data.source && (
                       <div className="mt-2.5 font-mono text-[10px] text-text-3">
-                        Sumber: {selected.data.source}
+                        {t('board.inspector.source', { name: selected.data.source })}
                       </div>
                     )}
                     <div className="mt-2.5 pt-2 border-t border-[#3a332a] flex items-center gap-1.5 font-mono text-[10.5px] text-text-3">
                       <ClockIcon size={12} className="text-brass-500 flex-none" />
-                      <span>Diambil: <strong className="text-text-2 font-normal">{selected.data.retrievedAt ?? '10 Sep 2026'}</strong></span>
+                      <span>
+                        {renderRich(
+                          t('board.inspector.retrieved', {
+                            date: selected.data.retrievedAt ?? '10 Sep 2026',
+                          }),
+                          {
+                            b: (children) => (
+                              <strong className="text-text-2 font-normal">{children}</strong>
+                            ),
+                          },
+                        )}
+                      </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-text-2 text-sm">Pilih kartu di papan.</div>
+                  <div className={`${STATE_BOX} text-text-2 text-sm`}>
+                    {t('board.inspector.empty')}
+                  </div>
                 )}
               </div>
 
@@ -1471,13 +1569,13 @@ export default function DetectiveBoardPage() {
                   melar menyisakan ruang kosong, karena isinya yang panjang. */}
               <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-1 flex flex-col min-h-0">
                 <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase mb-2 flex-none">
-                  Benang Terhubung ({relatedThreadCount})
+                  {t('board.related.title', { n: relatedThreadCount })}
                 </h3>
                 {related.length === 0 ? (
-                  <div className="text-text-2 text-xs">
+                  <div className={`${STATE_BOX} text-text-2 text-xs`}>
                     {hiddenRelatedCount > 0
-                      ? `${hiddenRelatedCount} benang tersembunyi oleh filter tipe.`
-                      : 'Tidak ada benang aktif.'}
+                      ? t('board.related.hidden', { n: hiddenRelatedCount })
+                      : t('board.related.empty')}
                   </div>
                 ) : (
                   <ul className="flex flex-col gap-1 overflow-y-auto pr-1 flex-1">
@@ -1486,7 +1584,7 @@ export default function DetectiveBoardPage() {
                         <button
                           type="button"
                           onClick={() => setSelectedId(r.otherId)}
-                          className="w-full text-left flex flex-col gap-0.5 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/40"
+                          className={`w-full text-left flex flex-col gap-0.5 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors ${FOCUS}`}
                         >
                           {/* baris 1: titik + nama + panah (panah selalu di ujung kanan) */}
                           <div className="flex items-center gap-2">
@@ -1505,7 +1603,7 @@ export default function DetectiveBoardPage() {
                           {/* baris 2: semua jenis benang ke entitas ini, rata pada x yang sama */}
                           <div className="pl-4 text-[10px] text-text-3">
                             {r.threads
-                              .map((t) => `${EDGE_META[t.type].label}${t.label ? ` ${t.label}` : ''}`)
+                              .map((t) => `${labels.edge[t.type]}${t.label ? ` ${t.label}` : ''}`)
                               .join(' · ')}
                           </div>
                         </button>
@@ -1525,15 +1623,19 @@ export default function DetectiveBoardPage() {
               <div>
                 <div className="flex items-center gap-2 font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase mb-1">
                   <SparkIcon size={13} className="text-brass-400" />
-                  <span>Ruang Analisis &amp; Intelijen Hakim AI</span>
+                  <span>{t('board.insight.kicker')}</span>
                 </div>
                 <h2 className="font-display font-normal text-2xl text-text-0">
-                  Bedah Investigasi &amp; Matriks <em className="italic text-brass-400">{selectedTicker}</em>
+                  {renderRich(t('board.insight.title', { ticker: selectedTicker }), {
+                    em: (children) => (
+                      <em className="italic text-brass-400">{children}</em>
+                    ),
+                  })}
                 </h2>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[11px] text-brass-400/90 bg-brass-500/10 px-3 py-1 rounded-full border border-brass-500/20">
-                  Mode Analisis Objektif
+                  {t('board.insight.mode')}
                 </span>
               </div>
             </div>
@@ -1543,12 +1645,21 @@ export default function DetectiveBoardPage() {
               <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h3 className="font-mono text-[11.5px] text-text-0 font-semibold tracking-wide flex items-center gap-2">
-                    <SparkIcon size={14} className="text-brass-400" /> Tanya Asisten Investigasi ({selectedTicker})
+                    <SparkIcon size={14} className="text-brass-400" />{' '}
+                    {t('board.chat.title', { ticker: selectedTicker })}
                   </h3>
                   <span className="text-[11px] font-mono text-text-3">
-                    Fokus: <b className="text-brass-300 font-semibold">{selected?.data.label ?? selectedTicker}</b>
+                    {renderRich(t('board.chat.focus', { name: selected?.data.label ?? selectedTicker }), {
+                      b: (children) => (
+                        <b className="text-brass-300 font-semibold">{children}</b>
+                      ),
+                    })}
                   </span>
                 </div>
+
+                {/* Keterangan kejujuran: backend penjawab chat hanya berbahasa
+                    Indonesia, jadi pembaca mode EN tidak mengira ini bug. */}
+                <div className="mb-3 font-mono text-[10px] text-text-3/80">{t('board.chatNote')}</div>
 
                 <div className="flex flex-col gap-3 max-h-[260px] overflow-y-auto mb-4 pr-1">
                   {chatLog.map((m, i) => (
@@ -1563,20 +1674,20 @@ export default function DetectiveBoardPage() {
                       {m.role === 'ai' && !m.pending && (
                         <div className="font-mono text-[10.5px] font-semibold text-brass-400 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="flex items-center gap-1.5">
-                            <SparkIcon size={11} /> Analisis Hakim AI:
+                            <SparkIcon size={11} /> {t('board.chat.from')}
                           </span>
                           {/* jujur soal jalur jawaban: model bahasa vs heuristik lokal */}
                           {m.mode === 'heuristik' ? (
                             <span
                               className="font-normal text-[9.5px] uppercase tracking-wide px-1.5 py-[1px] rounded border text-[#d9a441] bg-[#d9a441]/10 border-[#d9a441]/30"
-                              title="LLM tidak tersedia — jawaban disusun dari data papan, bukan oleh model bahasa."
+                              title={t('board.chat.heuristicTitle')}
                             >
-                              heuristik
+                              {t('board.chat.heuristic')}
                             </span>
                           ) : m.mode === 'llm' ? (
                             <span
                               className="font-normal text-[9.5px] uppercase tracking-wide px-1.5 py-[1px] rounded border text-[#7fb069] bg-[#7fb069]/10 border-[#7fb069]/30"
-                              title={`Dijawab oleh model ${m.model ?? 'LLM'}.`}
+                              title={t('board.chat.modelTitle', { model: m.model ?? 'LLM' })}
                             >
                               {m.model ?? 'llm'}
                             </span>
@@ -1592,7 +1703,7 @@ export default function DetectiveBoardPage() {
                           className="flex flex-col gap-2"
                           role="status"
                           aria-live="polite"
-                          aria-label={`Asisten sedang menelusuri papan ${selectedTicker}`}
+                          aria-label={t('board.chat.busyAria', { ticker: selectedTicker })}
                         >
                           <div className="flex items-center gap-2">
                             <span className="flex items-center gap-[3px]" aria-hidden>
@@ -1605,7 +1716,7 @@ export default function DetectiveBoardPage() {
                               ))}
                             </span>
                             <span className="font-mono text-[10.5px] text-brass-300/90 tracking-wide">
-                              Menelusuri papan {selectedTicker}… menimbang benang bukti &amp; red flag
+                              {t('board.chat.busy', { ticker: selectedTicker })}
                             </span>
                           </div>
                           {/* Bar progres tak-tentu. Memakai keyframe `livebar`
@@ -1631,7 +1742,11 @@ export default function DetectiveBoardPage() {
                 <div className="mb-4 pt-3 border-t border-[#2e271f]">
                   <div className="flex items-center gap-1.5 font-mono text-[10.5px] text-text-3 uppercase tracking-wider mb-2">
                     <SparkIcon size={11} className="text-brass-400 flex-none" />
-                    <span>Rekomendasi Pertanyaan ({selected?.data.label ?? selectedTicker}):</span>
+                    <span>
+                      {t('board.chat.suggestions', {
+                        name: selected?.data.label ?? selectedTicker,
+                      })}
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {promptChips.map((chip, idx) => (
@@ -1640,11 +1755,11 @@ export default function DetectiveBoardPage() {
                         type="button"
                         onClick={() => sendQuestion(chip)}
                         disabled={chatBusy}
-                        className="text-left font-mono text-[11px] rounded-md border border-[#3a332a] bg-bg-1 px-3 py-1.5 text-text-2 hover:border-brass-500 hover:text-brass-300 hover:bg-brass-500/10 transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brass-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#3a332a] disabled:hover:text-text-2 disabled:hover:bg-bg-1"
+                        className={`text-left font-mono text-[11px] rounded-md border border-[#3a332a] bg-bg-1 px-3 py-1.5 text-text-2 hover:border-brass-500 hover:text-brass-300 hover:bg-brass-500/10 transition-all ${FOCUS} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#3a332a] disabled:hover:text-text-2 disabled:hover:bg-bg-1`}
                         title={
                           chatBusy
-                            ? 'Tunggu jawaban sebelumnya selesai dulu.'
-                            : 'Klik untuk langsung menanyakan ini ke AI'
+                            ? t('board.chat.chipBusyTitle')
+                            : t('board.chat.chipTitle')
                         }
                       >
                         💬 {chip}
@@ -1663,18 +1778,17 @@ export default function DetectiveBoardPage() {
                   <input
                     value={chat}
                     onChange={(e) => setChat(e.target.value)}
-                    placeholder={
-                      chatBusy
-                        ? `Menunggu jawaban untuk ${selected?.data.label ?? selectedTicker}…`
-                        : `Ketik pertanyaan mandiri soal ${selected?.data.label ?? selectedTicker}…`
-                    }
+                    placeholder={t(
+                      chatBusy ? 'board.chat.placeholderBusy' : 'board.chat.placeholder',
+                      { name: selected?.data.label ?? selectedTicker },
+                    )}
                     className="flex-1 bg-bg-1 border border-[#3a332a] rounded-md px-3.5 py-2.5 text-sm text-text-0 placeholder:text-text-3 focus-visible:border-brass-500 focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(201,162,74,.12)] transition-shadow"
                   />
                   <button
                     type="submit"
                     disabled={chatBusy}
                     aria-busy={chatBusy}
-                    className="font-mono text-xs tracking-wider text-[#14120f] bg-brass-500 rounded-md px-4 py-2.5 transition-colors hover:bg-brass-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/50 font-semibold disabled:opacity-60 disabled:cursor-wait disabled:hover:bg-brass-500 inline-flex items-center gap-2"
+                    className={`font-mono text-xs tracking-wider text-[#14120f] bg-brass-500 rounded-md px-4 py-2.5 transition-colors hover:bg-brass-400 ${FOCUS} font-semibold disabled:opacity-60 disabled:cursor-wait disabled:hover:bg-brass-500 inline-flex items-center gap-2`}
                   >
                     {chatBusy && (
                       <span
@@ -1682,12 +1796,12 @@ export default function DetectiveBoardPage() {
                         aria-hidden
                       />
                     )}
-                    {chatBusy ? 'Menganalisis…' : 'Kirim'}
+                    {t(chatBusy ? 'board.chat.sending' : 'board.chat.send')}
                   </button>
                 </form>
 
                 <div className="mt-2.5 text-center font-mono text-[10px] text-text-3/80">
-                  ⚖️ Asisten Hakim menyajikan analisis data &amp; risiko objektif untuk riset mandiri (bukan rekomendasi transaksi).
+                  {t('board.chat.disclaimer')}
                 </div>
               </div>
 
@@ -1697,7 +1811,7 @@ export default function DetectiveBoardPage() {
                 <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-4">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase">
-                      Grafik Pergerakan Harga · {selectedTicker}
+                      {t('board.chart.title', { ticker: selectedTicker })}
                     </h3>
                     <span className="font-mono text-[12px] font-bold text-brass-300">
                       {selectedTicker === 'BBCA'
@@ -1715,10 +1829,15 @@ export default function DetectiveBoardPage() {
                   </div>
                   <div className="pt-2">
                     {currentBoard.priceHistory && currentBoard.priceHistory.length >= 2 ? (
-                      <PriceChart points={currentBoard.priceHistory} endLabel="Hari ini" />
+                      <PriceChart
+                        points={currentBoard.priceHistory}
+                        endLabel={t('board.chart.endLabel')}
+                      />
                     ) : (
-                      <div className="h-28 flex items-center justify-center text-text-3 font-mono text-xs">
-                        Grafik harga tidak tersedia.
+                      <div
+                        className={`${STATE_BOX} flex h-28 items-center justify-center text-text-3 font-mono text-xs`}
+                      >
+                        {t('board.chart.empty')}
                       </div>
                     )}
                   </div>
@@ -1727,7 +1846,7 @@ export default function DetectiveBoardPage() {
                 {/* 2. Benchmark Metrik vs Sektor & Tesis Ringkas */}
                 <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-4">
                   <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase mb-3">
-                    Benchmark Valuasi vs Rata-rata Industri
+                    {t('board.benchmark.title')}
                   </h3>
 
                   {currentBoard.metricsComparison && (
@@ -1745,7 +1864,11 @@ export default function DetectiveBoardPage() {
                                     : 'bg-[#c96a5a]/15 text-[#c96a5a]'
                               }`}
                             >
-                              {m.verdict === 'superior' ? 'Unggul' : m.verdict === 'fair' ? 'Wajar' : 'Waspada'}
+                              {m.verdict === 'superior'
+                                ? t('board.benchmark.superior')
+                                : m.verdict === 'fair'
+                                  ? t('board.benchmark.fair')
+                                  : t('board.benchmark.watch')}
                             </span>
                           </div>
                           <div className="flex items-baseline justify-between">
@@ -1753,7 +1876,9 @@ export default function DetectiveBoardPage() {
                               {formatBenchmarkValue(m.value, m.unit)}
                             </span>
                             <span className="font-mono text-[10.5px] text-text-3">
-                              Sektor: {formatBenchmarkValue(m.sectorAvg, m.unit)}
+                              {t('board.benchmark.sector', {
+                                value: formatBenchmarkValue(m.sectorAvg, m.unit),
+                              })}
                             </span>
                           </div>
                         </div>
@@ -1764,7 +1889,7 @@ export default function DetectiveBoardPage() {
                   {currentBoard.thesisSummary && (
                     <div className="bg-brass-500/5 border border-brass-500/20 rounded-lg p-3">
                       <div className="font-mono text-[10px] uppercase font-semibold text-brass-400 mb-1 flex items-center gap-1.5">
-                        <SparkIcon size={11} /> Tesis Investigasi Hakim:
+                        <SparkIcon size={11} /> {t('board.benchmark.thesis')}
                       </div>
                       <p className="text-[12px] text-text-2 leading-relaxed">
                         {currentBoard.thesisSummary}

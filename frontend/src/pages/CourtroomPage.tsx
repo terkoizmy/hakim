@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState, type FC, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTrialStream } from '../hooks/useTrialStream';
 import {
-  ERROR_LABEL,
-  PHASE_LABEL,
-  VERDICT_LABEL,
   type AgentEvidencePayload,
   type AgentId,
   type DebateSide,
   type Phase,
+  type TrialErrorCode,
 } from '../types/contract';
+import { renderRich, useLabels, useLang } from '../i18n';
 import { ANALYST_META } from '../utils/analysts';
 import { Markdown } from '../utils/md';
+import { formatValue } from '../utils/format';
 import { isMockMode } from '../api';
 import type { AnalystUi, TrialUiState } from '../state/trialReducer';
 import {
@@ -36,6 +36,17 @@ const PHASE_STEPS: { phase: Phase }[] = [
 
 /* Warna hairline mock (solid, bukan rgba) — dipakai presisi di halaman sidang. */
 const LINE = '#3a332a';
+
+/** Cincin fokus bersama — tali yang sama dengan AppShell supaya kontrol
+ * keyboard di halaman ini tidak jadi satu-satunya yang tanpa indikator. */
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-0';
+
+/** Bentuk bersama blok kosong/muat/galat: tengah, sudut 14px, berbingkai,
+ * padding lega. Dipakai tiga tempat supaya ketiganya terbaca sebagai satu
+ * keluarga, bukan tiga gaya yang kebetulan berdekatan. */
+const NOTICE =
+  'flex items-center justify-center gap-2.5 rounded-[14px] border border-line-2 bg-bg-2 px-5 py-7 text-center';
 
 /** Segel lingkaran mock: 52px (casebar) / 46px (hakim), border brass-dim + radial hangat. */
 function Seal({ size, children, className = '' }: { size: number; children: ReactNode; className?: string }) {
@@ -79,7 +90,12 @@ function Dots() {
 
 /** Badge status sidang di case-sub (setara .b-live / varian selesai-gagal). */
 function TrialStatusBadge({ streaming, error }: { streaming: boolean; error: boolean }) {
-  const label = error ? 'Sidang gagal' : streaming ? 'Sidang berlangsung' : 'Sidang selesai';
+  const { t } = useLang();
+  const label = error
+    ? t('courtroom.status.failed')
+    : streaming
+      ? t('courtroom.status.running')
+      : t('courtroom.status.done');
   const tone = error || streaming
     ? 'border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] text-prosecute-400'
     : 'border-[rgba(127,176,105,0.4)] bg-[rgba(127,176,105,0.06)] text-defend-400';
@@ -97,6 +113,7 @@ export default function CourtroomPage() {
   const { trialId } = useParams<{ trialId: string }>();
   const stream = useTrialStream(trialId);
   const navigate = useNavigate();
+  const { t } = useLang();
   const [elapsed, setElapsed] = useState(0);
   const [summaryId, setSummaryId] = useState<AgentId | null>(null);
 
@@ -128,11 +145,11 @@ export default function CourtroomPage() {
       <div className="container">
         {/* ---------- CASE BAR ---------- */}
         <div className="crumb mb-5 flex items-center font-mono text-[12px] uppercase tracking-[1px] text-text-3">
-          <Link to="/dashboard" className="text-brass-500 transition-colors hover:text-brass-300">Daftar Perkara</Link>
+          <Link to="/dashboard" className={`rounded-xs text-brass-500 transition-colors hover:text-brass-300 ${FOCUS}`}>{t('courtroom.crumb.cases')}</Link>
           <span className="mx-[6px] text-text-3">/</span>
-          <Link to={`/ticker/${ticker ?? ''}`} className="text-brass-500 transition-colors hover:text-brass-300">{ticker ?? '…'}</Link>
+          <Link to={`/ticker/${ticker ?? ''}`} className={`rounded-xs text-brass-500 transition-colors hover:text-brass-300 ${FOCUS}`}>{ticker ?? '…'}</Link>
           <span className="mx-[6px] text-text-3">/</span>
-          <span>Sidang Berlangsung</span>
+          <span>{t('courtroom.crumb.live')}</span>
         </div>
 
         <div className="anim-in flex flex-wrap items-center gap-5">
@@ -152,9 +169,19 @@ export default function CourtroomPage() {
               )}
               <span
                 className="font-mono text-[12px] tracking-[0.5px] text-text-3"
-                title={stream.trial ? `Komite: ${stream.trial.models.analyst} · ${stream.trial.models.debate} · ${stream.trial.models.judge}` : undefined}
+                title={
+                  stream.trial
+                    ? t('courtroom.committee', {
+                        analyst: stream.trial.models.analyst,
+                        debate: stream.trial.models.debate,
+                        judge: stream.trial.models.judge,
+                      })
+                    : undefined
+                }
               >
-                {stream.trial ? `PERKARA No. ${stream.trial.trial_id}` : 'Menghubungi ruang sidang…'}
+                {stream.trial
+                  ? t('courtroom.caseNo', { id: stream.trial.trial_id })
+                  : t('courtroom.connectingShort')}
               </span>
             </div>
           </div>
@@ -162,19 +189,20 @@ export default function CourtroomPage() {
 
         {/* ---------- STATS BAND ---------- */}
         <div className="mt-6 flex flex-wrap overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2">
-          <Stat label="Bukti">
+          <Stat label={t('courtroom.stats.evidence')}>
             {evidenceTotal} <small>EV</small>
           </Stat>
-          <Stat label="Analis">
-            {stream.completedCount} <small>/ 5 selesai</small>
+          <Stat label={t('courtroom.stats.analysts')}>
+            {stream.completedCount}{' '}
+            <small>{t('courtroom.stats.analystsOf', { total: 5 })}</small>
           </Stat>
-          <Stat label="Data">
+          <Stat label={t('courtroom.stats.data')}>
             <span className="text-[color:var(--defend-400)]">{stream.toolCallsByCache.hit}</span>
             <span className="text-text-2"> / </span>
             <span className="text-prosecute-400">{stream.toolCallsByCache.miss}</span> <small>hit/miss</small>
           </Stat>
-          <Stat label="Durasi" last>
-            {mmss(elapsed)} <small>menit</small>
+          <Stat label={t('courtroom.stats.duration')} last>
+            {mmss(elapsed)} <small>{t('courtroom.stats.minutes')}</small>
           </Stat>
         </div>
 
@@ -188,7 +216,7 @@ export default function CourtroomPage() {
           >
             <RefreshIcon size={16} className="animate-spin-slow" />
             <span>
-              Koneksi sidang terputus — mencoba menyambungkan kembali
+              {t('courtroom.reconnecting')}
               <Dots />
             </span>
           </div>
@@ -198,7 +226,7 @@ export default function CourtroomPage() {
           <TrialErrorPanel error={stream.error} onRetry={() => navigate('/')} />
         ) : (
           <>
-            <AnalystDeck state={stream} onOpenSummary={setSummaryId} />
+            <AnalystDeck state={stream} onOpenSummary={setSummaryId} openSummaryId={summaryId} />
             {(stream.debate.length > 0 || stream.phase === 'debate' || stream.phase === 'verdict') && (
               <DebatePanel debate={stream.debate} rounds={stream.roundsSeen} state={stream} phase={stream.phase} />
             )}
@@ -225,11 +253,11 @@ export default function CourtroomPage() {
       {!stream.memo && !stream.error && stream.trial && (
         <button
           type="button"
-          className="fixed bottom-[22px] right-[22px] z-50 inline-flex cursor-pointer items-center gap-2 rounded-pill border border-[rgba(201,162,74,0.42)] bg-[rgba(20,18,15,0.88)] px-4 py-2.5 text-[13px] font-semibold text-brass-200 shadow-2 backdrop-blur-[10px] transition-[border-color,background,transform] duration-[160ms] hover:-translate-y-px hover:border-brass-300 hover:bg-[rgba(38,33,26,0.94)]"
+          className={`fixed bottom-[22px] right-[22px] z-50 inline-flex cursor-pointer items-center gap-2 rounded-pill border border-[rgba(201,162,74,0.42)] bg-[rgba(20,18,15,0.88)] px-4 py-2.5 text-[13px] font-semibold text-brass-200 shadow-2 backdrop-blur-[10px] transition-[border-color,background,transform] duration-[160ms] hover:-translate-y-px hover:border-brass-300 hover:bg-[rgba(38,33,26,0.94)] ${FOCUS}`}
           onClick={skipToMemo}
-          title={stream.memoText ? 'Lompat ke putusan yang sedang diketik' : 'Putusan belum dimulai — sidang masih berjalan'}
+          title={stream.memoText ? t('courtroom.skip.typing') : t('courtroom.skip.waiting')}
         >
-          <BookIcon size={15} /> Skip ke Memo
+          <BookIcon size={15} /> {t('courtroom.skip.label')}
           {stream.memoText ? (
             <span className="inline-block size-[7px] animate-pulse-dot rounded-full bg-brass-300 shadow-[0_0_8px_var(--brass-glow)]" />
           ) : (
@@ -273,10 +301,12 @@ function PhaseStepper({
   terminal: boolean;
   error: boolean;
 }) {
+  const labels = useLabels();
+  const { t } = useLang();
   const phaseIndex = phase ? PHASE_STEPS.findIndex((s) => s.phase === phase) : -1;
 
   return (
-    <div className="mt-[30px] flex items-start" aria-label="Fase sidang">
+    <div className="mt-[30px] flex items-start" aria-label={t('courtroom.stepper.aria')}>
       {PHASE_STEPS.map((step, i) => {
         const isDone = (phaseIndex > i || (terminal && !error)) && phase !== null;
         const isActive = phase === step.phase && !terminal;
@@ -300,11 +330,11 @@ function PhaseStepper({
                   lit ? (error && isActive ? 'text-prosecute-300' : 'text-text-0') : 'text-text-3'
                 }`}
               >
-                {PHASE_LABEL[step.phase]}
+                {labels.phase[step.phase]}
               </span>
               {step.phase === 'debate' && (phase === 'debate' || isDone) && !error && (
                 <span className="self-start whitespace-nowrap rounded-pill border border-[#8a6f33] px-2 py-[2px] font-mono text-[10.5px] text-brass-500">
-                  RONDE {round ?? 1}/2
+                  {t('courtroom.round', { r: round ?? 1 })}
                 </span>
               )}
             </div>
@@ -323,10 +353,23 @@ function PhaseStepper({
 }
 
 /* ---------------- dek analis (setara .analysts/.analyst mock) ---------------- */
-function AnalystDeck({ state, onOpenSummary }: { state: TrialUiState; onOpenSummary: (id: AgentId) => void }) {
+function AnalystDeck({
+  state,
+  onOpenSummary,
+  openSummaryId,
+}: {
+  state: TrialUiState;
+  onOpenSummary: (id: AgentId) => void;
+  openSummaryId: AgentId | null;
+}) {
+  const { t } = useLang();
   return (
     <section>
-      <SecHead kicker="Panel" title="Lima analis" note="Klik baris bukti untuk membuka detail" />
+      <SecHead
+        kicker={t('courtroom.panel.kicker')}
+        title={t('courtroom.panel.title')}
+        note={t('courtroom.panel.note')}
+      />
       <div className="grid grid-cols-[repeat(auto-fill,minmax(215px,1fr))] gap-[14px] min-[1100px]:grid-cols-5">
         {ANALYST_META.map((meta, i) => (
           <AnalystCard
@@ -334,6 +377,7 @@ function AnalystDeck({ state, onOpenSummary }: { state: TrialUiState; onOpenSumm
             meta={meta}
             analyst={state.analysts[meta.id]}
             index={i}
+            summaryOpen={openSummaryId === meta.id}
             onOpenSummary={() => onOpenSummary(meta.id)}
           />
         ))}
@@ -346,13 +390,17 @@ function AnalystCard({
   meta,
   analyst,
   index,
+  summaryOpen,
   onOpenSummary,
 }: {
   meta: (typeof ANALYST_META)[number];
   analyst?: AnalystUi;
   index: number;
+  summaryOpen: boolean;
   onOpenSummary: () => void;
 }) {
+  const labels = useLabels();
+  const { t } = useLang();
   const [showAll, setShowAll] = useState(false);
   if (!analyst) return null;
   const status = analyst.status;
@@ -382,8 +430,8 @@ function AnalystCard({
           {status === 'queued' ? <span className="text-[13px] font-bold">?</span> : Icon ? <Icon size={18} /> : meta.monogram}
         </span>
         <div className="flex min-w-0 flex-col">
-          <span className="text-[13px] font-semibold leading-[1.2] text-text-0">{meta.name}</span>
-          <span className="text-[11px] leading-[1.3] text-text-3">{meta.tagline}</span>
+          <span className="text-[13px] font-semibold leading-[1.2] text-text-0">{labels.analyst[meta.id].name}</span>
+          <span className="text-[11px] leading-[1.3] text-text-3">{labels.analyst[meta.id].tagline}</span>
         </div>
         <span
           className={`ml-auto size-[9px] shrink-0 rounded-full ${
@@ -399,7 +447,7 @@ function AnalystCard({
 
       {status === 'queued' && (
         <div className="flex flex-1 items-start">
-          <span className="text-[12px] text-text-3">Menunggu giliran…</span>
+          <span className="text-[12px] text-text-3">{t('courtroom.analyst.queued')}</span>
         </div>
       )}
 
@@ -429,7 +477,7 @@ function AnalystCard({
             </div>
           )}
           <span className="mt-auto inline-flex items-center text-[12px] text-text-2">
-            Menyelidiki…
+            {t('courtroom.analyst.working')}
             <Dots />
           </span>
         </div>
@@ -445,26 +493,31 @@ function AnalystCard({
           {evHidden > 0 && (
             <button
               type="button"
-              className="w-full cursor-pointer rounded-[7px] border border-[#8a6f33] px-2.5 py-[7px] text-center font-mono text-[11px] text-brass-500 transition-colors duration-150 hover:bg-brass-500 hover:text-[#14120f]"
+              className={`w-full cursor-pointer rounded-[7px] border border-[#8a6f33] px-2.5 py-[7px] text-center font-mono text-[11px] text-brass-500 transition-colors duration-150 hover:bg-brass-500 hover:text-[#14120f] ${FOCUS}`}
               onClick={() => setShowAll((v) => !v)}
+              aria-expanded={showAll}
             >
-              {showAll ? 'Tampilkan lebih sedikit' : `+${evHidden} bukti lainnya`}
+              {showAll ? t('courtroom.analyst.showLess') : t('courtroom.analyst.more', { n: evHidden })}
             </button>
           )}
           <div className="mt-auto flex flex-col gap-2 border-t border-[#2a251e] pt-2.5">
             <div className="flex items-center justify-between gap-2">
               <span className="whitespace-nowrap text-[12px] text-text-2">
-                Ringkasan — <b className="font-semibold text-text-0">{analyst.evidence.length} bukti</b>
+                {renderRich(t('courtroom.analyst.summary', { n: analyst.evidence.length }), {
+                  b: (c) => <b className="font-semibold text-text-0">{c}</b>,
+                })}
               </span>
               {analyst.dataRichness && <RichBadge richness={analyst.dataRichness} />}
             </div>
             {analyst.summaryMd && (
               <button
                 type="button"
-                className="w-full cursor-pointer rounded-[7px] border border-[#8a6f33] px-2.5 py-[7px] text-center font-mono text-[11px] text-brass-500 transition-colors duration-150 hover:bg-brass-500 hover:text-[#14120f]"
+                className={`w-full cursor-pointer rounded-[7px] border border-[#8a6f33] px-2.5 py-[7px] text-center font-mono text-[11px] text-brass-500 transition-colors duration-150 hover:bg-brass-500 hover:text-[#14120f] ${FOCUS}`}
                 onClick={onOpenSummary}
+                aria-haspopup="dialog"
+                aria-expanded={summaryOpen}
               >
-                Baca kesimpulan
+                {t('courtroom.analyst.readSummary')}
               </button>
             )}
           </div>
@@ -475,15 +528,17 @@ function AnalystCard({
 }
 
 export function RichBadge({ richness }: { richness: 'A' | 'B' | 'C' }) {
-  const label = richness === 'A' ? 'Data kaya' : richness === 'B' ? 'Data cukup' : 'Data minim';
+  const labels = useLabels();
+  const { t } = useLang();
+  const label = labels.richness[richness];
   return (
     <span
       className="inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-[rgba(201,162,74,0.06)] px-[5px] font-mono text-[11.5px] tracking-[0.3px] text-[#e0c27a]"
       data-rich={richness}
-      title={`Kekayaan informasi: ${label}`}
+      title={t('enum.richness.title', { grade: label })}
     >
       <span className="size-[6px] rounded-full bg-brass-500" />
-      Info {richness}
+      {label}
     </span>
   );
 }
@@ -499,6 +554,8 @@ function SummaryModal({
   analyst?: AnalystUi;
   onClose: () => void;
 }) {
+  const labels = useLabels();
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -519,7 +576,7 @@ function SummaryModal({
       className="fixed inset-0 z-[100] grid place-items-center p-5"
       role="dialog"
       aria-modal="true"
-      aria-label={`Kesimpulan ${meta.name}`}
+      aria-label={t('courtroom.summary.aria', { name: labels.analyst[meta.id].name })}
     >
       <div
         className="anim-fade absolute inset-0 bg-[rgba(10,9,7,0.72)] backdrop-blur-[3px]"
@@ -537,14 +594,14 @@ function SummaryModal({
             {Icon ? <Icon size={20} /> : meta.monogram}
           </span>
           <div className="flex min-w-0 flex-col">
-            <span className="font-display text-[17px] font-medium leading-tight">{meta.name}</span>
-            <span className="font-mono text-[11px] tracking-[0.5px] text-text-3">{meta.tagline}</span>
+            <span className="font-display text-[17px] font-medium leading-tight">{labels.analyst[meta.id].name}</span>
+            <span className="font-mono text-[11px] tracking-[0.5px] text-text-3">{labels.analyst[meta.id].tagline}</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto grid size-8 shrink-0 cursor-pointer place-items-center rounded-[7px] border border-line-1 text-[14px] text-text-2 transition-colors duration-150 hover:border-[#3a332a] hover:bg-[#1a1713] hover:text-text-0"
-            aria-label="Tutup"
+            className={`ml-auto grid size-8 shrink-0 cursor-pointer place-items-center rounded-[7px] border border-line-1 text-[14px] text-text-2 transition-colors duration-150 hover:border-[#3a332a] hover:bg-[#1a1713] hover:text-text-0 ${FOCUS}`}
+            aria-label={t('courtroom.summary.close')}
           >
             ✕
           </button>
@@ -552,7 +609,7 @@ function SummaryModal({
         {analyst?.summaryMd ? (
           <Markdown source={analyst.summaryMd} className="md md-sm" />
         ) : (
-          <p className="text-[13px] text-text-2">Kesimpulan belum tersedia.</p>
+          <p className={`${NOTICE} text-[13px] text-text-2`}>{t('courtroom.summary.empty')}</p>
         )}
       </div>
     </div>
@@ -569,6 +626,7 @@ export function CacheBadge({ cache }: { cache: 'hit' | 'miss' }) {
 
 /** Baris bukti (setara .ev mock): id kuningan + judul ellipsis + pil nilai fakta. */
 function EvidenceChip({ evidence }: { evidence: AgentEvidencePayload }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const first = evidence.facts[0];
   const pillValue = first
@@ -579,10 +637,10 @@ function EvidenceChip({ evidence }: { evidence: AgentEvidencePayload }) {
       type="button"
       className={`anim-scale block w-full cursor-pointer rounded-[8px] border border-[#2a251e] px-[9px] py-[7px] text-left transition-colors duration-150 hover:border-[#3a332a] hover:bg-[#1a1713] ${
         open ? 'border-[#3a332a] bg-[#1a1713]' : ''
-      }`}
+      } ${FOCUS}`}
       onClick={() => setOpen((v) => !v)}
       aria-expanded={open}
-      title={open ? 'Tutup detail bukti' : 'Buka detail bukti'}
+      title={open ? t('courtroom.evidence.collapse') : t('courtroom.evidence.expand')}
     >
       <span className="flex min-w-0 items-center gap-2">
         <span className="shrink-0 font-mono text-[10.5px] text-brass-500">{evidence.evidence_id}</span>
@@ -614,8 +672,10 @@ function EvidenceChip({ evidence }: { evidence: AgentEvidencePayload }) {
 }
 
 function formatFactValue(value: number, unit: string) {
+  // Pembulatan satu desimal tetap urusan di sini; penyajian angkanya ikut
+  // bahasa antarmuka lewat formatValue (dulu dikunci 'id-ID').
   const rounded = Math.round(value * 10) / 10;
-  return `${rounded.toLocaleString('id-ID')} ${unit ?? ''}`.trim();
+  return formatValue(rounded, unit ?? '');
 }
 
 /* ---------------- podium debat (setara .podium mock) ---------------- */
@@ -630,13 +690,18 @@ function DebatePanel({
   state: TrialUiState;
   phase: Phase | null;
 }) {
+  const { t } = useLang();
   return (
     <section>
-      <SecHead kicker="Perdebatan" title="Jaksa vs Pembela" note="Tayang langsung · bukan kotak hitam" />
+      <SecHead
+        kicker={t('courtroom.debate.kicker')}
+        title={t('courtroom.debate.title')}
+        note={t('courtroom.debate.note')}
+      />
 
       {debate.length === 0 && phase === 'debate' && (
-        <div className="flex items-center gap-2.5 py-4 text-[13.5px] text-text-1">
-          <span className="status-dot working" /> Jaksa sedang menyiapkan dakwaan putaran pertama…
+        <div className={`${NOTICE} text-[13.5px] text-text-1`}>
+          <span className="status-dot working shrink-0" /> {t('courtroom.debate.opening')}
         </div>
       )}
 
@@ -645,7 +710,7 @@ function DebatePanel({
           <div key={round}>
             <div className="mb-4 flex justify-center">
               <span className="whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-bg-1 px-3 py-1 font-mono text-[11px] tracking-[1px] text-brass-500">
-                RONDE {round} / 2
+                {t('courtroom.roundTitle', { r: round })}
               </span>
             </div>
             <div className="grid grid-cols-1 gap-[14px] min-[900px]:grid-cols-2">
@@ -672,6 +737,7 @@ function PodiumSide({
   state: TrialUiState;
 }) {
   const isDefense = side === 'defense';
+  const { t } = useLang();
   const u = debate.find((d) => d.round === round && d.side === side);
   return (
     <div
@@ -684,7 +750,9 @@ function PodiumSide({
       }}
     >
       <div className="flex items-center gap-3">
-        <span className="font-display text-[18px] font-medium">{isDefense ? 'Pembela' : 'Jaksa'}</span>
+        <span className="font-display text-[18px] font-medium">
+          {isDefense ? t('courtroom.side.defender') : t('courtroom.side.prosecutor')}
+        </span>
         <span
           className={`rounded-[6px] border px-[9px] py-[3px] font-mono text-[11px] uppercase tracking-[1px] ${
             isDefense
@@ -692,7 +760,7 @@ function PodiumSide({
               : 'border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)] text-prosecute-400'
           }`}
         >
-          {isDefense ? 'Tesis bull' : 'Tesis bear'}
+          {isDefense ? t('courtroom.side.bull') : t('courtroom.side.bear')}
         </span>
       </div>
       <UtteranceCard side={side} utterance={u} state={state} />
@@ -727,10 +795,13 @@ function UtteranceCard({
   state: TrialUiState;
 }) {
   const isDefense = side === 'defense';
+  const { t } = useLang();
   if (!utterance) {
     return (
       <div className="inline-flex items-center gap-2 rounded-[6px] border border-dashed border-line-2 px-3 py-2 text-[12.5px] text-text-3">
-        {isDefense ? 'Pembela sedang menyiapkan pembelaan' : 'Jaksa sedang menyiapkan dakwaan'}
+        {isDefense
+          ? t('courtroom.utterance.defenderPreparing')
+          : t('courtroom.utterance.prosecutorPreparing')}
         <Dots />
       </div>
     );
@@ -739,13 +810,15 @@ function UtteranceCard({
   return (
     <article className="anim-scale flex flex-col gap-2">
       <span className="inline-flex w-fit items-center gap-1.5 rounded-[6px] border border-line-1 px-2 py-[3px] font-mono text-[10.5px]">
-        <span className="font-medium text-text-0">{isDefense ? 'PEMBELA' : 'JAKSA'}</span>
+        <span className="font-medium text-text-0">
+          {isDefense ? t('courtroom.utterance.defenderTag') : t('courtroom.utterance.prosecutorTag')}
+        </span>
         <span className="text-text-3">·</span>
         <span className={isDefense ? 'text-defend-400' : 'text-prosecute-400'}>{isDefense ? 'bull' : 'bear'}</span>
         {utterance.rebuts && (
           <>
             <span className="text-text-3">·</span>
-            <span className="text-brass-400">↩ balasan</span>
+            <span className="text-brass-400">{t('courtroom.utterance.reply')}</span>
           </>
         )}
       </span>
@@ -786,12 +859,18 @@ export function findEvidence(state: TrialUiState, evidenceId: string): AgentEvid
 
 /* ---------------- putusan (setara .verdict/.judge mock) ---------------- */
 function VerdictPanel({ stream }: { stream: ReturnType<typeof useTrialStream> }) {
+  const labels = useLabels();
+  const { t } = useLang();
   const streaming = !stream.memo && !stream.memoText;
   const ticker = stream.trial?.ticker ?? '';
   const memoMd = stream.memoText || stream.memo?.verdict.rationale_md || ' ';
   return (
     <section id="verdict-anchor" className="verdict">
-      <SecHead kicker="Putusan" title="Memorandum hakim" note={streaming ? 'Mengetik langsung' : 'Final'} />
+      <SecHead
+        kicker={t('courtroom.verdict.kicker')}
+        title={t('courtroom.verdict.title')}
+        note={streaming ? t('courtroom.verdict.noteLive') : t('courtroom.verdict.noteFinal')}
+      />
       <div className="relative overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2 p-[30px]">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(600px_200px_at_80%_0%,rgba(201,162,74,0.05),transparent_60%)]"
@@ -802,9 +881,9 @@ function VerdictPanel({ stream }: { stream: ReturnType<typeof useTrialStream> })
             <GavelIcon size={20} />
           </Seal>
           <div className="flex flex-col">
-            <span className="font-display text-[17px] font-medium">Hakim</span>
+            <span className="font-display text-[17px] font-medium">{t('courtroom.verdict.judge')}</span>
             <span className="font-mono text-[11px] tracking-[0.5px] text-text-3">
-              MEMORANDUM RISET · SIDANG {ticker}
+              {t('courtroom.verdict.meta', { ticker })}
             </span>
           </div>
         </div>
@@ -822,13 +901,15 @@ function VerdictPanel({ stream }: { stream: ReturnType<typeof useTrialStream> })
           </div>
           {stream.memo ? (
             <aside className="flex h-fit flex-col gap-3.5 rounded-[10px] border border-[#2a251e] bg-bg-3 p-5">
-              <span className="font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">Hasil putusan</span>
+              <span className="font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">
+                {t('courtroom.verdict.outcome')}
+              </span>
               <span className="font-display text-[19px] font-medium leading-snug">
-                {VERDICT_LABEL[stream.memo.verdict.category]}
+                {labels.verdict[stream.memo.verdict.category]}
               </span>
               <div>
                 <div className="mb-1.5 flex items-center justify-between font-mono text-[11px] text-text-3">
-                  <span>Konfidensi</span>
+                  <span>{t('courtroom.verdict.confidence')}</span>
                   <span className="tabular-nums">{Math.round(stream.memo.verdict.confidence * 100)}%</span>
                 </div>
                 <div className="h-[6px] overflow-hidden rounded-pill bg-[#2a251e]">
@@ -839,14 +920,19 @@ function VerdictPanel({ stream }: { stream: ReturnType<typeof useTrialStream> })
                 </div>
               </div>
               <span className="text-[12px] leading-[1.5] text-text-2">
-                {stream.memo.key_facts.length} fakta kunci · {stream.memo.citations.length} sitasi
+                {t('courtroom.verdict.factsCites', {
+                  facts: stream.memo.key_facts.length,
+                  cites: stream.memo.citations.length,
+                })}
               </span>
             </aside>
           ) : (
             <aside className="flex h-fit flex-col gap-2 rounded-[10px] border border-dashed border-line-2 p-5">
-              <span className="font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">Hasil putusan</span>
+              <span className="font-mono text-[10.5px] uppercase tracking-[1.2px] text-text-3">
+                {t('courtroom.verdict.outcome')}
+              </span>
               <span className="inline-flex items-center text-[12.5px] text-text-2">
-                Hakim sedang merangkum…
+                {t('courtroom.verdict.summarising')}
                 <Dots />
               </span>
             </aside>
@@ -859,6 +945,7 @@ function VerdictPanel({ stream }: { stream: ReturnType<typeof useTrialStream> })
 
 /* ---------------- memo siap → CTA (setara .final-banner mock) ---------------- */
 function MemoReadyBanner({ trialId, ticker }: { trialId: string; ticker?: string }) {
+  const { t } = useLang();
   return (
     <div
       className="anim-scale mt-5 flex flex-wrap items-center justify-between gap-4 rounded-[14px] border border-[#8a6f33] bg-[linear-gradient(180deg,rgba(201,162,74,0.08),rgba(201,162,74,0.02))] px-[22px] py-[18px]"
@@ -867,14 +954,16 @@ function MemoReadyBanner({ trialId, ticker }: { trialId: string; ticker?: string
       <div className="flex items-center gap-3">
         <BookIcon size={22} className="shrink-0 text-brass-500" />
         <div className="flex flex-col">
-          <span className="font-display text-[17px] font-medium">Memorandum sidang telah final.</span>
+          <span className="font-display text-[17px] font-medium">{t('courtroom.memo.title')}</span>
           <span className="text-[12.5px] text-text-2">
-            Putusan tercatat di arsip perkara {ticker ?? 'emiten'}.
+            {t('courtroom.memo.body', {
+              ticker: ticker ?? t('courtroom.memo.tickerFallback'),
+            })}
           </span>
         </div>
       </div>
       <Link to={`/memo/${trialId}`} className="btn btn-primary">
-        <BookIcon size={16} /> Baca memorandum
+        <BookIcon size={16} /> {t('courtroom.memo.cta')}
       </Link>
     </div>
   );
@@ -888,6 +977,8 @@ function TrialErrorPanel({
   error: { error_code: string; message: string; phase: string; agent_id?: string | null };
   onRetry: () => void;
 }) {
+  const labels = useLabels();
+  const { t } = useLang();
   return (
     <section
       className="anim-scale mt-11 max-w-[620px] rounded-[14px] border border-[rgba(201,106,90,0.4)] bg-[linear-gradient(180deg,rgba(201,106,90,0.08),var(--bg-2))] px-8 py-8 text-center"
@@ -896,22 +987,26 @@ function TrialErrorPanel({
       <div className="mx-auto mb-4 grid size-[52px] place-items-center rounded-full border border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.16)] text-prosecute-300">
         <AlertIcon size={22} />
       </div>
-      <h2 className="mb-3 font-display text-2xl">Sidang gagal berjalan</h2>
+      <h2 className="mb-3 font-display text-2xl">{t('courtroom.error.title')}</h2>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <span className="badge badge-prosecute font-mono">{error.error_code}</span>
         <span className="muted small">
-          pada fase <b>{PHASE_LABEL[error.phase as Phase] ?? error.phase}</b>
-          {error.agent_id ? ` · agen ${error.agent_id}` : ''}
+          {renderRich(
+            t('courtroom.error.phase', { phase: labels.phase[error.phase as Phase] ?? error.phase }),
+          )}
+          {error.agent_id ? t('courtroom.error.agent', { agent: error.agent_id }) : ''}
         </span>
       </div>
       <p className="mb-5 mt-3 text-text-1">
-        {ERROR_LABEL[error.error_code as keyof typeof ERROR_LABEL] ?? error.error_code}: {error.message}
+        {labels.error[error.error_code as TrialErrorCode] ?? error.error_code}: {error.message}
       </p>
       <div className="flex flex-wrap justify-center gap-3">
         <button className="btn btn-primary" onClick={onRetry}>
-          <GavelIcon size={16} /> Sidang Baru
+          <GavelIcon size={16} /> {t('courtroom.error.newTrial')}
         </button>
-        <Link to="/journal" className="btn btn-ghost"><BookIcon size={16} /> Jurnal Sidang</Link>
+        <Link to="/journal" className={`btn btn-ghost ${FOCUS}`}>
+          <BookIcon size={16} /> {t('courtroom.error.journal')}
+        </Link>
       </div>
     </section>
   );
@@ -919,6 +1014,7 @@ function TrialErrorPanel({
 
 /* ---------------- skeleton koneksi ---------------- */
 function ConnectingSkeleton() {
+  const { t } = useLang();
   return (
     <div aria-hidden="false" role="status">
       <div className="mb-6 flex items-center gap-4">
@@ -945,8 +1041,8 @@ function ConnectingSkeleton() {
           </div>
         ))}
       </div>
-      <div className="muted small mt-5 flex items-center gap-2.5">
-        <span className="status-dot working" /> Menghubungi ruang sidang &amp; menunggu para analis mengambil tempat…
+      <div className={`${NOTICE} mt-5 text-[12.5px] text-text-2`}>
+        <span className="status-dot working shrink-0" /> {t('courtroom.loading.connecting')}
       </div>
     </div>
   );

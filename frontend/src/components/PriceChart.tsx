@@ -5,6 +5,8 @@
  * Points harus ascending.
  */
 import { useState, useCallback } from 'react';
+import { useLang } from '../i18n';
+import { formatDate, formatRupiah } from '../utils/format';
 import type { PricePoint } from '../types/contract';
 
 interface Props {
@@ -19,6 +21,7 @@ const TOP = 40;
 const BOT = 180;
 
 export default function PriceChart({ points, endLabel }: Props) {
+  const { t } = useLang();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   if (!points || points.length < 2) return null;
@@ -67,7 +70,10 @@ export default function PriceChart({ points, endLabel }: Props) {
         className="block h-auto w-full overflow-visible cursor-crosshair"
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        aria-label={`Grafik harga ${first.date} sampai ${last.date}`}
+        aria-label={t('chart.aria', {
+          from: formatDate(first.date),
+          to: formatDate(last.date),
+        })}
         preserveAspectRatio="none"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -204,7 +210,7 @@ export default function PriceChart({ points, endLabel }: Props) {
                 fontSize={13}
                 fill="#f5d78e"
               >
-                Rp {fmt(activePoint.close)}
+                {formatRupiah(activePoint.close)}
               </text>
 
               {/* Tanggal & Perubahan */}
@@ -216,7 +222,7 @@ export default function PriceChart({ points, endLabel }: Props) {
                 fontSize={10}
                 fill="#b0a89a"
               >
-                {fmtDate(activePoint.date)}
+                {formatDate(activePoint.date)}
                 {chgStr && (
                   <tspan dx={6} fill={chgColor} fontWeight="bold">
                     {chgStr}
@@ -229,38 +235,30 @@ export default function PriceChart({ points, endLabel }: Props) {
 
         {/* Label nilai min/max & tanggal axis */}
         <text className="font-mono text-[11px]" fill="#e0c27a" x={W} y={TOP - 12} textAnchor="end">
-          {activePoint ? `Rp ${fmt(activePoint.close)}` : `Maks: Rp ${fmt(max)}`}
+          {activePoint
+            ? formatRupiah(activePoint.close)
+            : t('chart.axis.max', { value: formatRupiah(max) })}
         </text>
         <text className="font-mono text-[11px]" fill="#6f675a" x={0} y={BOT + 16}>
-          Min: Rp {fmt(min)}
+          {t('chart.axis.min', { value: formatRupiah(min) })}
         </text>
         <text className="font-mono text-[11px]" fill="#6f675a" x={0} y={H - 2}>
-          {fmtDate(first.date)}
+          {formatDate(first.date)}
         </text>
         <text className="font-mono text-[11px]" fill="#6f675a" x={W} y={H - 2} textAnchor="end">
-          {endLabel ?? fmtDate(last.date)}
+          {endLabel ?? formatDate(last.date)}
         </text>
       </svg>
 
       {/* Petunjuk interaktif halus di pojok kanan bawah */}
       <div className="mt-1 flex items-center justify-between text-[10px] font-mono text-text-3">
-        <span>Arahkan kursor pada grafik untuk melihat rincian harga</span>
+        <span>{t('chart.hint')}</span>
         {activePoint && (
           <span className="text-brass-300 font-semibold">
-            {fmtDate(activePoint.date)}: Rp {fmt(activePoint.close)}
+            {formatDate(activePoint.date)}: {formatRupiah(activePoint.close)}
           </span>
         )}
       </div>
     </div>
   );
-}
-
-function fmt(v: number): string {
-  return v.toLocaleString('id-ID', { maximumFractionDigits: 0 });
-}
-
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' });
 }

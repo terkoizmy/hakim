@@ -3,96 +3,110 @@ import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import { type PostmortemResponse, type PricePoint, type VerdictCategory } from '../types/contract';
 import { formatPct, formatRupiah, formatDate } from '../utils/format';
-import { VerdictBadge } from './JournalPage';
+import { renderRich, useLabels, useLang } from '../i18n';
+import type { DictKey } from '../i18n/dict';
+import VerdictBadge from '../components/VerdictBadge';
 import { Markdown } from '../utils/md';
 import { AlertIcon, SparkIcon, ArrowRightIcon } from '../components/icons';
 
+/** Cincin fokus bersama — kelas yang sama persis dengan AppShell. */
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-0';
+
+/** Hasil evaluasi akurasi. Teksnya bukan di sini melainkan di kamus
+ * (`postmortem.outcome.<kode>.{title,badge,desc}`) supaya ikut bahasa UI;
+ * berkas ini hanya menyimpan logika kecocokan dan warnanya. */
+type OutcomeCode =
+  | 'noData'
+  | 'hitUp'
+  | 'hitDown'
+  | 'hitFlat'
+  | 'flagDown'
+  | 'flagUp'
+  | 'flagFlat'
+  | 'cautionDown'
+  | 'cautionUp';
+
+const OUTCOME_TEXT: Record<OutcomeCode, { title: DictKey; badge: DictKey; desc: DictKey }> = {
+  noData: {
+    title: 'postmortem.outcome.noData.title',
+    badge: 'postmortem.outcome.noData.badge',
+    desc: 'postmortem.outcome.noData.desc',
+  },
+  hitUp: {
+    title: 'postmortem.outcome.hitUp.title',
+    badge: 'postmortem.outcome.hitUp.badge',
+    desc: 'postmortem.outcome.hitUp.desc',
+  },
+  hitDown: {
+    title: 'postmortem.outcome.hitDown.title',
+    badge: 'postmortem.outcome.hitDown.badge',
+    desc: 'postmortem.outcome.hitDown.desc',
+  },
+  hitFlat: {
+    title: 'postmortem.outcome.hitFlat.title',
+    badge: 'postmortem.outcome.hitFlat.badge',
+    desc: 'postmortem.outcome.hitFlat.desc',
+  },
+  flagDown: {
+    title: 'postmortem.outcome.flagDown.title',
+    badge: 'postmortem.outcome.flagDown.badge',
+    desc: 'postmortem.outcome.flagDown.desc',
+  },
+  flagUp: {
+    title: 'postmortem.outcome.flagUp.title',
+    badge: 'postmortem.outcome.flagUp.badge',
+    desc: 'postmortem.outcome.flagUp.desc',
+  },
+  flagFlat: {
+    title: 'postmortem.outcome.flagFlat.title',
+    badge: 'postmortem.outcome.flagFlat.badge',
+    desc: 'postmortem.outcome.flagFlat.desc',
+  },
+  cautionDown: {
+    title: 'postmortem.outcome.cautionDown.title',
+    badge: 'postmortem.outcome.cautionDown.badge',
+    desc: 'postmortem.outcome.cautionDown.desc',
+  },
+  cautionUp: {
+    title: 'postmortem.outcome.cautionUp.title',
+    badge: 'postmortem.outcome.cautionUp.badge',
+    desc: 'postmortem.outcome.cautionUp.desc',
+  },
+};
+
+const OUTCOME_TONE: Record<OutcomeCode, string> = {
+  noData: 'border-[#6f675a]/40 text-text-3 bg-bg-3',
+  hitUp: 'border-[#7fb069]/40 text-[#7fb069] bg-[#7fb069]/10',
+  hitDown: 'border-[#c96a5a]/40 text-[#c96a5a] bg-[#c96a5a]/10',
+  hitFlat: 'border-brass-600/40 text-brass-300 bg-brass-500/10',
+  flagDown: 'border-[#7fb069]/40 text-[#7fb069] bg-[#7fb069]/10',
+  flagUp: 'border-[#d9a441]/40 text-[#d9a441] bg-[#d9a441]/10',
+  flagFlat: 'border-brass-600/40 text-brass-300 bg-brass-500/10',
+  cautionDown: 'border-[#d9a441]/40 text-[#d9a441] bg-[#d9a441]/10',
+  cautionUp: 'border-brass-600/40 text-brass-300 bg-brass-500/10',
+};
+
 /** Evaluasi kecocokan akurasi putusan masa lalu vs realisasi pergerakan harga */
-function evaluateOutcome(category: VerdictCategory, changePct: number | null) {
-  if (changePct == null) {
-    return {
-      title: 'Data Masih Terbatas',
-      badge: 'Menunggu Data',
-      badgeColor: 'border-[#6f675a]/40 text-text-3 bg-bg-3',
-      description: 'Rentang data transaksi pasar sejak tanggal sidang belum mencukupi untuk menguji signifikansi tesis.',
-    };
-  }
+function outcomeCode(category: VerdictCategory, changePct: number | null): OutcomeCode {
+  if (changePct == null) return 'noData';
 
   if (category === 'layak_diteliti_lanjut') {
-    if (changePct >= 5) {
-      return {
-        title: 'Tesis Bullish Tepat Sasaran',
-        badge: 'Tesis Akurat · Bull',
-        badgeColor: 'border-[#7fb069]/40 text-[#7fb069] bg-[#7fb069]/10',
-        description: `Putusan sidang "Layak diteliti lanjut" terbukti akurat. Harga saham telah menguat ${formatPct(changePct)} sejak memorandum disahkan.`,
-      };
-    } else if (changePct <= -5) {
-      return {
-        title: 'Divergensi Pasar (Evaluasi Ulang)',
-        badge: 'Divergensi Pasar',
-        badgeColor: 'border-[#c96a5a]/40 text-[#c96a5a] bg-[#c96a5a]/10',
-        description: `Harga saham melemah ${formatPct(changePct)} berlawanan dengan optimisme putusan. Perlu diinvestigasi apakah terdapat perubahan fundamental baru atau sentimen koreksi makro.`,
-      };
-    } else {
-      return {
-        title: 'Konsolidasi / Pasar Netral',
-        badge: 'Konsolidasi',
-        badgeColor: 'border-brass-600/40 text-brass-300 bg-brass-500/10',
-        description: `Harga saham bergerak mendatar (${formatPct(changePct)}) di sekitar harga putusan. Pasar masih mengonsolidasi katalis.`,
-      };
-    }
+    if (changePct >= 5) return 'hitUp';
+    if (changePct <= -5) return 'hitDown';
+    return 'hitFlat';
   } else if (category === 'red_flag_berat') {
-    if (changePct <= -5) {
-      return {
-        title: 'Proteksi Risiko Berhasil',
-        badge: 'Proteksi Berhasil · Red Flag',
-        badgeColor: 'border-[#7fb069]/40 text-[#7fb069] bg-[#7fb069]/10',
-        description: `Peringatan komite terbukti melindungi modal investor. Harga saham merosot ${formatPct(changePct)}, memvalidasi temuan red flag berat jaksa penuntut.`,
-      };
-    } else if (changePct >= 10) {
-      return {
-        title: 'Anomali Penguatan Saham',
-        badge: 'Anomali Spekulasi',
-        badgeColor: 'border-[#d9a441]/40 text-[#d9a441] bg-[#d9a441]/10',
-        description: `Kendati berstatus red flag berat, saham justru menguat ${formatPct(changePct)}. Waspadai potensi pergerakan spekulatif/gorengan atau katalis pemulihan mendadak.`,
-      };
-    } else {
-      return {
-        title: 'Saham Tertekan / Lemah',
-        badge: 'Risiko Terkonfirmasi',
-        badgeColor: 'border-brass-600/40 text-brass-300 bg-brass-500/10',
-        description: `Saham tidak mampu menguat (${formatPct(changePct)}), membuktikan sikap defensif komite adalah langkah rasional.`,
-      };
-    }
-  } else {
-    // perlu_kehati_hatian
-    if (changePct < 0) {
-      return {
-        title: 'Kewaspadaan Terbukti Tepat',
-        badge: 'Tervalidasi · Hati-Hati',
-        badgeColor: 'border-[#d9a441]/40 text-[#d9a441] bg-[#d9a441]/10',
-        description: `Sikap hati-hati komite terbukti relevan dengan pelemahan harga sebesar ${formatPct(changePct)}.`,
-      };
-    } else {
-      return {
-        title: 'Penguatan Terpantau',
-        badge: 'Terpantau',
-        badgeColor: 'border-brass-600/40 text-brass-300 bg-brass-500/10',
-        description: `Saham mencatatkan kenaikan ${formatPct(changePct)}, tetap perlu mengawal pertanyaan verifikasi risiko.`,
-      };
-    }
+    if (changePct <= -5) return 'flagDown';
+    if (changePct >= 10) return 'flagUp';
+    return 'flagFlat';
   }
+  // perlu_kehati_hatian
+  return changePct < 0 ? 'cautionDown' : 'cautionUp';
 }
-
-/** Label putusan dengan kata kunci dimiringkan — gaya h2 mock postmortem. */
-const VERDICT_H2: Record<string, { plain: string; em: string }> = {
-  layak_diteliti_lanjut: { plain: 'Layak ', em: 'diteliti lanjut' },
-  perlu_kehati_hatian: { plain: 'Perlu ', em: 'kehati-hatian' },
-  red_flag_berat: { plain: 'Red flag ', em: 'berat' },
-};
 
 export default function PostmortemPage() {
   const { memoId } = useParams<{ memoId: string }>();
+  const { t } = useLang();
   const [data, setData] = useState<PostmortemResponse | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState('');
@@ -109,7 +123,7 @@ export default function PostmortemPage() {
       })
       .catch((e) => {
         if (!alive) return;
-        setError(e instanceof ApiError ? e.message : 'Rekap tidak ditemukan.');
+        setError(e instanceof ApiError ? e.message : t('postmortem.error.load'));
         setState('error');
       });
     return () => {
@@ -131,15 +145,15 @@ export default function PostmortemPage() {
               <AlertIcon size={22} />
             </span>
             <h2 className="mb-2 font-display text-[22px] font-medium text-text-0">
-              Rekap sidang tidak ditemukan
+              {t('postmortem.error.title')}
             </h2>
             <p className="text-[14px] text-text-2">{error}</p>
             <div className="mt-5 flex justify-center">
               <Link
                 to="/journal"
-                className="rounded-pill border border-brass-600 px-5 py-[10px] font-mono text-[12px] tracking-[0.5px] text-brass-400 transition-colors hover:bg-brass-500 hover:text-bg-1"
+                className={`rounded-pill border border-brass-600 px-5 py-[10px] font-mono text-[12px] tracking-[0.5px] text-brass-400 transition-colors hover:bg-brass-500 hover:text-bg-1 ${FOCUS}`}
               >
-                Kembali ke Jurnal
+                {t('postmortem.error.back')}
               </Link>
             </div>
           </section>
@@ -152,28 +166,47 @@ export default function PostmortemPage() {
 }
 
 function PmView({ data }: { data: PostmortemResponse }) {
+  const labels = useLabels();
+  const { t } = useLang();
   const { memo, price_at_trial, price_now, change_pct, days_elapsed, price_series } = data;
   const up = (change_pct ?? 0) >= 0;
   const hasPrice = change_pct != null && price_now != null;
   const hasSeries = price_series != null && price_series.length >= 2;
-  const vLabel = VERDICT_H2[memo.verdict.category] ?? { plain: '', em: memo.verdict.category };
-  const outcome = evaluateOutcome(memo.verdict.category, change_pct);
+  const vLabel = labels.verdictDoc[memo.verdict.category];
+  const code = outcomeCode(memo.verdict.category, change_pct);
+  const outcome = {
+    title: t(OUTCOME_TEXT[code].title),
+    badge: t(OUTCOME_TEXT[code].badge),
+    badgeColor: OUTCOME_TONE[code],
+    // Angka masuk sebagai parameter, bukan dirangkai di luar kalimat, supaya
+    // urutan kata versi Inggris bisa berbeda dari Indonesia.
+    description: renderRich(
+      t(OUTCOME_TEXT[code].desc, {
+        pct: change_pct != null ? formatPct(change_pct) : '',
+        verdict: labels.verdict[memo.verdict.category],
+      }),
+      { em: (children) => <em className="not-italic font-medium text-brass-300">{children}</em> },
+    ),
+  };
 
   return (
     <div>
       <nav className="anim-in mb-[22px] font-mono text-[12px] uppercase tracking-[1px] text-text-3">
-        <Link to="/journal" className="text-brass-500 transition-colors hover:text-brass-300">
-          Jurnal Sidang
+        <Link
+          to="/journal"
+          className={`text-brass-500 transition-colors hover:text-brass-300 ${FOCUS}`}
+        >
+          {t('postmortem.crumb.journal')}
         </Link>
         <span className="mx-[6px]">/</span>
-        <span>Post-mortem</span>
+        <span>{t('postmortem.crumb.here')}</span>
       </nav>
 
       {/* ---------- HEAD ---------- */}
       <header className="anim-in mb-[30px] flex flex-wrap items-end justify-between gap-5 border-b border-[#3a332a] pb-[26px]">
         <div>
           <p className="mb-[10px] font-mono text-[11px] uppercase tracking-[2px] text-brass-500">
-            Evaluasi Putusan
+            {t('postmortem.kicker')}
           </p>
           <h1 className="font-display text-[clamp(30px,4.5vw,44px)] font-medium leading-[1.1] text-text-0">
             {memo.ticker}
@@ -182,7 +215,9 @@ function PmView({ data }: { data: PostmortemResponse }) {
           </h1>
           <div className="mt-[10px] flex flex-wrap items-center gap-[10px] text-[13.5px] text-text-2">
             <span>
-              Putusan <span className="font-mono text-text-0">{formatDate(memo.created_at)}</span>
+              {renderRich(t('postmortem.head.verdictOn', { date: formatDate(memo.created_at) }), {
+                b: (children) => <span className="font-mono text-text-0">{children}</span>,
+              })}
             </span>
             <VerdictBadge category={memo.verdict.category} />
           </div>
@@ -191,10 +226,10 @@ function PmView({ data }: { data: PostmortemResponse }) {
         <div className="flex items-center gap-2.5">
           <Link
             to={`/ticker/${memo.ticker}`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-brass-600/50 bg-brass-500/10 px-3.5 py-2 font-mono text-[12px] font-semibold text-brass-300 transition-all hover:bg-brass-500 hover:text-[#14120f]"
+            className={`inline-flex items-center gap-1.5 rounded-lg border border-brass-600/50 bg-brass-500/10 px-3.5 py-2 font-mono text-[12px] font-semibold text-brass-300 transition-all hover:bg-brass-500 hover:text-[#14120f] ${FOCUS}`}
           >
             <SparkIcon size={14} />
-            <span>Sidang Banding / Profil Baru</span>
+            <span>{t('postmortem.head.newTrial')}</span>
           </Link>
         </div>
       </header>
@@ -204,7 +239,7 @@ function PmView({ data }: { data: PostmortemResponse }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[11px] uppercase tracking-[1.5px] text-brass-500">
-              Audit Akurasi Tesis
+              {t('postmortem.outcome.kicker')}
             </span>
           </div>
           <span
@@ -226,17 +261,19 @@ function PmView({ data }: { data: PostmortemResponse }) {
       <section className="anim-in mb-[30px] rounded-[14px] border border-[#3a332a] bg-bg-2 px-[22px] pb-[18px] pt-[22px]">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-4">
           <h2 className="font-display text-[19px] font-medium text-text-0">
-            Perjalanan <em className="italic text-brass-300">harga</em>
+            {renderRich(t('postmortem.chart.title'), {
+              em: (children) => <em className="italic text-brass-300">{children}</em>,
+            })}
           </h2>
           <span className="font-mono text-[11px] tracking-[0.5px] text-text-3">
-            ARSIP · BUKAN REAL-TIME
+            {t('postmortem.chart.archiveNote')}
           </span>
         </div>
         {hasSeries ? (
           <PostmortemChart points={price_series!} verdictDate={memo.created_at} priceAtTrial={price_at_trial} />
         ) : (
-          <p className="rounded-[10px] border border-dashed border-[#3a332a] px-4 py-6 text-center text-[13px] text-text-2">
-            Seri harga belum tersedia — butuh setidaknya dua titik sejak memorandum untuk ticker ini.
+          <p className="rounded-[14px] border border-dashed border-[#3a332a] px-6 py-8 text-center text-[13px] text-text-2">
+            {t('postmortem.chart.empty')}
           </p>
         )}
       </section>
@@ -244,20 +281,24 @@ function PmView({ data }: { data: PostmortemResponse }) {
       {/* ---------- SUMMARY ROW ---------- */}
       <section className="anim-in mb-[30px] grid grid-cols-1 gap-px overflow-hidden rounded-[14px] border border-[#3a332a] bg-[#2a251e] min-[640px]:grid-cols-3">
         <SumCell
-          label="Harga saat putusan"
+          label={t('postmortem.sum.priceAtTrial')}
           value={price_at_trial != null ? formatRupiah(price_at_trial) : '—'}
           sub={formatDate(memo.created_at)}
         />
         <SumCell
-          label="Harga terakhir"
+          label={t('postmortem.sum.priceNow')}
           value={price_now != null ? formatRupiah(price_now) : '—'}
-          sub="arsip terbaru"
+          sub={t('postmortem.sum.latestArchive')}
         />
         <SumCell
-          label="Selisih"
+          label={t('postmortem.sum.delta')}
           value={hasPrice ? formatPct(change_pct!) : '—'}
           tone={hasPrice ? (up ? 'up' : 'down') : undefined}
-          sub={days_elapsed != null ? `sejak putusan · ${days_elapsed} hari` : 'sejak putusan'}
+          sub={
+            days_elapsed != null
+              ? t('postmortem.sum.sinceVerdictDays', { n: days_elapsed })
+              : t('postmortem.sum.sinceVerdict')
+          }
         />
       </section>
 
@@ -265,18 +306,19 @@ function PmView({ data }: { data: PostmortemResponse }) {
       <section className="anim-in mb-[30px] rounded-[14px] border border-[#3a332a] bg-bg-2 p-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <span className="font-mono text-[10.5px] uppercase tracking-[1.5px] text-brass-500">
-            Putusan Komite Asli · {formatDate(memo.created_at)}
+            {t('postmortem.verdict.kicker', { date: formatDate(memo.created_at) })}
           </span>
           <Link
             to={`/memo/${memo.trial_id ?? memo.memo_id}`}
-            className="font-mono text-[11px] uppercase tracking-[1px] text-brass-500 transition-colors hover:text-brass-300"
+            className={`font-mono text-[11px] uppercase tracking-[1px] text-brass-500 transition-colors hover:text-brass-300 ${FOCUS}`}
           >
-            Buka Dokumen Memorandum →
+            {t('postmortem.verdict.openMemo')}
           </Link>
         </div>
         <h2 className="mb-[6px] font-display text-[22px] font-medium text-text-0">
-          {vLabel.plain}
-          <em className="italic text-brass-300">{vLabel.em}</em>
+          {renderRich(vLabel, {
+            em: (children) => <em className="italic text-brass-300">{children}</em>,
+          })}
         </h2>
         <div className="max-w-[62ch] text-[14.5px] leading-[1.6] text-text-2 [&>*:last-child]:mb-0 [&_p]:mb-0">
           <Markdown source={memo.verdict.rationale_md} />
@@ -284,7 +326,7 @@ function PmView({ data }: { data: PostmortemResponse }) {
         {memo.verdict.verification_questions.length > 0 && (
           <div className="mt-[18px]">
             <p className="mb-2 font-mono text-[10.5px] uppercase tracking-[1px] text-text-3">
-              Pertanyaan Verifikasi Saat Sidang:
+              {t('postmortem.verdict.questions')}
             </p>
             <div className="flex flex-wrap">
               {memo.verdict.verification_questions.map((q) => (
@@ -303,70 +345,76 @@ function PmView({ data }: { data: PostmortemResponse }) {
       {/* ---------- NEXT ACTIONS ---------- */}
       <section className="anim-in border-t border-[#3a332a] pt-8">
         <h3 className="mb-4 font-mono text-[11px] uppercase tracking-[1.5px] text-brass-500">
-          Langkah Analisis Selanjutnya
+          {t('postmortem.next.title')}
         </h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             to={`/memo/${memo.trial_id ?? memo.memo_id}`}
-            className="group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-brass-500 hover:bg-[#1a1713]"
+            className={`group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-brass-500 hover:bg-[#1a1713] ${FOCUS}`}
           >
             <div>
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[11px] uppercase tracking-wider text-brass-400">
-                  📄 Memorandum
+                  {t('postmortem.next.memo.kicker')}
                 </span>
                 <ArrowRightIcon className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-1 group-hover:text-brass-400" />
               </div>
               <h4 className="mt-2 font-serif text-[15px] font-medium text-text-1">
-                Baca Kembali Argumen Sidang
+                {t('postmortem.next.memo.title')}
               </h4>
               <p className="mt-1 text-[12.5px] leading-relaxed text-text-3">
-                Review kembali perdebatan Jaksa vs Pembela dan data smart money yang menjadi dasar putusan ini.
+                {t('postmortem.next.memo.desc')}
               </p>
             </div>
-            <div className="mt-4 font-mono text-[11.5px] text-brass-400">Buka Memorandum &rarr;</div>
+            <div className="mt-4 font-mono text-[11.5px] text-brass-400">
+              {t('postmortem.next.memo.cta')}
+            </div>
           </Link>
 
           <Link
             to={`/ticker/${memo.ticker}`}
-            className="group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-accent hover:bg-[#1a1713]"
+            className={`group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-accent hover:bg-[#1a1713] ${FOCUS}`}
           >
             <div>
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[11px] uppercase tracking-wider text-accent">
-                  ⚖️ Sidang Banding
+                  {t('postmortem.next.retrial.kicker')}
                 </span>
                 <ArrowRightIcon className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-1 group-hover:text-accent" />
               </div>
               <h4 className="mt-2 font-serif text-[15px] font-medium text-text-1">
-                Mulai Sidang Baru {memo.ticker}
+                {t('postmortem.next.retrial.title', { ticker: memo.ticker })}
               </h4>
               <p className="mt-1 text-[12.5px] leading-relaxed text-text-3">
-                Jalankan komite sidang ulang dengan data laporan keuangan dan transaksi pasar paling mutakhir.
+                {t('postmortem.next.retrial.desc')}
               </p>
             </div>
-            <div className="mt-4 font-mono text-[11.5px] text-accent">Gelar Sidang Ulang &rarr;</div>
+            <div className="mt-4 font-mono text-[11.5px] text-accent">
+              {t('postmortem.next.retrial.cta')}
+            </div>
           </Link>
 
           <Link
             to="/board"
-            className="group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-[#d4a373] hover:bg-[#1a1713]"
+            className={`group flex flex-col justify-between rounded-xl border border-[#3a332a] bg-bg-2 p-4 transition-all hover:border-[#d4a373] hover:bg-[#1a1713] ${FOCUS}`}
           >
             <div>
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[11px] uppercase tracking-wider text-[#d4a373]">
-                  🔍 Detective Board
+                  {t('postmortem.next.board.kicker')}
                 </span>
                 <ArrowRightIcon className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-1 group-hover:text-[#d4a373]" />
               </div>
               <h4 className="mt-2 font-serif text-[15px] font-medium text-text-1">
-                Eksplorasi Jejaring Saham
+                {t('postmortem.next.board.title')}
               </h4>
               <p className="mt-1 text-[12.5px] leading-relaxed text-text-3">
-                Cari emiten lain dalam grup kepemilikan yang sama untuk melihat apakah pola harga serupa terjadi.
+                {t('postmortem.next.board.desc')}
               </p>
             </div>
-            <div className="mt-4 font-mono text-[11.5px] text-[#d4a373]">Buka Papan Detektif &rarr;</div>
+            <div className="mt-4 font-mono text-[11.5px] text-[#d4a373]">
+              {t('postmortem.next.board.cta')}
+            </div>
           </Link>
         </div>
       </section>
@@ -432,6 +480,7 @@ function PostmortemChart({
   verdictDate: string;
   priceAtTrial?: number | null;
 }) {
+  const { t } = useLang();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -490,7 +539,10 @@ function PostmortemChart({
         className="block h-[260px] w-full cursor-crosshair overflow-visible max-[640px]:h-[220px]"
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        aria-label={`Grafik harga ${first.date} sampai ${points[points.length - 1].date} dengan penanda tanggal putusan`}
+        aria-label={t('postmortem.chart.aria', {
+          from: formatDate(first.date),
+          to: formatDate(points[points.length - 1].date),
+        })}
         preserveAspectRatio="none"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -528,7 +580,7 @@ function PostmortemChart({
           y={vY - 8}
           textAnchor={flip ? 'end' : 'start'}
         >
-          Rp {fmt(points[vIdx].close)}
+          {formatRupiah(points[vIdx].close)}
         </text>
         <text
           className="font-mono text-[10px] tracking-[0.5px]"
@@ -537,7 +589,7 @@ function PostmortemChart({
           y={vY + 12}
           textAnchor={flip ? 'end' : 'start'}
         >
-          PUTUSAN
+          {t('postmortem.chart.marker')}
         </text>
 
         {/* hover cursor line & dot */}
@@ -558,16 +610,16 @@ function PostmortemChart({
 
         {/* label nilai & axis */}
         <text className="font-mono text-[10.5px]" fill="#6f675a" x={0} y={TOP - 6}>
-          Rp {fmt(max)}
+          {formatRupiah(max)}
         </text>
         <text className="font-mono text-[10.5px]" fill="#6f675a" x={0} y={BOT - 6}>
-          Rp {fmt(min)}
+          {formatRupiah(min)}
         </text>
         <text className="font-mono text-[10.5px]" fill="#6f675a" x={0} y={255}>
-          {fmtDateShort(first.date)}
+          {formatDate(first.date)}
         </text>
         <text className="font-mono text-[10.5px]" fill="#6f675a" x={W} y={255} textAnchor="end">
-          kini
+          {t('postmortem.chart.now')}
         </text>
       </svg>
 
@@ -581,7 +633,7 @@ function PostmortemChart({
         >
           <div className="text-text-3 text-[10.5px]">{formatDate(activePt.date)}</div>
           <div className="text-text-0 font-medium text-[13px] mt-0.5">
-            Rp {fmt(activePt.close)}
+            {formatRupiah(activePt.close)}
           </div>
           {hoverDiffPct != null && activeIdx !== vIdx && (
             <div
@@ -589,7 +641,7 @@ function PostmortemChart({
                 hoverDiffPct >= 0 ? 'text-[#7fb069]' : 'text-[#c96a5a]'
               }`}
             >
-              {hoverDiffPct >= 0 ? '+' : ''}{hoverDiffPct.toFixed(1)}% vs Sidang
+              {t('postmortem.chart.vsTrial', { pct: formatPct(hoverDiffPct, 1) })}
             </div>
           )}
         </div>
@@ -599,26 +651,15 @@ function PostmortemChart({
 }
 
 function nearestIndex(points: PricePoint[], target: string): number {
-  const t = new Date(target).getTime();
+  const targetMs = new Date(target).getTime();
   let best = 0;
   let bestDiff = Infinity;
   for (let i = 0; i < points.length; i++) {
-    const d = Math.abs(new Date(points[i].date).getTime() - t);
+    const d = Math.abs(new Date(points[i].date).getTime() - targetMs);
     if (d < bestDiff) {
       bestDiff = d;
       best = i;
     }
   }
   return best;
-}
-
-function fmt(v: number): string {
-  return v.toLocaleString('id-ID', { maximumFractionDigits: 0 });
-}
-
-/** Bentuk pendek untuk axis — "09 Sep". */
-function fmtDateShort(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
 }

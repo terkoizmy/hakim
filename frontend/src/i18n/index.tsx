@@ -1,11 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { setFormatLocale } from '../utils/format';
 import { DICTS, type DictKey } from './dict';
+import { buildLabels, type Labels } from './labels';
 import { readStoredLang, storeLang, type Lang } from './types';
 
 export type { Lang } from './types';
 export { DEFAULT_LANG, LANGS, LANG_LABEL, LANG_NAME } from './types';
 export { renderRich } from './rich';
+export { severityKey, type AgentLabelKey, type Labels, type Severity } from './labels';
 
 /** Nilai yang disisipkan ke placeholder `{nama}` di string kamus. */
 export type TranslateParams = Record<string, string | number>;
@@ -76,4 +78,11 @@ export function useLang(): LangContextValue {
   const ctx = useContext(LangContext);
   if (!ctx) throw new Error('useLang harus dipakai di dalam <LangProvider>');
   return ctx;
+}
+
+/** Tabel label (fase, putusan, agen, keparahan, …) untuk bahasa aktif.
+ * Dibangun ulang hanya saat bahasa berganti. */
+export function useLabels(): Labels {
+  const { lang } = useLang();
+  return useMemo(() => buildLabels(lang), [lang]);
 }

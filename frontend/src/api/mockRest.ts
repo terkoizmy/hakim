@@ -18,6 +18,28 @@ import type { BoardChatResponse } from '../types/board';
 import { ApiError, type RestClient, type TrialModeInput } from './types';
 import { COMPANY_NAMES, companyNameFor } from './mockData';
 import { mockStore } from './mockStore';
+import { DICTS } from '../i18n/dict';
+import { readStoredLang } from '../i18n/types';
+
+/** Kunci kamus untuk pesan galat MILIK FRONTEND (mockErr.*). */
+type MockErrKey = 'mockErr.tickerUnknown' | 'mockErr.memoNotReady' | 'mockErr.postmortemMissing';
+
+/**
+ * Pesan galat mock dalam bahasa antarmuka yang sedang aktif.
+ *
+ * Berkas ini bukan komponen React — hook `useLang()` tidak bisa dipakai di
+ * sini. Yang lebih kecil daripada mengubah galat jadi kode dan memaksa tiap
+ * halaman pemanggil menerjemahkannya: bahasa dibaca langsung dari store modul
+ * (`readStoredLang()`, localStorage) pada saat galat dilempar, lalu dicari di
+ * kamus. Dengan begitu `err.message` tetap berupa kalimat siap tampil seperti
+ * sebelumnya, jadi halaman lain yang menampilkannya tidak perlu disentuh.
+ *
+ * Teks papan/balasan chat di berkas ini SENGAJA tetap Indonesia — itu tiruan
+ * payload backend, bukan chrome UI.
+ */
+function mockErr(key: MockErrKey): string {
+  return DICTS[readStoredLang()][key];
+}
 
 const JOURNAL_ITEMS: JournalItem[] = [];
 const POSTMORTEMS: Record<string, PostmortemResponse> = {};
@@ -58,7 +80,7 @@ export const mockRestClient: RestClient = {
     const up = ticker.trim().toUpperCase();
     if (!TICKER_RE.test(up)) {
       // Meniru 422 backend: "Ticker tidak dikenal".
-      throw new ApiError(422, 'Ticker tidak dikenal');
+      throw new ApiError(422, mockErr('mockErr.tickerUnknown'));
     }
     return {
       // id turunan ticker supaya mockSse dapat menebus ticker dari route param:
@@ -73,7 +95,7 @@ export const mockRestClient: RestClient = {
 
   async fetchMemo(trialId): Promise<MemoJSON> {
     const memo = mockStore.memoByTrial.get(trialId);
-    if (!memo) throw new ApiError(404, 'Memorandum belum siap');
+    if (!memo) throw new ApiError(404, mockErr('mockErr.memoNotReady'));
     return memo;
   },
 
@@ -84,7 +106,7 @@ export const mockRestClient: RestClient = {
 
   async fetchPostmortem(memoId): Promise<PostmortemResponse> {
     const pm = POSTMORTEMS[memoId];
-    if (!pm) throw new ApiError(404, 'Post-mortem tidak ditemukan');
+    if (!pm) throw new ApiError(404, mockErr('mockErr.postmortemMissing'));
     return { ...pm, price_series: mockPriceSeries(pm.price_now) };
   },
 

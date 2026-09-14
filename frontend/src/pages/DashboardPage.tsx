@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { VerdictBadge } from './JournalPage';
+import VerdictBadge from '../components/VerdictBadge';
+import { TD_BASE, TH_WRAP } from '../components/table';
 import { SearchIcon, ChevronDownIcon, CheckIcon } from '../components/icons';
+import { renderRich, useLang } from '../i18n';
+import { formatDate, formatRupiah } from '../utils/format';
 import type { JournalItem, TickerListItem } from '../types/contract';
 import type { VerdictCategory } from '../types/contract';
+
+/** Cincin fokus bersama — pola yang sama dengan AppShell. */
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-0';
 
 /** Custom Dropdown Sektor dengan tema Mahkamah / Dark Sepia & Brass */
 function SectorDropdown({
@@ -16,6 +23,7 @@ function SectorDropdown({
   onChange: (val: string) => void;
   options: { sector: string; count: number }[];
 }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -41,7 +49,7 @@ function SectorDropdown({
   const selectedOption = options.find((o) => o.sector === value);
   const selectedLabel = selectedOption
     ? `${selectedOption.sector} (${selectedOption.count})`
-    : 'Semua Sektor';
+    : t('dashboard.sector.all');
 
   const totalAll = options.reduce((acc, curr) => acc + curr.count, 0);
 
@@ -56,7 +64,7 @@ function SectorDropdown({
       >
         <div className="flex items-center gap-2 overflow-hidden">
           <span className="font-mono text-[11px] uppercase tracking-[1px] text-text-3">
-            Sektor:
+            {t('dashboard.sector.label')}
           </span>
           <span className="truncate text-[14.5px] font-medium text-text-0">
             {selectedLabel}
@@ -79,7 +87,7 @@ function SectorDropdown({
               onChange('');
               setOpen(false);
             }}
-            className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors ${
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors ${FOCUS} ${
               value === ''
                 ? 'bg-brass-500/20 font-semibold text-brass-300'
                 : 'text-text-1 hover:bg-[#28231c] hover:text-text-0'
@@ -91,7 +99,7 @@ function SectorDropdown({
               ) : (
                 <span className="w-3.5" />
               )}
-              <span>Semua Sektor</span>
+              <span>{t('dashboard.sector.all')}</span>
             </div>
             <span className="font-mono text-[11px] text-text-3">{totalAll}</span>
           </button>
@@ -109,7 +117,7 @@ function SectorDropdown({
                   onChange(s.sector);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[13.5px] transition-colors ${
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[13.5px] transition-colors ${FOCUS} ${
                   isSelected
                     ? 'bg-brass-500/20 font-semibold text-brass-300'
                     : 'text-text-1 hover:bg-[#28231c] hover:text-text-0'
@@ -143,17 +151,17 @@ const PAGE_SIZE = 60;
 
 // Mock berkas-perkara: th mono uppercase di atas permukaan lebih gelap;
 // header boleh wrap 2 baris (JML SIDANG dst.) agar tabel muat di kolom 1fr.
-const TH =
-  'border-b border-[#3a332a] bg-[#1a1713] px-[18px] py-[14px] text-left font-mono text-[11px] font-medium uppercase leading-[1.5] tracking-[1px] text-text-3';
+const TH = `${TH_WRAP} px-[14px] py-3`;
 const TH_NUM = `${TH} text-right`;
-const TD = 'whitespace-nowrap border-b border-[#2a251e] px-[18px] py-[15px] align-middle';
+const TD = `${TD_BASE} whitespace-nowrap px-[14px] py-[13px] align-middle`;
 
 /** Badge "belum diadili" — gaya b-none pada mock (dot samar, tanpa warna). */
 function NotTriedBadge() {
+  const { t } = useLang();
   return (
     <span className="inline-flex items-center gap-[7px] whitespace-nowrap rounded-[6px] border border-[#3a332a] px-[10px] py-[5px] font-mono text-[11.5px] tracking-[0.3px] text-text-3">
       <span className="h-1.5 w-1.5 flex-none rounded-full bg-[#6f675a]" aria-hidden="true" />
-      Belum diadili
+      {t('dashboard.badge.notTried')}
     </span>
   );
 }
@@ -164,6 +172,7 @@ function NotTriedBadge() {
  */
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const [docket, setDocket] = useState<TickerListItem[]>(
     EXAMPLES.map((t) => ({ ticker: t, company_name: '' })),
   );
@@ -287,20 +296,26 @@ export default function DashboardPage() {
       <div className="container pb-10 pt-14">
         {/* ---------- PAGE HEAD ---------- */}
         <div className="mb-[18px] flex items-center font-mono text-[12px] uppercase tracking-[1px] text-text-3">
-          <Link to="/" className="text-brass-500 transition-colors hover:text-brass-300">
-            Sidang
+          <Link
+            to="/"
+            className={`rounded-xs text-brass-500 transition-colors hover:text-brass-300 ${FOCUS}`}
+          >
+            {t('dashboard.crumb.home')}
           </Link>
           <span className="mx-[6px]">/</span>
-          <span>Berkas Perkara</span>
+          <span>{t('dashboard.crumb.current')}</span>
         </div>
         <h1 className="font-display text-[clamp(34px,5vw,52px)] font-normal leading-[1.05] tracking-[-0.5px] text-text-0">
-          Berkas{' '}
-          <em aria-hidden="true" className="font-normal italic text-brass-500">
-            Perkara
-          </em>
+          {renderRich(t('dashboard.title'), {
+            em: (c) => (
+              <em aria-hidden="true" className="font-normal italic text-brass-500">
+                {c}
+              </em>
+            ),
+          })}
         </h1>
         <p className="mt-[14px] max-w-[60ch] text-[16px] leading-[1.6] text-text-2">
-          Semua emiten terdaftar IDX — klik baris untuk membuka berkas, lalu adili.
+          {t('dashboard.lead')}
         </p>
 
         {/* ---------- SEARCH + FILTER SEKTOR ---------- */}
@@ -313,8 +328,8 @@ export default function DashboardPage() {
               className="min-w-0 flex-1 border-0 bg-transparent py-[15px] text-[15px] text-text-0 outline-none placeholder:text-text-3"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari kode atau nama emiten…"
-              aria-label="Cari emiten"
+              placeholder={t('dashboard.search.placeholder')}
+              aria-label={t('dashboard.search.aria')}
               autoFocus
             />
           </label>
@@ -328,10 +343,13 @@ export default function DashboardPage() {
         </div>
         <p className="mb-[26px] mt-2 font-mono text-[12px] tracking-[0.5px] text-text-3">
           {total > 0
-            ? `MENAMPILKAN ${docket.length} DARI ${total} PERKARA${
-                sector.trim() ? ` — SEKTOR ${sector.trim().toUpperCase()}` : query.trim() ? '' : ' — KETIK UNTUK MENCARI ATAU GULIR + MUAT LAGI'
-              }`
-            : 'MENAMPILKAN DAFTAR PERKARA'}
+            ? t('dashboard.count.showing', { shown: docket.length, total }) +
+              (sector.trim()
+                ? t('dashboard.count.sector', { sector: sector.trim().toUpperCase() })
+                : query.trim()
+                  ? ''
+                  : t('dashboard.count.hint'))
+            : t('dashboard.count.fallback')}
         </p>
 
         <div
@@ -349,37 +367,46 @@ export default function DashboardPage() {
               <table className="w-full min-w-[640px] border-collapse text-[14px]">
                 <thead>
                   <tr>
-                    <th className={TH}>Ticker</th>
-                    <th className={TH}>Emiten</th>
-                    <th className={TH}>Putusan Terakhir</th>
-                    <th className={TH_NUM}>Jml Sidang</th>
-                    <th className={TH_NUM}>Terakhir Diadili</th>
-                    <th className={TH_NUM}>Harga Saat Sidang</th>
+                    <th className={TH}>{t('dashboard.th.ticker')}</th>
+                    <th className={TH}>{t('dashboard.th.issuer')}</th>
+                    <th className={TH}>{t('dashboard.th.verdict')}</th>
+                    <th className={TH_NUM}>{t('dashboard.th.trials')}</th>
+                    <th className={TH_NUM}>{t('dashboard.th.lastTried')}</th>
+                    <th className={TH_NUM}>{t('dashboard.th.price')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {docket.map((t) => {
-                    const hist = historyByTicker.get(t.ticker);
+                  {docket.map((row) => {
+                    const hist = historyByTicker.get(row.ticker);
                     const last = hist?.[0];
+                    const open = () => navigate(`/ticker/${row.ticker}`);
                     return (
                       <tr
-                        key={t.ticker}
-                        className="group cursor-pointer transition-colors hover:bg-[rgba(201,162,74,0.05)] [&:last-child>td]:border-b-0"
-                        onClick={() => navigate(`/ticker/${t.ticker}`)}
-                        title={`Buka detail ${t.ticker}`}
+                        key={row.ticker}
+                        className={`group cursor-pointer transition-colors hover:bg-[rgba(201,162,74,0.05)] [&:last-child>td]:border-b-0 ${FOCUS}`}
+                        onClick={open}
+                        // Baris dapat diklik juga harus dapat dijangkau keyboard.
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            open();
+                          }
+                        }}
+                        tabIndex={0}
+                        title={t('dashboard.row.title', { ticker: row.ticker })}
                       >
                         <td
                           className={`${TD} font-mono text-[14px] font-medium tracking-[1px] text-brass-400`}
                         >
-                          {t.ticker}
+                          {row.ticker}
                         </td>
                         <td className={TD}>
                           <div className="max-w-[180px] truncate font-medium text-text-0">
-                            {t.company_name || 'Emiten IDX'}
+                            {row.company_name || t('dashboard.issuerFallback')}
                           </div>
-                          {t.sector && (
+                          {row.sector && (
                             <div className="max-w-[180px] truncate text-[11.5px] text-text-3">
-                              {t.sector}
+                              {row.sector}
                             </div>
                           )}
                         </td>
@@ -394,13 +421,13 @@ export default function DashboardPage() {
                           {hist ? hist.length : '—'}
                         </td>
                         <td className={`${TD} text-right font-mono text-[12px] text-text-2`}>
-                          {last ? fmtDate(last.created_at) : '—'}
+                          {last ? formatDate(last.created_at) : '—'}
                         </td>
                         <td
                           className={`${TD} text-right font-mono text-[13px] tabular-nums text-text-0`}
                         >
                           {last?.price_at_trial != null
-                            ? `Rp ${last.price_at_trial.toLocaleString('id-ID')}`
+                            ? formatRupiah(last.price_at_trial)
                             : '—'}
                         </td>
                       </tr>
@@ -408,8 +435,10 @@ export default function DashboardPage() {
                   })}
                   {docket.length === 0 && !docketLoading && (
                     <tr>
-                      <td colSpan={6} className="px-[18px] py-12 text-center text-[13px] text-text-3">
-                        Tidak ada perkara yang cocok dengan pencarian.
+                      <td colSpan={6} className="px-[18px] py-6">
+                        <div className="mx-auto rounded-[14px] border border-[#2a251e] bg-[#1a1713] px-6 py-10 text-center text-[13px] text-text-3">
+                          {t('dashboard.empty')}
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -418,7 +447,7 @@ export default function DashboardPage() {
             </div>
             {docketFallback && (
               <p className="m-0 border-t border-[#2a251e] px-[18px] py-2.5 font-mono text-[11px] tracking-[0.3px] text-text-3">
-                Menampilkan contoh ticker — daftar emiten backend belum tersedia.
+                {t('dashboard.fallbackNote')}
               </p>
             )}
             {!docketFallback && docket.length < total && (
@@ -427,9 +456,11 @@ export default function DashboardPage() {
                   type="button"
                   onClick={loadMore}
                   disabled={loadingMore}
-                  className="cursor-pointer rounded-[8px] border border-brass-600 px-4 py-[7px] font-mono text-[12px] tracking-[0.5px] text-brass-400 transition-colors hover:bg-brass-500 hover:text-bg-1 disabled:opacity-50"
+                  className={`cursor-pointer rounded-[8px] border border-brass-600 px-4 py-[7px] font-mono text-[12px] tracking-[0.5px] text-brass-400 transition-colors hover:bg-brass-500 hover:text-bg-1 disabled:opacity-50 ${FOCUS}`}
                 >
-                  {loadingMore ? 'Memuat…' : `Muat ${Math.min(PAGE_SIZE, total - docket.length)} lagi`}
+                  {loadingMore
+                    ? t('dashboard.loading')
+                    : t('dashboard.loadMore', { n: Math.min(PAGE_SIZE, total - docket.length) })}
                 </button>
               </div>
             )}
@@ -439,32 +470,32 @@ export default function DashboardPage() {
           {showRecent && (
             <aside className="anim-in rounded-[14px] border border-[#3a332a] bg-bg-2 p-[22px] min-[1021px]:sticky min-[1021px]:top-[88px] max-[1020px]:-order-1">
               <p className="mb-1 font-mono text-[11px] uppercase tracking-[1.5px] text-brass-500">
-                Arsip
+                {t('dashboard.aside.eyebrow')}
               </p>
               <h3 className="mb-[18px] font-display text-[19px] font-medium text-text-0">
-                Sidang terakhir
+                {t('dashboard.aside.title')}
               </h3>
               {recent.map((j, i) => (
                 <button
                   key={j.memo_id}
                   type="button"
-                  className={`flex w-full cursor-pointer items-center gap-3 rounded-none border-t border-[#2a251e] px-2 py-[11px] text-left transition-colors hover:bg-[rgba(201,162,74,0.05)] ${
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-none border-t border-[#2a251e] px-2 py-[11px] text-left transition-colors hover:bg-[rgba(201,162,74,0.05)] ${FOCUS} ${
                     i === 0 ? 'border-t-0' : ''
                   }`}
                   onClick={() => navigate(`/memo/${j.trial_id ?? j.memo_id}`)}
-                  title={`Buka memorandum ${j.ticker}`}
+                  title={t('dashboard.aside.open', { ticker: j.ticker })}
                 >
                   <SideDot category={j.verdict_category} />
                   <span className="font-mono text-[12px] tracking-[0.5px] text-text-0">
                     {j.ticker}
                   </span>
                   <span className="ml-auto whitespace-nowrap text-[12px] text-text-3">
-                    {fmtDateShort(j.created_at)}
+                    {formatDate(j.created_at)}
                   </span>
                 </button>
               ))}
               <p className="mt-4 border-t border-[#2a251e] pt-[14px] text-[12px] leading-[1.6] text-text-3">
-                Klik baris untuk membuka memorandum riset lengkap dari sidang terakhir.
+                {t('dashboard.aside.note')}
               </p>
             </aside>
           )}
@@ -485,16 +516,7 @@ function SideDot({ category }: { category: VerdictCategory }) {
   return <span className="h-2 w-2 flex-none rounded-full" style={{ background: color }} aria-hidden="true" />;
 }
 
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  // Bulan singkat agar tabel muat di kolom 1fr (mock: "12 Mei 2026").
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-/** Bentuk pendek untuk baris arsip — "12 Mei". */
-function fmtDateShort(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long' });
-}
+/* fmtDate/fmtDateShort dulu tinggal di sini dengan `id-ID` yang dipaku mati:
+   tanggal tidak ikut berganti saat bahasa diganti, dan nilai tak valid
+   dikembalikan apa adanya sebagai teks ISO mentah di dalam sel. Tabel dan
+   baris arsip kini memakai pemformat bersama di utils/format. */

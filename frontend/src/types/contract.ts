@@ -378,36 +378,7 @@ export interface ValidationErrorBody {
   detail: string;
 }
 
-/* ================================================================== */
-/* Label & copy UI (Bahasa Indonesia)                                  */
-/* ================================================================== */
-
-export const PHASE_LABEL: Record<Phase, string> = {
-  evidence: 'Pengumpulan Bukti',
-  debate: 'Perdebatan',
-  verdict: 'Putusan',
-};
-
-export const AGENT_LABEL: Record<string, string> = {
-  fundamental: 'Analisis Fundamental',
-  price: 'Analisis Harga',
-  smartmoney: 'Smart Money',
-  insider: 'Insider',
-  antigorengan: 'Anti-Gorengan',
-  prosecutor: 'Jaksa (Bear)',
-  defender: 'Pembela (Bull)',
-  judge: 'Hakim Ketua',
-};
-
-export const VERDICT_LABEL: Record<VerdictCategory, string> = {
-  layak_diteliti_lanjut: 'Layak Diteliti Lebih Lanjut',
-  perlu_kehati_hatian: 'Perlu Kehati-hatian',
-  red_flag_berat: 'Red Flag Berat',
-};
-
-export const ERROR_LABEL: Record<TrialErrorCode, string> = {
-  ticker_not_found: 'Ticker Tidak Dikenal',
-  sectors_error: 'Gagal Menghubungi Sumber Data',
-  llm_error: 'Hakim Gagal Merumuskan Putusan',
-  timeout: 'Sidang Melebihi Batas Waktu',
-};
+/* Label & copy UI pindah ke kamus bahasa (src/i18n), bukan lagi konstanta
+   Bahasa Indonesia di berkas tipe. Lihat `useLabels()` — tabel di sana tetap
+   dikunci ke union tipe di berkas ini, jadi menambah `Phase` atau `VerdictCategory`
+   baru tetap akan menggagalkan typecheck sampai labelnya diisi. */

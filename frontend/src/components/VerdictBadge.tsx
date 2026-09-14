@@ -1,52 +1,54 @@
+import { useLabels } from '../i18n';
 import type { VerdictCategory } from '../types/contract';
 
-export type VerdictBadgeCategory =
-  | VerdictCategory
-  | 'ok'
-  | 'warn'
-  | 'red';
+export type VerdictBadgeCategory = VerdictCategory | 'ok' | 'warn' | 'red';
 
-const VERDICT_MAP: Record<
+/** Warna per kategori. Ini murni visual, jadi tetap di komponen — bukan di
+ * kamus. Yang penting: tiap entri menunjuk `category` kanoniknya, sehingga
+ * alias ok/warn/red memakai label yang sama persis dengan kategori aslinya
+ * (dulu ketiganya menyalin teks yang sama secara manual, dan itu yang membuat
+ * satu putusan bisa tampil dengan tiga kapitalisasi berbeda). */
+const VERDICT_STYLE: Record<
   string,
-  { label: string; color: string; border: string; bg: string; dot: string }
+  { category: VerdictCategory; color: string; border: string; bg: string; dot: string }
 > = {
   layak_diteliti_lanjut: {
-    label: 'Layak diteliti lanjut',
+    category: 'layak_diteliti_lanjut',
     color: '#8fc07c',
     border: 'rgba(127,176,105,0.4)',
     bg: 'rgba(127,176,105,0.06)',
     dot: '#7fb069',
   },
   ok: {
-    label: 'Layak diteliti lanjut',
+    category: 'layak_diteliti_lanjut',
     color: '#8fc07c',
     border: 'rgba(127,176,105,0.4)',
     bg: 'rgba(127,176,105,0.06)',
     dot: '#7fb069',
   },
   perlu_kehati_hatian: {
-    label: 'Perlu kehati-hatian',
+    category: 'perlu_kehati_hatian',
     color: '#d9a441',
     border: 'rgba(217,164,65,0.4)',
     bg: 'rgba(217,164,65,0.06)',
     dot: '#d9a441',
   },
   warn: {
-    label: 'Perlu kehati-hatian',
+    category: 'perlu_kehati_hatian',
     color: '#d9a441',
     border: 'rgba(217,164,65,0.4)',
     bg: 'rgba(217,164,65,0.06)',
     dot: '#d9a441',
   },
   red_flag_berat: {
-    label: 'Red flag berat',
+    category: 'red_flag_berat',
     color: '#c96a5a',
     border: 'rgba(201,106,90,0.4)',
     bg: 'rgba(201,106,90,0.06)',
     dot: '#c96a5a',
   },
   red: {
-    label: 'Red flag berat',
+    category: 'red_flag_berat',
     color: '#c96a5a',
     border: 'rgba(201,106,90,0.4)',
     bg: 'rgba(201,106,90,0.06)',
@@ -61,7 +63,8 @@ export default function VerdictBadge({
   category: VerdictBadgeCategory | string;
   className?: string;
 }) {
-  const style = VERDICT_MAP[category] ?? VERDICT_MAP.warn;
+  const labels = useLabels();
+  const style = VERDICT_STYLE[category] ?? VERDICT_STYLE.warn;
 
   return (
     <span
@@ -79,7 +82,7 @@ export default function VerdictBadge({
         style={{ background: style.dot }}
         aria-hidden="true"
       />
-      {style.label}
+      {labels.verdict[style.category]}
     </span>
   );
 }

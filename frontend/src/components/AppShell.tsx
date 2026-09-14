@@ -35,7 +35,16 @@ export default function AppShell() {
             </span>
           </Link>
 
-          <nav className="flex items-center gap-[26px]" aria-label={t('nav.aria')}>
+          {/* Tautan tengah disembunyikan di layar sempit.
+           *
+           * Kepala ini `h-16` — satu baris tetap, tidak boleh melipat. Isinya
+           * (merek 121px + tiga tautan 193px + klaster kanan 148px + celah)
+           * berjumlah ~510px, sedangkan di 390px hanya tersedia 332px. Karena
+           * tidak ada yang boleh melipat, kelebihannya keluar sebagai luapan
+           * horizontal seluruh dokumen — di semua rute, kedua bahasa. Tautan
+           * yang sama tetap ada di kaki halaman, dan CTA `Berkas Perkara` sudah
+           * menutup aksi utama, jadi tidak ada tujuan yang hilang di sini. */}
+          <nav className="hidden items-center gap-[26px] sm:flex" aria-label={t('nav.aria')}>
             <NavLink to="/dashboard" className={({ isActive }) => navLinkClass(isActive && !isCourt && !isMemo)}>
               {t('nav.dashboard')}
             </NavLink>

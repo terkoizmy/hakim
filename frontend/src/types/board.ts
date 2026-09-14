@@ -24,6 +24,12 @@ export interface MetricBenchmark {
   verdict: 'superior' | 'fair' | 'inferior';
 }
 
+/** Belum pernah dirender FE mana pun — hanya ikut terkirim server.
+ *  PERINGATAN: `overall` datang dalam Bahasa Indonesia ('Rendah'), jadi kalau
+ *  nanti ditampilkan, jangan dicetak mentah: lewatkan dulu ke `severityKey()`
+ *  lalu `labels.severity`, supaya tidak muncul sebagai satu-satunya teks
+ *  Indonesia di antarmuka Inggris (papan pernah melakukan kesalahan ini
+ *  dengan `data.severity.toUpperCase()`). */
 export interface RiskScorecard {
   governance: number;
   financial: number;
@@ -86,23 +92,26 @@ export interface BoardChatResponse {
   model?: string | null;
 }
 
-export const EDGE_META: Record<EdgeType, { label: string; color: string; dash?: string }> = {
-  memegang: { label: 'memegang saham', color: '#e07a5f' },
-  menjabat: { label: 'menjabat di', color: '#c4b5a0' },
-  aliran: { label: 'jejak transaksi', color: '#8ba888', dash: '2 3' },
-  redflag: { label: 'menandai red flag', color: '#e65c5c', dash: '5 4' },
-  fakta: { label: 'menunjuk fakta', color: '#4cc98f' },
+/** Warna dan pola garis saja — labelnya pindah ke kamus bahasa
+ * (`useLabels().edge` / `.nodeType`), karena teks inilah yang muncul di
+ * legenda dan panel detail papan. */
+export const EDGE_META: Record<EdgeType, { color: string; dash?: string }> = {
+  memegang: { color: '#e07a5f' },
+  menjabat: { color: '#c4b5a0' },
+  aliran: { color: '#8ba888', dash: '2 3' },
+  redflag: { color: '#e65c5c', dash: '5 4' },
+  fakta: { color: '#4cc98f' },
   // Tuduhan → kartu yang menopangnya. Titik-rapat: ini benang pembuktian, bukan
   // relasi struktural; digambar paling akhir supaya tampak "ditambahkan".
-  bukti: { label: 'dibuktikan oleh', color: '#e8b64c', dash: '1 2' },
+  bukti: { color: '#e8b64c', dash: '1 2' },
 };
 
-export const NODE_TYPE_META: Record<NodeType, { label: string; color: string }> = {
-  emiten: { label: 'Emiten', color: '#c9a24a' },
-  pemegang: { label: 'Pemegang Saham', color: '#5a8fb0' },
-  orang: { label: 'Orang Kunci', color: '#a28fd6' },
-  aliran: { label: 'Jejak Broker/Institusi', color: '#8ba888' },
-  redflag: { label: 'Red Flag', color: '#c96a5a' },
-  kabar: { label: 'Bukti Kabar', color: '#d9a441' },
-  fakta: { label: 'Fakta Angka', color: '#4cc98f' },
+export const NODE_TYPE_META: Record<NodeType, { color: string }> = {
+  emiten: { color: '#c9a24a' },
+  pemegang: { color: '#5a8fb0' },
+  orang: { color: '#a28fd6' },
+  aliran: { color: '#8ba888' },
+  redflag: { color: '#c96a5a' },
+  kabar: { color: '#d9a441' },
+  fakta: { color: '#4cc98f' },
 };
