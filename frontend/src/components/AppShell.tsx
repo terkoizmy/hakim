@@ -1,15 +1,22 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { GavelIcon, RadioIcon } from './icons';
 import { isMockMode } from '../api';
+import { LANGS, LANG_LABEL, LANG_NAME, renderRich, useLang } from '../i18n';
+
+/** Cincin fokus bersama. Sebelumnya tidak ada indikator fokus sama sekali —
+ * pengguna keyboard tidak tahu sedang berada di kontrol mana. */
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-0';
 
 export default function AppShell() {
   const { pathname } = useLocation();
+  const { t, lang, setLang } = useLang();
 
   const isCourt = pathname.startsWith('/trial/');
   const isMemo = pathname.startsWith('/memo/');
 
   const navLinkClass = (active: boolean) =>
-    `text-[13.5px] transition-colors duration-200 ${
+    `rounded-xs text-[13.5px] transition-colors duration-200 ${FOCUS} ${
       active ? 'text-text-0' : 'text-text-2 hover:text-text-0'
     }`;
 
@@ -19,8 +26,8 @@ export default function AppShell() {
         <div className="container flex h-16 items-center justify-between gap-6">
           <Link
             to="/"
-            className="inline-flex items-center gap-2.5 font-display text-[20px] font-semibold tracking-[0.02em] text-text-0"
-            aria-label="SIDANG — Beranda"
+            className={`inline-flex items-center gap-2.5 rounded-xs font-display text-[20px] font-semibold tracking-[0.02em] text-text-0 ${FOCUS}`}
+            aria-label={t('nav.brand')}
           >
             <GavelIcon size={22} className="text-brass-500" />
             <span>
@@ -28,35 +35,60 @@ export default function AppShell() {
             </span>
           </Link>
 
-          <nav className="flex items-center gap-[26px]" aria-label="Navigasi utama">
+          <nav className="flex items-center gap-[26px]" aria-label={t('nav.aria')}>
             <NavLink to="/dashboard" className={({ isActive }) => navLinkClass(isActive && !isCourt && !isMemo)}>
-              Berkas Perkara
+              {t('nav.dashboard')}
             </NavLink>
             <NavLink to="/board" className={({ isActive }) => navLinkClass(isActive)}>
-              Papan Detektif
+              {t('nav.board')}
             </NavLink>
             <NavLink to="/journal" className={({ isActive }) => navLinkClass(isActive)}>
-              Jurnal
+              {t('nav.journal')}
             </NavLink>
           </nav>
 
           <div className="flex items-center gap-3">
+            <div
+              role="group"
+              aria-label={t('nav.langLabel')}
+              className="inline-flex items-center overflow-hidden rounded-pill border border-brass-700"
+            >
+              {LANGS.map((code) => {
+                const active = lang === code;
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setLang(code)}
+                    aria-pressed={active}
+                    aria-label={t('nav.langSwitchTo', { lang: LANG_NAME[code] })}
+                    title={LANG_NAME[code]}
+                    className={`px-[9px] py-[5px] font-mono text-[11px] tracking-[0.06em] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brass-500 ${
+                      active ? 'bg-brass-500 text-bg-1' : 'text-brass-400 hover:bg-[rgba(201,162,74,0.10)]'
+                    }`}
+                  >
+                    {LANG_LABEL[code]}
+                  </button>
+                );
+              })}
+            </div>
+
             <span
               className={`inline-flex items-center gap-1.5 rounded-pill px-[11px] py-[5px] font-mono text-[11px] tracking-[0.03em] ${
                 isMockMode
                   ? 'border border-brass-700 bg-[rgba(201,162,74,0.06)] text-brass-400'
                   : 'border border-[rgba(127,176,105,0.4)] bg-[rgba(127,176,105,0.06)] text-defend-400'
               }`}
-              title={isMockMode ? 'Data fixture — tidak memakai kredit API' : 'Terhubung ke data Sectors'}
+              title={isMockMode ? t('nav.badgeFixture') : t('nav.badgeLive')}
             >
               <RadioIcon size={12} />
               {isMockMode ? 'DEMO' : 'LIVE'}
             </span>
             <Link
               to="/dashboard"
-              className="hidden rounded-pill border border-brass-700 px-4 py-2 font-mono text-[12px] tracking-[0.04em] text-brass-400 transition-colors duration-200 hover:border-brass-500 hover:bg-brass-500 hover:text-bg-1 sm:inline-block"
+              className={`hidden rounded-pill border border-brass-700 px-4 py-2 font-mono text-[12px] tracking-[0.04em] text-brass-400 transition-colors duration-200 hover:border-brass-500 hover:bg-brass-500 hover:text-bg-1 sm:inline-block ${FOCUS}`}
             >
-              Daftar Perkara
+              {t('nav.cta')}
             </Link>
           </div>
         </div>
@@ -73,18 +105,22 @@ export default function AppShell() {
               SIDANG<em className="italic text-brass-500">.</em>
             </span>
             <nav className="flex gap-6 text-[13px] text-text-2">
-              <Link to="/dashboard" className="transition-colors hover:text-brass-400">Berkas Perkara</Link>
-              <Link to="/board" className="transition-colors hover:text-brass-400">Papan Detektif</Link>
-              <Link to="/journal" className="transition-colors hover:text-brass-400">Jurnal</Link>
+              <Link to="/dashboard" className={`rounded-xs transition-colors hover:text-brass-400 ${FOCUS}`}>
+                {t('nav.dashboard')}
+              </Link>
+              <Link to="/board" className={`rounded-xs transition-colors hover:text-brass-400 ${FOCUS}`}>
+                {t('nav.board')}
+              </Link>
+              <Link to="/journal" className={`rounded-xs transition-colors hover:text-brass-400 ${FOCUS}`}>
+                {t('nav.journal')}
+              </Link>
             </nav>
           </div>
           <div className="rounded-[10px] border border-line-0 bg-bg-2 px-5 py-[18px] text-[12.5px] leading-[1.7] text-text-3">
-            <strong className="font-medium text-text-2">Disclaimer GLOBAL No. 10.</strong> SIDANG adalah alat bantu
-            riset, bukan
-            rekomendasi investasi. Seluruh putusan, kategori, dan konfidensi merupakan hasil analisis otomatis dari data
-            arsip dan tidak menjamin akurasi prediksi. Harga yang tampil hanya berasal dari arsip sidang —{' '}
-            <span className="text-[#d9a441]">tidak ada harga real-time</span>. Keputusan investasi sepenuhnya tanggung
-            jawab Anda.
+            {renderRich(t('nav.disclaimer'), {
+              b: (children) => <strong className="font-medium text-text-2">{children}</strong>,
+              em: (children) => <span className="text-[#d9a441]">{children}</span>,
+            })}
           </div>
         </div>
       </footer>
