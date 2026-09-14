@@ -21,6 +21,8 @@ from .db import Database
 from .eventbus import EventBus, now_iso
 from .llm import LLMClient
 from .models import (
+    ArchiveItem,
+    ArchiveListResponse,
     BoardChatRequest,
     BoardChatResponse,
     BoardResponse,
@@ -231,6 +233,39 @@ def build_router(
         await sectors.listed_companies()
         items = db.ticker_sectors()
         return SectorListResponse(items=items, total=len(items))
+
+    # ------------------------------------------------------------------ arsip
+
+    @router.get("/api/archive", response_model=ArchiveListResponse)
+    async def archive(
+        symbol: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> ArchiveListResponse:
+        """Isi arsip permanen payload Sectors yang terhit kredit (CONTRACT 1.6.0).
+
+        0 kredit — hanya membaca SQLite. Tiap baris membawa tanggal payload itu
+        BENAR-BENAR diambil, jadi klaim "data ini nyata" bisa diperiksa.
+        """
+        rows, total = db.archive_list(
+            symbol=symbol, endpoint=endpoint, limit=limit, offset=offset
+        )
+        return ArchiveListResponse(
+            items=[
+                ArchiveItem(
+                    cache_key=r["cache_key"],
+                    endpoint=r["endpoint"],
+                    symbol=r["symbol"],
+                    params=r["params"],
+                    fetched_at=datetime.fromtimestamp(r["fetched_at"]).date().isoformat(),
+                    credits=int(r["credits"]),
+                )
+                for r in rows
+            ],
+            total=total,
+            credits_total=db.archive_credits(),
+        )
 
     # ------------------------------------------------------------------ board
 

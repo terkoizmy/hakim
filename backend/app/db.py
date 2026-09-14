@@ -59,6 +59,21 @@ CREATE TABLE IF NOT EXISTS tickers (
     sector       TEXT
 );
 
+-- Arsip permanen payload Sectors yang terhit kredit (ROADMAP poin 1).
+-- `cache` adalah lapisan baca utama dan membuang isinya saat TTL habis; arsip
+-- tidak pernah dibuang. Kunci = kunci cache supaya deduplikasi gratis:
+-- satu kunci hanya menyimpan payload PERTAMA yang benar-benar dibayar
+-- (INSERT OR IGNORE), jadi arsip tidak ikut berubah saat data di-refresh.
+CREATE TABLE IF NOT EXISTS api_archive (
+    cache_key  TEXT PRIMARY KEY,
+    endpoint   TEXT NOT NULL,
+    symbol     TEXT,
+    params     TEXT,
+    payload    TEXT NOT NULL,
+    fetched_at REAL NOT NULL,
+    credits    INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE TABLE IF NOT EXISTS price_series (
     trial_id    TEXT PRIMARY KEY,
     ticker      TEXT NOT NULL,
@@ -324,6 +339,110 @@ class Database:
                 (key, json.dumps(payload, ensure_ascii=False), now, now + ttl_days * 86400),
             )
             conn.commit()
+        finally:
+            conn.close()
+
+    # -- arsip Sectors (ROADMAP poin 1) -------------------------------------
+
+    def archive_put(
+        self,
+        key: str,
+        endpoint: str,
+        symbol: Optional[str],
+        params: str,
+        payload: dict[str, Any],
+        credits: int = 1,
+    ) -> None:
+        """Simpan payload live yang BARU SAJA dibayar kreditnya. Append-once.
+
+        `INSERT OR IGNORE` disengaja: kunci arsip = kunci cache, jadi satu
+        kombinasi (endpoint, symbol, params) hanya menyimpan payload pertama.
+        Payload yang sama di-refresh lagi tetap memakai isi arsip yang lama —
+        arsip adalah catatan historis, bukan cache kedua.
+        """
+        conn = self._connect()
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO api_archive "
+                "(cache_key, endpoint, symbol, params, payload, fetched_at, credits) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    key,
+                    endpoint,
+                    symbol,
+                    params,
+                    json.dumps(payload, ensure_ascii=False),
+                    time.time(),
+                    credits,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def archive_get(self, key: str) -> Optional[tuple[dict[str, Any], float]]:
+        """Payload arsip + epoch saat benar-benar diambil, atau None.
+
+        Mengembalikan keduanya sekaligus supaya pemanggil bisa melaporkan
+        provenance yang jujur (tanggal ambil asli, bukan tanggal hari ini).
+        """
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT payload, fetched_at FROM api_archive WHERE cache_key = ?", (key,)
+            ).fetchone()
+            if row is None:
+                return None
+            return json.loads(row["payload"]), float(row["fetched_at"])
+        finally:
+            conn.close()
+
+    def archive_list(
+        self,
+        symbol: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Daftar isi arsip (tanpa payload) + total, untuk endpoint inspeksi."""
+        where: list[str] = []
+        args: list[Any] = []
+        if symbol:
+            where.append("symbol = ?")
+            args.append(symbol.strip().upper())
+        if endpoint:
+            where.append("endpoint = ?")
+            args.append(endpoint)
+        clause = f"WHERE {' AND '.join(where)}" if where else ""
+        conn = self._connect()
+        try:
+            total = int(
+                conn.execute(
+                    f"SELECT COUNT(*) AS n FROM api_archive {clause}", args
+                ).fetchone()["n"]
+            )
+            rows = conn.execute(
+                f"SELECT cache_key, endpoint, symbol, params, fetched_at, credits "
+                f"FROM api_archive {clause} ORDER BY fetched_at DESC LIMIT ? OFFSET ?",
+                [*args, limit, offset],
+            ).fetchall()
+            return [dict(r) for r in rows], total
+        finally:
+            conn.close()
+
+    def archive_credits(self) -> int:
+        """Total kredit yang sudah dibayar untuk SELURUH isi arsip.
+
+        Sengaja tidak ikut filter `archive_list`: angka ini menjawab
+        "berapa kredit yang sudah keluar untuk data" — bukan "berapa kredit
+        di halaman ini".
+        """
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT COALESCE(SUM(credits), 0) AS n FROM api_archive"
+            ).fetchone()
+            return int(row["n"])
         finally:
             conn.close()
 

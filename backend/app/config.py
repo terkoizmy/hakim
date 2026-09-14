@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     # --- App ---------------------------------------------------------------
     trial_timeout_seconds: int = 300
     cache_ttl_days: int = 7
+    # Cache kosong/kedaluwarsa → sajikan payload dari arsip permanen sebelum
+    # membayar kredit lagi (ROADMAP poin 1). Fixture mode tidak pernah
+    # menyentuh arsip, jadi perilaku tes tidak berubah.
+    archive_fallback: bool = True
     db_path: str = str(BACKEND_DIR / "data" / "sidang.db")
     cors_origins: str = "http://localhost:5173"
     # When the LLM is unreachable / not configured, fall back to deterministic

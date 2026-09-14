@@ -213,6 +213,25 @@ class HealthResponse(BaseModel):
     version: str
 
 
+# ----------------------------------------------------------------- arsip models
+
+class ArchiveItem(BaseModel):
+    """Satu payload Sectors yang sudah dibayar kreditnya dan diarsipkan permanen."""
+
+    cache_key: str
+    endpoint: str
+    symbol: Optional[str] = None
+    params: Optional[str] = None
+    fetched_at: str  # ISO date — tanggal payload BENAR-BENAR diambil dari Sectors
+    credits: int
+
+
+class ArchiveListResponse(BaseModel):
+    items: list[ArchiveItem]
+    total: int
+    credits_total: int
+
+
 # ----------------------------------------------------------------- board models
 
 class BoardNodeData(BaseModel):

@@ -1,6 +1,8 @@
 # CONTRACT — Kontrak Backend ↔ Frontend SIDANG
 
-> **Status: FROZEN** · schema_version `1.5.0` · Tertulis 2026-09-09 oleh orkestrator.
+> **Status: FROZEN** · schema_version `1.6.0` · Tertulis 2026-09-09 oleh orkestrator.
+
+> **Changelog 1.6.0** (2026-09-14): **arsip permanen payload Sectors** — tabel `api_archive` + `GET /api/archive` (§3.3). Cacat yang diperbaiki: `cache` membuang isinya saat TTL 7 hari habis sehingga payload yang sudah dibayar kredit hilang; sekarang tiap payload berbayar disalin permanen (append-once, satu titik tulis di `SectorsClient._http_get`) dan TTL habis **tidak** berarti bayar ulang — arsip menjawab dengan `cache: "hit"` + tanggal ambil ASLI, 0 kredit. Saklar `ARCHIVE_FALLBACK=false` memulihkan perilaku lama. Mode fixture dan cache hit tidak pernah menyentuh arsip, jadi 0 efek pada tes.
 
 > **Changelog 1.5.0** (2026-09-14): tipe edge **`bukti`** — benang tuduhan→penopang yang menghubungkan node `redflag` ke kartu buktinya (satu-satunya benang yang tidak berpangkal di kartu pusat); aturan resolusi + sikap "ambigu = tidak digambar" di §3.2. §2 **Id & sitasi**: `fact_id` wajib `f_1…f_n` berurutan, `cites` wajib minimal satu `fact_id` dari `key_facts` memo itu sendiri dan dilarang memuat `evidence_id` — sebelum ini prompt hakim tidak pernah menjelaskan isi `cites`, dan finalizer membuang cite non-identik secara diam-diam sehingga seluruh lapisan sitasi mati (9 memo di `sidang.db` tersimpan tanpa satu pun cite).
 >
@@ -171,6 +173,7 @@ Validasi: pydantic di backend; jika JSON hakim invalid → 1x repair loop → bi
 | `GET` | `/api/trials/{trial_id}/price-series` | `200 { "trial_id", "ticker", "points": [ { "date", "close", "volume", "change_pct" }, … ] \| null }` — snapshot harga dari trial (daily_transaction), ascending, 2–52 titik; `null` bila < 2 titik (HTTP tetap 200). |
 | `GET` | `/api/tickers?q=&limit=&offset=&sector=` | `200 { "items": [ { "ticker", "company_name", "sector" } ], "total" }` — daftar emiten terdaftar dari cache daftar emiten (sudah dipakai validasi POST /api/trials). `q` = pencarian case-insensitive pada ticker ATAU company_name (prefix/substring). `sector` = filter persis nama sektor IDX-IC (mis. `Financials`) — sejak 1.2.3. `limit` default 50, `offset` default 0, `total` = jumlah hasil setelah filter (bukan total semua). `sector` bisa `null` (emiten lama / registry sebelum 1.2.3). Fixture mode: dari `_listed_companies` fixture. Cache 1 hari — jika cache daftar emiten kosong, isi dulu lalu jawab (live mode: 1 kredit/halaman saat refresh pertama saja). |
 | `GET` | `/api/tickers/sectors` | `200 { "items": [ { "sector", "count" } ], "total" }` — daftar sektor berbeda dalam registry + jumlah emiten per sektor (terurut terbanyak dulu) untuk dropdown filter dashboard. Sejak 1.2.3. |
+| `GET` | `/api/archive?symbol=&endpoint=&limit=&offset=` | `200 { "items": [ { "cache_key", "endpoint", "symbol", "params", "fetched_at": "YYYY-MM-DD", "credits" } ], "total", "credits_total" }` — daftar isi arsip permanen payload Sectors (§3.3). **0 kredit** (hanya membaca SQLite). `fetched_at` = tanggal payload BENAR-BENAR diambil. `total` mengikuti filter; `credits_total` sengaja lintas-seluruh-arsip. Sejak 1.6.0. |
 | `GET` | `/api/health` | `200 { "status": "ok", "sectors_mode": "fixture\|live", "version": "…" }` |
 | `GET` | `/api/board/{ticker}` | `200 { "ticker", "name", "nodes": [BoardNode], "edges": [BoardEdge], "initialChat", "aiInsights": { "<insight_key>": "…" }, "priceHistory": Point[] \| null, "metricsComparison": MetricBenchmark[], "riskScore": RiskScorecard \| null, "thesisSummary" }` — graf Papan Bukti Detektif untuk emiten yang sudah disidang. Sejak 1.3.0. |
 | `POST` | `/api/board/{ticker}/chat` | body `{ "message": "…" }` → `200 { "reply": "…", "mode": "llm" \| "heuristik", "model": "…" \| null }`. Sejak 1.3.0; `mode`/`model` sejak 1.4.0. LLM menjawab dari konteks graf papan (**0 kredit Sectors** — graf dibangun dari cache/arsip). `mode: "heuristik"` + `model: null` = LLM absen/gagal/membalas kosong; FE **wajib** menampilkannya sebagai jawaban darurat, bukan analisis AI. |
@@ -254,6 +257,43 @@ kepemilikan kecil (`0.0001` fraksi → `0.01%`, bukan `0.0%`).
 | `sectors_error` | Gagal panggil Sectors API (non-429 setelah retry) |
 | `llm_error` | Panggilan LLM gagal / JSON invalid setelah repair |
 | `timeout` | Lewat batas waktu sidang (default 300s) |
+
+### 3.3 Arsip permanen payload Sectors (sejak 1.6.0)
+
+**Masalah yang diperbaiki.** `cache` adalah lapisan BACA dan membuang isinya sendiri
+saat TTL 7 hari habis. Payload yang sudah dibayar kredit karena itu hilang begitu saja
+— data berbayar menguap, dan demo kehilangan bukti bahwa angkanya nyata.
+
+**Kebijakan.** Setiap payload yang benar-benar menembak Sectors disalin ke tabel
+`api_archive` **secara permanen**. Titik tulisnya SATU: `SectorsClient._http_get`,
+sehingga setiap panggilan berbayar terarsip — termasuk registry emiten yang
+dipaginasi. Mode fixture dan cache hit **tidak pernah** menyentuh arsip, jadi
+perilaku tes lain tidak berubah dan arsip tidak bisa terisi data fixture.
+
+**Penulisan bersifat append-once.** Kunci arsip = kunci cache
+(`endpoint:symbol:params`, params terurut), dan penyimpanan memakai
+`INSERT OR IGNORE`: satu kombinasi hanya menyimpan payload PERTAMA yang dibayar.
+Arsip adalah catatan historis, bukan cache kedua — me-refresh data tidak menulis
+ulang isi arsip.
+
+**Pembacaan (fallback).** Urutan baca `_get`: cache → fixture (bila mode fixture) →
+**arsip** → HTTP live + tulis cache. Artinya TTL habis **tidak** berarti bayar ulang:
+arsip menjawab dengan **0 kredit**. Karena kunci memuat params, arsip hanya menjawab
+permintaan yang PERSIS sama (mis. rentang tanggal `daily_transaction` yang identik).
+
+**Provenance jujur.** Balasan dari arsip memakai `cache: "hit"` dan melaporkan
+`fetched_at` = tanggal payload itu BENAR-BENAR diambil, bukan tanggal hari ini.
+Mode fixture mengabaikan arsip sepenuhnya, jadi data live tidak bisa bocor ke
+jalur fixture.
+
+**Saklar darurat.** `ARCHIVE_FALLBACK=false` mematikan fallback dan memulihkan
+perilaku lama (bayar lagi) tanpa membuang isi arsip.
+
+**Akuntansi kredit.** Tiap baris arsip menyimpan `credits` sesuai aturan biaya di
+§4 (company report = 1/seksi; screener 1 dengan `where=`; top_movers 1 per
+klasifikasi × periode; lainnya 1). `GET /api/archive` menjawab **0 kredit** — hanya
+membaca SQLite — dengan `credits_total` = total kredit seluruh isi arsip. Angka itu
+menjawab "berapa kredit sudah keluar untuk data", jadi sengaja **bukan** per halaman.
 
 ---
 

@@ -40,6 +40,38 @@ def _strip_sections(key: str) -> str:
     """Buang segmen `sections=...` dari kunci fixture (dipakai pencocokan longgar)."""
     return ":".join(part for part in key.split(":") if not part.startswith("sections="))
 
+
+def _params_summary(params: dict[str, Any]) -> str:
+    """Query string ringkas untuk kolom `params` di arsip (bukan kunci cache)."""
+    parts = []
+    for key in sorted(params):
+        value = params[key]
+        parts.append(
+            f"{key}={','.join(str(v) for v in value)}"
+            if isinstance(value, (list, tuple))
+            else f"{key}={value}"
+        )
+    return "&".join(parts)
+
+
+def _credits_for(name: str, params: dict[str, Any]) -> int:
+    """Kredit yang dibayar satu panggilan — dicatat di arsip, bukan ditagih.
+
+    Mengikuti aturan biaya yang sudah didokumentasikan di modul ini:
+    company report 1 kredit per seksi, top-changes 1 kredit per
+    classification×period, endpoint lain 1 kredit per panggilan.
+    """
+    if name == "company_report":
+        sections = str(params.get("sections", ""))
+        return max(1, len([s for s in sections.split(",") if s.strip()]))
+    if name == "top_movers":
+        cls = params.get("classifications") or []
+        periods = params.get("periods") or []
+        if isinstance(cls, (list, tuple)) and isinstance(periods, (list, tuple)):
+            return max(1, len(cls) * len(periods))
+        return 1
+    return 1
+
 # Listed-companies registry (CONTRACT 1.2.0): cached 1 day, refreshed only
 # when empty/expired. Live refresh paginates the screener (max 200/page).
 LISTED_COMPANIES_CACHE_KEY = "listed_companies"
@@ -154,6 +186,20 @@ class SectorsClient:
             payload = self._fixture_lookup(name, symbol, params)
             return SectorsResponse(payload=payload, cache="miss", fetched_at=date.today().isoformat())
 
+        # Cache kosong/kedaluwarsa. Arsip permanen dipakai lebih dulu supaya
+        # data yang sudah pernah dibayar tidak dibeli ulang (ROADMAP poin 1).
+        # Aman karena kunci ikut memuat params: payload arsip selalu untuk
+        # permintaan yang PERSIS sama, dan tanggalnya tetap tanggal ambil asli.
+        if self.settings.archive_fallback:
+            archived = self.db.archive_get(live_key)
+            if archived is not None:
+                payload, fetched_at = archived
+                return SectorsResponse(
+                    payload=payload,
+                    cache="hit",
+                    fetched_at=datetime.fromtimestamp(fetched_at).date().isoformat(),
+                )
+
         payload = await self._http_get(live_key, name, symbol, params)
         self.db.cache_set(live_key, payload, self.settings.cache_ttl_days)
         return SectorsResponse(payload=payload, cache="miss", fetched_at=date.today().isoformat())
@@ -218,10 +264,17 @@ class SectorsClient:
                     f"Sectors {resp.status_code} untuk {path}: {resp.text[:200]}",
                     status=resp.status_code,
                 )
-            return resp.json()
+            payload = resp.json()
+            # Arsip permanen: satu-satunya titik sentuh, jadi SEMUA payload
+            # yang terhit kredit ikut terarsip (termasuk screener registry).
+            # Fixture mode dan cache hit tidak pernah sampai ke sini.
+            self.db.archive_put(
+                live_key, name, symbol, _params_summary(params), payload,
+                _credits_for(name, params),
+            )
+            return payload
         raise SectorsError(f"Sectors 429 setelah {max_retries} percobaan")
 
-    @staticmethod
     @staticmethod
     def _path_for(name: str, symbol: Optional[str]) -> str:
         """Map a logical endpoint name to a REST v2 path.
