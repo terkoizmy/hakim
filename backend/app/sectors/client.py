@@ -17,6 +17,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -58,6 +59,7 @@ class TickerNotFound(Exception):
 class SectorsResponse:
     payload: dict[str, Any]
     cache: str  # "hit" | "miss"
+    fetched_at: str = ""  # ISO date payload ini benar-benar diambil dari Sectors
 
 
 @dataclass
@@ -134,15 +136,22 @@ class SectorsClient:
 
         cached = self.db.cache_get(live_key)
         if cached is not None:
-            return SectorsResponse(payload=cached, cache="hit")
+            cached_ts = self.db.cache_get_created_at(live_key)
+            return SectorsResponse(
+                payload=cached,
+                cache="hit",
+                fetched_at=(
+                    datetime.fromtimestamp(cached_ts).date().isoformat() if cached_ts else ""
+                ),
+            )
 
         if self.settings.sectors_mode == "fixture":
             payload = self._fixture_lookup(name, symbol, params)
-            return SectorsResponse(payload=payload, cache="miss")
+            return SectorsResponse(payload=payload, cache="miss", fetched_at=date.today().isoformat())
 
         payload = await self._http_get(live_key, name, symbol, params)
         self.db.cache_set(live_key, payload, self.settings.cache_ttl_days)
-        return SectorsResponse(payload=payload, cache="miss")
+        return SectorsResponse(payload=payload, cache="miss", fetched_at=date.today().isoformat())
 
     def _fixture_lookup(
         self, name: str, symbol: Optional[str], params: dict[str, Any]
@@ -313,7 +322,11 @@ class SectorsClient:
         (and already-normalized cache hits) pass through unchanged. The SQLite
         cache stores the RAW live payload; normalization happens per read.
         """
-        return SectorsResponse(payload=norm(resp.payload, symbol or ""), cache=resp.cache)
+        return SectorsResponse(
+            payload=norm(resp.payload, symbol or ""),
+            cache=resp.cache,
+            fetched_at=resp.fetched_at,
+        )
 
     @staticmethod
     def _norm_quarterly(payload: Any, symbol: str) -> dict[str, Any]:

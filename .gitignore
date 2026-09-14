@@ -35,3 +35,6 @@ Thumbs.db
 # Claude Code lokal
 .claude/
 *.tsbuildinfo
+
+# Playwright MCP (screenshot/console dump lokal)
+.playwright-mcp/

@@ -171,6 +171,50 @@ screener menyertakan negara/bursa — cek saat probe.
 
 ---
 
+## 2b. **SELESAI 2026-09-14** — keterbacaan graf Papan Bukti
+
+Temuan awal: `/api/board/BBCA` mengembalikan **42 kartu / 44 benang**, dan `fitView` jatuh
+ke `minZoom 0.15` → kartu ter-render ±37px, tak terbaca. Dua akar masalah:
+
+1. **Salah tipe node.** Broker summary (`YU Net Buy`, `ZP Net Sell`, …) dan aliran institusi
+   (Fidelity, T. Rowe Price) diketik `pemegang` sehingga papan menyatakan
+   "YU memegang saham BBCA" — **salah secara faktual di halaman bertema papan bukti.**
+2. **Semua jenis bukti menyala sejak awal**, jadi 42 kartu tampil bersamaan.
+
+Yang dikerjakan:
+
+- Tipe node baru **`aliran`** + tipe edge **`aliran`** (`jejak transaksi`, putus-putus).
+  Broker summary & aliran institusi tidak lagi memakai `memegang`. Untuk BBCA:
+  `pemegang` turun 16 → **6** (Dwimuria 54.9%, Public 44.6%, Treasury 0.4%, 3 individu),
+  `aliran` = 10.
+- Papan dibuka dalam **mode ringkas** (`DEFAULT_VISIBLE_NODES/EDGES` di `types/board.ts`):
+  emiten + pemegang saham + orang kunci saja → **12 kartu / 14 benang**. Tombol
+  **"Perluas jaringan" / "Ringkas"** di toolbar untuk membuka seluruh bukti (42 kartu).
+- Kartu diperbesar 210 → **248px**, label 15 → 16.5px, canvas 600 → **720px**, radius cincin
+  dirapatkan (`RINGS [360, 620, 880]`, `ringCapacity [5, 7, 9]`).
+- **Provenance jujur.** `retrievedAt` sebelumnya selalu `date.today()` — data arsip dilabeli
+  tanggal hari ini. Sekarang `SectorsResponse.fetched_at` diisi dari `cache.created_at`
+  (metode baru `Database.cache_get_created_at`), dan `BoardNodeData.cache` menandai
+  `hit`/`miss`; kartu menampilkan "Sumber diambil 12 Sep 2026 · arsip".
+- **Ambang terbaca.** Fit-semua pada canvas ±740px hanya mencapai skala ±0.40 (kartu 99px) —
+  di bawah ambang `LEGIBLE_MIN_SCALE = 0.55`. Kalau hasil fit di bawah ambang, papan
+  memusatkan pada kartu fokus di skala 0.55; tombol **"Pusatkan" / "Fit semua"** di kanan-bawah
+  canvas. Terukur: 0.40 → **0.55**, tanpa error konsol.
+
+Terverifikasi: `pytest` 32 lulus · `tsc -b` bersih · `vite build` bersih · 12↔42 kartu
+bolak-balik tanpa error konsol. **0 kredit** (semua dari cache BBCA).
+
+**Utang yang tersisa dari temuan ini:**
+
+- `POST /api/board/{ticker}/chat` masih **heuristik kata kunci**, bukan LLM — sudah ditandai
+  di CONTRACT §3.2.
+- Orang yang sama muncul sebagai **dua node** karena ejaan nama berbeda dari Sectors
+  (`Tan Ho Hien/Subur Disebut Juga Subur Tan` vs `Tan Ho Hien/Subur Atau Dipanggil Subur Tan`).
+  Perlu normalisasi nama sebelum jadi masalah di emiten lain.
+- Panel kanan "Benang Terhubung (44)" memakai total edge graf, bukan yang tersaring tampilan.
+
+---
+
 ## 3. Shortlist fitur lain (keputusan menunggu, sebelumnya 2026-09-10)
 
 Dari catatan sebelumnya — diprioritaskan setelah Papan Bukti:

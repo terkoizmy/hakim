@@ -1,6 +1,6 @@
 # CONTRACT — Kontrak Backend ↔ Frontend SIDANG
 
-> **Status: FROZEN** · schema_version `1.2.3` · Tertulis 2026-09-09 oleh orkestrator.
+> **Status: FROZEN** · schema_version `1.3.0` · Tertulis 2026-09-09 oleh orkestrator.
 >
 > **Changelog 1.1.0** (2026-09-09): endpoint `GET /api/trials/{trial_id}/price-series` baru; postmortem menyertakan `price_series: Point[] | null`.
 >
@@ -9,6 +9,8 @@
 > **Changelog 1.2.1** (2026-09-09): `JournalItem` menambahkan field `trial_id` — FE halaman detail emiten memanggil `/price-series` langsung (0 kredit) tanpa lewat postmortem.
 >
 > **Changelog 1.2.2** (2026-09-10): `POST /api/trials` dapat menolak dengan `409` bila emiten yang sama sudah diadili kurang dari 7 hari lalu (cooldown re-sidang).
+>
+> **Changelog 1.3.0** (2026-09-14): endpoint `GET /api/board/{ticker}` + `POST /api/board/{ticker}/chat` didokumentasikan (Papan Bukti Detektif), beserta kosakata node/edge di §3.2. Tipe node `aliran` baru: broker summary & aliran institusi **tidak lagi** diketik `pemegang` (sebelumnya papan menyatakan "X memegang saham Y" secara keliru). `BoardNodeData` menambahkan `cache` (`hit`/`miss`) dan `retrievedAt` kini berisi tanggal ambil sebenarnya untuk data arsip.
 >
 > **Changelog 1.2.3** (2026-09-10): registry emiten membawa sektor IDX-IC — `TickerItem` menambah field `sector` (bisa `null` untuk emiten lama/belum ter-backfill); `GET /api/tickers` menerima param `sector=`; endpoint `GET /api/tickers/sectors` baru (daftar sektor + jumlah emiten). Sektor didapat dari echo `query_values` Companies Screener (`where="sector != ''"` + `include_query_values=true`, live-verified 2026-09-10).
 >
@@ -145,8 +147,35 @@ Validasi: pydantic di backend; jika JSON hakim invalid → 1x repair loop → bi
 | `GET` | `/api/tickers?q=&limit=&offset=&sector=` | `200 { "items": [ { "ticker", "company_name", "sector" } ], "total" }` — daftar emiten terdaftar dari cache daftar emiten (sudah dipakai validasi POST /api/trials). `q` = pencarian case-insensitive pada ticker ATAU company_name (prefix/substring). `sector` = filter persis nama sektor IDX-IC (mis. `Financials`) — sejak 1.2.3. `limit` default 50, `offset` default 0, `total` = jumlah hasil setelah filter (bukan total semua). `sector` bisa `null` (emiten lama / registry sebelum 1.2.3). Fixture mode: dari `_listed_companies` fixture. Cache 1 hari — jika cache daftar emiten kosong, isi dulu lalu jawab (live mode: 1 kredit/halaman saat refresh pertama saja). |
 | `GET` | `/api/tickers/sectors` | `200 { "items": [ { "sector", "count" } ], "total" }` — daftar sektor berbeda dalam registry + jumlah emiten per sektor (terurut terbanyak dulu) untuk dropdown filter dashboard. Sejak 1.2.3. |
 | `GET` | `/api/health` | `200 { "status": "ok", "sectors_mode": "fixture\|live", "version": "…" }` |
+| `GET` | `/api/board/{ticker}` | `200 { "ticker", "name", "nodes": [BoardNode], "edges": [BoardEdge], "initialChat", "aiInsights": { "<insight_key>": "…" }, "priceHistory": Point[] \| null, "metricsComparison": MetricBenchmark[], "riskScore": RiskScorecard \| null, "thesisSummary" }` — graf Papan Bukti Detektif untuk emiten yang sudah disidang. Sejak 1.3.0. |
+| `POST` | `/api/board/{ticker}/chat` | body `{ "message": "…" }` → `200 { "reply": "…" }`. Sejak 1.3.0. **Saat ini masih heuristik kata kunci**, bukan LLM — lihat catatan di bawah. |
 
 CORS: allow `http://localhost:5173` (Vite default).
+
+### 3.2 Kosakata graf Papan Bukti (sejak 1.3.0)
+
+`BoardNode` = `{ id, type, position: {x, y}, data: BoardNodeData, rotate }`.
+`BoardEdge` = `{ id, source, target, type, label? }`.
+
+`data.type` pada node — **satu nilai per entitas, tidak boleh tumpang tindih**:
+
+| `type` | Arti |
+|---|---|
+| `emiten` | Perusahaan yang diperiksa (kartu pusat) |
+| `pemegang` | **Pemegang saham riil** dari registri IDX (punya `value` = % kepemilikan) |
+| `orang` | Direksi / komisaris (`sub` = jabatan) |
+| `aliran` | **Bukan pemegang saham**: broker summary (`Net Buy`/`Net Sell`) dan aliran institusi. Dipisahkan agar papan tidak menyatakan "X memegang saham Y" secara keliru |
+| `redflag` | Temuan risiko (`severity`: rendah/sedang/tinggi) |
+| `kabar` | Bukti dari filings / suspensi / aksi korporasi |
+| `fakta` | Metrik & fakta angka |
+
+`type` pada edge: `memegang` (hanya dari `pemegang`/`orang` bersaham), `menjabat`, `aliran` (jejak transaksi — pasangan dari node `aliran`), `redflag`, `fakta`.
+
+`BoardNodeData.retrievedAt` + `.cache` = provenance: `cache: "hit"` berarti payload berasal dari arsip cache dan `retrievedAt` adalah **tanggal payload itu benar-benar diambil** dari Sectors (bukan tanggal hari ini). `cache: "miss"` = baru diambil.
+
+Kolom `aiInsights` memakai kunci per kategori: `pemegang`, `orang`, `redflag`, `valuasi`, `fakta` (dipakai panel detail).
+
+> **Keterbatasan yang diketahui (1.3.0):** `POST /api/board/{ticker}/chat` belum memanggil LLM — balasannya disusun dari heuristik kata kunci atas isi graf (mis. pertanyaan memuat "pemegang"/"saham" → daftar pemegang saham). FE tidak boleh menampilkannya sebagai analisis AI sampai ini diganti LLM sungguhan.
 
 ### 3.1 Kode error `trial_failed`
 

@@ -298,6 +298,23 @@ class Database:
         finally:
             conn.close()
 
+    def cache_get_created_at(self, key: str) -> Optional[float]:
+        """Timestamp saat payload cache benar-benar diambil dari Sectors.
+
+        Dipakai untuk melaporkan provenance yang jujur: entri cache yang masih
+        valid TIDAK boleh dilabeli dengan tanggal hari ini.
+        """
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT created_at, expires_at FROM cache WHERE cache_key = ?", (key,)
+            ).fetchone()
+            if row is None or row["expires_at"] < time.time():
+                return None
+            return float(row["created_at"])
+        finally:
+            conn.close()
+
     def cache_set(self, key: str, payload: dict[str, Any], ttl_days: int) -> None:
         conn = self._connect()
         try:

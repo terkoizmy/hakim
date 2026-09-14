@@ -4,11 +4,17 @@ export type NodeType =
   | 'emiten'
   | 'pemegang'
   | 'orang'
+  | 'aliran'
   | 'redflag'
   | 'kabar'
   | 'fakta';
 
-export type EdgeType = 'memegang' | 'menjabat' | 'redflag' | 'fakta';
+export type EdgeType = 'memegang' | 'menjabat' | 'aliran' | 'redflag' | 'fakta';
+
+/** Node yang ditampilkan saat papan pertama dibuka (mode "ringkas").
+ *  Sisanya dibuka lewat tombol "Perluas jaringan". */
+export const DEFAULT_VISIBLE_NODES: NodeType[] = ['emiten', 'pemegang', 'orang'];
+export const DEFAULT_VISIBLE_EDGES: EdgeType[] = ['memegang', 'menjabat'];
 
 export interface MetricBenchmark {
   label: string;
@@ -38,6 +44,8 @@ export interface BoardNodeData {
   cross?: boolean;
   selected?: boolean;
   retrievedAt?: string;
+  /** 'hit' = payload dari arsip cache (tanggal = kapan benar-benar diambil) */
+  cache?: 'hit' | 'miss';
 }
 
 export interface BoardNode {
@@ -72,6 +80,7 @@ export interface TickerBoardData {
 export const EDGE_META: Record<EdgeType, { label: string; color: string; dash?: string }> = {
   memegang: { label: 'memegang saham', color: '#e07a5f' },
   menjabat: { label: 'menjabat di', color: '#c4b5a0' },
+  aliran: { label: 'jejak transaksi', color: '#8ba888', dash: '2 3' },
   redflag: { label: 'menandai red flag', color: '#e65c5c', dash: '5 4' },
   fakta: { label: 'menunjuk fakta', color: '#4cc98f' },
 };
@@ -80,6 +89,7 @@ export const NODE_TYPE_META: Record<NodeType, { label: string; color: string }> 
   emiten: { label: 'Emiten', color: '#c9a24a' },
   pemegang: { label: 'Pemegang Saham', color: '#5a8fb0' },
   orang: { label: 'Orang Kunci', color: '#a28fd6' },
+  aliran: { label: 'Jejak Broker/Institusi', color: '#8ba888' },
   redflag: { label: 'Red Flag', color: '#c96a5a' },
   kabar: { label: 'Bukti Kabar', color: '#d9a441' },
   fakta: { label: 'Fakta Angka', color: '#4cc98f' },

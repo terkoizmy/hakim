@@ -137,11 +137,15 @@ async def build_board_for_ticker(
 
     # 1. Company Report (overview, financials, valuation, peers, management, ownership, dividend)
     report_data: dict[str, Any] = {}
+    report_fetched_at: str = ""
+    report_cache: str = ""
     try:
         resp = await sectors.company_report(
             sym, sections="overview,financials,valuation,peers,management,ownership,dividend"
         )
         report_data = resp.payload or {}
+        report_fetched_at = resp.fetched_at
+        report_cache = resp.cache
     except Exception as exc:
         logger.warning("Gagal fetch company_report untuk board %s: %s", sym, exc)
 
@@ -339,7 +343,8 @@ async def build_board_for_ticker(
                 value=price_str,
                 verdict=center_verdict,
                 source="Sectors Overview",
-                retrievedAt=date.today().isoformat(),
+                retrievedAt=report_fetched_at or date.today().isoformat(),
+                cache=report_cache or None,
             ),
             rotate=0.0,
         )
@@ -833,10 +838,10 @@ async def build_board_for_ticker(
         nodes.append(
             BoardNode(
                 id=node_id,
-                type="pemegang",
+                type="aliran",
                 position={"x": 40, "y": 180 + i * 70},
                 data=BoardNodeData(
-                    type="pemegang",
+                    type="aliran",
                     label=broker_name,
                     sub=f"Net Buy {_fmt_rp(net_val)}",
                     value=_fmt_rp(net_val),
@@ -857,7 +862,7 @@ async def build_board_for_ticker(
                 id=f"edge_bb_{node_id}",
                 source=node_id,
                 target=f"emiten_{sym}",
-                type="memegang",
+                type="aliran",
                 label=f"akumulasi {_fmt_rp(net_val)}",
             )
         )
@@ -871,10 +876,10 @@ async def build_board_for_ticker(
         nodes.append(
             BoardNode(
                 id=node_id,
-                type="pemegang",
+                type="aliran",
                 position={"x": 800, "y": 180 + i * 70},
                 data=BoardNodeData(
-                    type="pemegang",
+                    type="aliran",
                     label=broker_name,
                     sub=f"Net Sell {_fmt_rp(abs(net_val))}",
                     value=_fmt_rp(net_val),
@@ -895,7 +900,7 @@ async def build_board_for_ticker(
                 id=f"edge_bs_{node_id}",
                 source=node_id,
                 target=f"emiten_{sym}",
-                type="memegang",
+                type="aliran",
                 label=f"distribusi {_fmt_rp(abs(net_val))}",
             )
         )
@@ -1029,10 +1034,10 @@ async def build_board_for_ticker(
                 nodes.append(
                     BoardNode(
                         id=node_id,
-                        type="pemegang",
+                        type="aliran",
                         position={"x": 900, "y": 350 + j * 65 + (0 if side == "top_buyers" else 140)},
                         data=BoardNodeData(
-                            type="pemegang",
+                            type="aliran",
                             label=tx_name[:32],
                             sub=f"{side_label}: {int(abs(change)):,} lbr".replace(",", "."),
                             detail=[
@@ -1051,7 +1056,7 @@ async def build_board_for_ticker(
                         id=f"edge_{node_id}",
                         source=node_id,
                         target=f"emiten_{sym}",
-                        type="memegang",
+                        type="aliran",
                         label=side_label.lower(),
                     )
                 )

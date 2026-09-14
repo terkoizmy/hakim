@@ -5,6 +5,7 @@ import {
   useReactFlow,
   Background,
   BackgroundVariant,
+  Panel,
   Handle,
   Position,
   EdgeLabelRenderer,
@@ -21,6 +22,8 @@ import PriceChart from '../components/PriceChart';
 import { SparkIcon, ArrowRightIcon, RefreshIcon, ClockIcon, SearchIcon } from '../components/icons';
 import { api } from '../api';
 import {
+  DEFAULT_VISIBLE_EDGES,
+  DEFAULT_VISIBLE_NODES,
   EDGE_META,
   NODE_TYPE_META,
   type BoardNode,
@@ -48,7 +51,8 @@ const SECTOR_DIRECTIONS: Record<NodeType, { centerAngle: number; spread: number 
   orang: { centerAngle: -Math.PI * 0.05, spread: Math.PI * 0.38 },  // Kanan (Direksi & Manajemen)
   kabar: { centerAngle: Math.PI * 0.28, spread: Math.PI * 0.36 },   // Bawah-Kanan (Filings & Aksi Korporasi)
   redflag: { centerAngle: Math.PI * 0.62, spread: Math.PI * 0.44 }, // Bawah (Temuan Red Flags & Risiko)
-  pemegang: { centerAngle: Math.PI, spread: Math.PI * 0.55 },       // Kiri (Pemilik Saham & Broker)
+  pemegang: { centerAngle: Math.PI, spread: Math.PI * 0.55 },       // Kiri (Pemilik Saham)
+  aliran: { centerAngle: Math.PI * 0.82, spread: Math.PI * 0.4 },   // Kiri-Bawah (Jejak Broker & Institusi)
   emiten: { centerAngle: -Math.PI * 0.8, spread: Math.PI * 0.3 },   // Kiri-Atas (Afiliasi Emiten Silang)
 };
 
@@ -150,7 +154,7 @@ function calculateFocusLayout(
       grouped[t]!.push(n);
     });
 
-    const RINGS = [380, 660, 940]; // Jarak radius antar cincin (lapang dan luas)
+    const RINGS = [360, 620, 880]; // Jarak radius antar cincin
 
     (Object.keys(grouped) as NodeType[]).forEach((type) => {
       const list = grouped[type] || [];
@@ -158,10 +162,11 @@ function calculateFocusLayout(
 
       const sector = SECTOR_DIRECTIONS[type] || { centerAngle: 0, spread: Math.PI * 0.4 };
 
-      // Bagi node ke ring-ring konsentris
-      // Ring 0: max 4 node, Ring 1: max 6 node, Ring 2: sisanya
+      // Bagi node ke ring-ring konsentris. Kapasitas dibuat longgar supaya
+      // tampilan ringkas (<= 12 kartu) seluruhnya muat di cincin 0-1 — makin
+      // dekat ke pusat, makin besar skala render yang dicapai fitView.
       let ringIdx = 0;
-      const ringCapacity = [3, 5, 7];
+      const ringCapacity = [5, 7, 9];
 
       // Hitung pembagian per ring terlebih dahulu
       const ringBuckets: BoardNode[][] = [[], [], []];
@@ -207,8 +212,8 @@ function calculateFocusLayout(
 
   // 3. Collision Resolution (Repulsion Relaxation Physics):
   // Menjamin TIDAK ADA dua kartu yang bertumpukan (kartu lebar 210px, tinggi ~170px)
-  const MIN_DX = 240;
-  const MIN_DY = 190;
+  const MIN_DX = 285; // lebar kartu 248px + celah benang
+  const MIN_DY = 215;
   for (let pass = 0; pass < 25; pass++) {
     for (let i = 0; i < resultNodes.length; i++) {
       for (let j = i + 1; j < resultNodes.length; j++) {
@@ -271,7 +276,7 @@ function BoardCard({ data, selected, isCenter }: { data: BoardNodeData; selected
   const t = NODE_TYPE_META[data.type];
   return (
     <div
-      className={`w-[210px] rounded-[10px] border bg-[#1a1713] shadow-[0_14px_32px_rgba(0,0,0,.75)] transition-all duration-300 select-none ${
+      className={`w-[248px] rounded-[10px] border bg-[#1a1713] shadow-[0_14px_32px_rgba(0,0,0,.75)] transition-all duration-300 select-none ${
         isCenter
           ? 'border-brass-400 ring-2 ring-brass-500/60 shadow-[0_0_24px_rgba(201,162,74,0.35)] scale-[1.04]'
           : selected
@@ -283,7 +288,7 @@ function BoardCard({ data, selected, isCenter }: { data: BoardNodeData; selected
         className="h-2 rounded-t-[9px]"
         style={{ background: data.type === 'emiten' ? 'var(--brass-500)' : t.color }}
       />
-      <div className="p-3.5">
+      <div className="p-4">
         {isCenter && (
           <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-brass-500/20 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-brass-300">
             <span className="h-1.5 w-1.5 rounded-full bg-brass-400 animate-pulse-dot" /> Pusat Fokus
@@ -304,22 +309,29 @@ function BoardCard({ data, selected, isCenter }: { data: BoardNodeData; selected
         {data.type === 'kabar' && data.date && (
           <div className="font-mono text-[11px] font-medium text-text-3 mb-1">{formatDate(data.date)}</div>
         )}
-        <div className="font-mono text-[15px] font-bold text-white leading-tight tracking-wide">
+        <div className="font-mono text-[16.5px] font-bold text-white leading-tight tracking-wide break-words">
           {data.label}
         </div>
-        {data.sub && <div className="text-[12px] font-medium text-[#ded8ce] leading-snug mt-1">{data.sub}</div>}
+        {data.sub && <div className="text-[12.5px] font-medium text-[#ded8ce] leading-snug mt-1.5">{data.sub}</div>}
         {data.value && (
-          <div className="font-mono text-[14px] font-bold text-brass-300 mt-2 tabular-nums">{data.value}</div>
+          <div className="font-mono text-[15px] font-bold text-brass-300 mt-2 tabular-nums">{data.value}</div>
         )}
         {data.cross && (
           <div className="mt-2 inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-brass-300 tracking-wide">
             <span className="w-2 h-2 rounded-full bg-brass-500" /> lintas emiten
           </div>
         )}
-        <div className="mt-2.5 pt-2 border-t border-[#2e271f] flex items-center gap-1.5 text-[10px] font-mono text-text-3">
-          <ClockIcon size={11} className="text-brass-500/80 flex-none" />
-          <span className="truncate">Diambil: {data.retrievedAt ?? '10 Sep 2026'}</span>
-        </div>
+        {data.retrievedAt && (
+          <div className="mt-2.5 pt-2 border-t border-[#2e271f] flex items-center gap-1.5 text-[10px] font-mono text-text-3">
+            <ClockIcon size={11} className="text-brass-500/80 flex-none" />
+            <span className="truncate">Sumber diambil {formatDate(data.retrievedAt)}</span>
+            {data.cache === 'hit' && (
+              <span className="ml-auto flex-none rounded-sm border border-[#3a332a] px-1 text-[9px] uppercase tracking-wide text-text-3">
+                arsip
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -413,14 +425,44 @@ function FocusBoardFlow({
   edges: Edge[];
   onNodeClick: (_: any, node: Node) => void;
 }) {
-  const { fitView } = useReactFlow();
+  const { fitView, getZoom } = useReactFlow();
+
+  /* Skala minimum agar kartu tetap terbaca (label 16.5px → ≈9px di layar).
+     Canvas tengah hanya ~740px lebar, sedangkan 12 kartu butuh ~3000px area:
+     "fit semua" akan mengecilkan kartu sampai tak terbaca. Karena itu kalau
+     hasil fit di bawah ambang ini, papan dipusatkan pada kartu fokus dan sisa
+     jaringan dijangkau dengan pan / tombol "Fit semua". */
+  const LEGIBLE_MIN_SCALE = 0.55;
+
+  const fitAll = useCallback(
+    (duration = 400) =>
+      fitView({ duration, padding: 0.12, minZoom: 0.22, maxZoom: 1.1 }),
+    [fitView],
+  );
+
+  const centerOnFocused = useCallback(
+    (duration = 400) => {
+      const center = nodes.find((n) => (n.data as { isCenter?: boolean })?.isCenter);
+      if (!center) return;
+      fitView({
+        nodes: [{ id: center.id }],
+        duration,
+        minZoom: LEGIBLE_MIN_SCALE,
+        maxZoom: LEGIBLE_MIN_SCALE,
+      });
+    },
+    [fitView, nodes],
+  );
 
   useEffect(() => {
     const t = setTimeout(() => {
-      fitView({ duration: 400, padding: 0.1, minZoom: 0.15, maxZoom: 1.1 });
+      fitAll(0);
+      requestAnimationFrame(() => {
+        if (getZoom() < LEGIBLE_MIN_SCALE) centerOnFocused(400);
+      });
     }, 60);
     return () => clearTimeout(t);
-  }, [nodes.length, fitView]);
+  }, [nodes.length, fitAll, centerOnFocused, getZoom]);
 
   return (
     <ReactFlow
@@ -430,8 +472,8 @@ function FocusBoardFlow({
       edgeTypes={edgeTypes}
       onNodeClick={onNodeClick}
       fitView
-      fitViewOptions={{ padding: 0.1, minZoom: 0.15, maxZoom: 1.1 }}
-      minZoom={0.1}
+      fitViewOptions={{ padding: 0.12, minZoom: 0.22, maxZoom: 1.1 }}
+      minZoom={0.22}
       maxZoom={2.2}
       proOptions={{ hideAttribution: true }}
     >
@@ -441,6 +483,24 @@ function FocusBoardFlow({
         gap={28}
         lineWidth={1}
       />
+      <Panel position="bottom-right" className="!m-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => centerOnFocused()}
+          className="rounded border border-[#3a332a] bg-[#12100d]/95 px-2.5 py-1 font-mono text-[11px] text-brass-300 hover:border-brass-500 transition-colors"
+          title="Perbesar ke kartu fokus (skala terbaca)"
+        >
+          Pusatkan
+        </button>
+        <button
+          type="button"
+          onClick={() => fitAll()}
+          className="rounded border border-[#3a332a] bg-[#12100d]/95 px-2.5 py-1 font-mono text-[11px] text-text-2 hover:border-brass-500 hover:text-brass-300 transition-colors"
+          title="Tampilkan seluruh jaringan (kartu mengecil)"
+        >
+          Fit semua
+        </button>
+      </Panel>
     </ReactFlow>
   );
 }
@@ -633,21 +693,19 @@ export default function DetectiveBoardPage() {
     setSelectedId(mainDefaultId);
   }, [mainDefaultId]);
 
-  const [activeNodeTypes, setActiveNodeTypes] = useState<Record<NodeType, boolean>>({
-    emiten: true,
-    pemegang: true,
-    orang: true,
-    redflag: true,
-    kabar: true,
-    fakta: true,
-  });
+  /* Papan dibuka dalam mode RINGKAS: hanya inti pemeriksaan (emiten, pemegang
+     saham, orang kunci). Bukti pendukung dibuka lewat "Perluas jaringan" supaya
+     papan pertama kali dilihat tidak jadi bola benang kusut. */
+  const buildToggles = <T extends string>(keys: T[], visible: T[]): Record<T, boolean> =>
+    Object.fromEntries(keys.map((k) => [k, visible.includes(k)])) as Record<T, boolean>;
 
-  const [activeEdgeTypes, setActiveEdgeTypes] = useState<Record<EdgeType, boolean>>({
-    memegang: true,
-    menjabat: true,
-    redflag: true,
-    fakta: true,
-  });
+  const [activeNodeTypes, setActiveNodeTypes] = useState<Record<NodeType, boolean>>(() =>
+    buildToggles(Object.keys(NODE_TYPE_META) as NodeType[], DEFAULT_VISIBLE_NODES),
+  );
+
+  const [activeEdgeTypes, setActiveEdgeTypes] = useState<Record<EdgeType, boolean>>(() =>
+    buildToggles(Object.keys(EDGE_META) as EdgeType[], DEFAULT_VISIBLE_EDGES),
+  );
 
   const [crossOnly, setCrossOnly] = useState(false);
   const [chat, setChat] = useState('');
@@ -727,6 +785,21 @@ export default function DetectiveBoardPage() {
     setActiveNodeTypes((s) => ({ ...s, [k]: !s[k] }));
   const toggleEdge = (k: EdgeType) =>
     setActiveEdgeTypes((s) => ({ ...s, [k]: !s[k] }));
+
+  // Mode ringkas vs lengkap: "Perluas jaringan" menyalakan seluruh jenis bukti.
+  const allTypesOn =
+    (Object.keys(NODE_TYPE_META) as NodeType[]).every((k) => activeNodeTypes[k]) &&
+    (Object.keys(EDGE_META) as EdgeType[]).every((k) => activeEdgeTypes[k]);
+
+  const toggleAllTypes = () => {
+    if (allTypesOn) {
+      setActiveNodeTypes(buildToggles(Object.keys(NODE_TYPE_META) as NodeType[], DEFAULT_VISIBLE_NODES));
+      setActiveEdgeTypes(buildToggles(Object.keys(EDGE_META) as EdgeType[], DEFAULT_VISIBLE_EDGES));
+    } else {
+      setActiveNodeTypes((s) => ({ ...s, ...buildToggles(Object.keys(NODE_TYPE_META) as NodeType[], Object.keys(NODE_TYPE_META) as NodeType[]) }));
+      setActiveEdgeTypes((s) => ({ ...s, ...buildToggles(Object.keys(EDGE_META) as EdgeType[], Object.keys(EDGE_META) as EdgeType[]) }));
+    }
+  };
 
   const isFocusingNonMain = selectedId !== mainDefaultId;
 
@@ -924,7 +997,7 @@ export default function DetectiveBoardPage() {
 
           {/* CENTER: board canvas */}
           <Reveal delay={40}>
-            <div className="bg-[#0b0907] border border-[#3a332a] rounded-[14px] overflow-hidden shadow-2 h-[600px] flex flex-col">
+            <div className="bg-[#0b0907] border border-[#3a332a] rounded-[14px] overflow-hidden shadow-2 h-[720px] flex flex-col">
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-[#2a251e] bg-bg-2 flex-none">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase">
@@ -938,6 +1011,23 @@ export default function DetectiveBoardPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={toggleAllTypes}
+                    className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 font-mono text-[11px] transition-colors ${
+                      allTypesOn
+                        ? 'border-[#3a332a] bg-bg-1 text-text-3 hover:border-brass-500 hover:text-brass-300'
+                        : 'border-brass-600/50 bg-brass-500/10 text-brass-300 hover:border-brass-500'
+                    }`}
+                    title={
+                      allTypesOn
+                        ? 'Kembali ke tampilan ringkas (emiten, pemegang saham, orang kunci)'
+                        : 'Tampilkan seluruh bukti: red flag, bukti kabar, fakta angka, jejak broker'
+                    }
+                  >
+                    <SparkIcon size={12} />
+                    {allTypesOn ? 'Ringkas' : 'Perluas jaringan'}
+                  </button>
                   {isFocusingNonMain && (
                     <button
                       type="button"

@@ -216,7 +216,7 @@ class HealthResponse(BaseModel):
 # ----------------------------------------------------------------- board models
 
 class BoardNodeData(BaseModel):
-    type: str  # 'emiten' | 'pemegang' | 'orang' | 'redflag' | 'kabar' | 'fakta'
+    type: str  # 'emiten' | 'pemegang' | 'orang' | 'aliran' | 'redflag' | 'kabar' | 'fakta'
     label: str
     sub: Optional[str] = None
     value: Optional[str] = None
@@ -227,6 +227,7 @@ class BoardNodeData(BaseModel):
     source: Optional[str] = None
     cross: Optional[bool] = None
     retrievedAt: Optional[str] = None
+    cache: Optional[str] = None  # 'hit' | 'miss' — data dari cache arsip vs ambil baru
 
 
 class BoardNode(BaseModel):
@@ -241,7 +242,7 @@ class BoardEdge(BaseModel):
     id: str
     source: str
     target: str
-    type: str  # 'memegang' | 'menjabat' | 'redflag' | 'fakta'
+    type: str  # 'memegang' | 'menjabat' | 'aliran' | 'redflag' | 'fakta'
     label: Optional[str] = None
 
 
