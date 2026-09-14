@@ -524,8 +524,13 @@ function AnalystCard({
             </button>
           )}
           <div className="mt-auto flex flex-col gap-2 border-t border-[#2a251e] pt-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="whitespace-nowrap text-[12px] text-text-2">
+            {/* `flex-wrap`: di lebar 5 kolom, "Summary — N evidence" + badge
+                richness tidak muat sebaris — tanpa wrap, badge-nya meluber
+                keluar kartu dan tertimpa kartu sebelah. Badge `ml-auto`
+                (lihat RichBadge) supaya tetap menempel ke kanan, baik saat
+                sebaris maupun saat turun ke barisnya sendiri. */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+              <span className="min-w-0 text-[12px] text-text-2">
                 {renderRich(t('courtroom.analyst.summary', { n: analyst.evidence.length }), {
                   b: (c) => <b className="font-semibold text-text-0">{c}</b>,
                 })}
@@ -556,7 +561,7 @@ export function RichBadge({ richness }: { richness: 'A' | 'B' | 'C' }) {
   const label = labels.richness[richness];
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-[rgba(201,162,74,0.06)] px-[5px] font-mono text-[11.5px] tracking-[0.3px] text-[#e0c27a]"
+      className="ml-auto inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[6px] border border-[#8a6f33] bg-[rgba(201,162,74,0.06)] px-[5px] font-mono text-[11.5px] tracking-[0.3px] text-[#e0c27a]"
       data-rich={richness}
       title={t('enum.richness.title', { grade: label })}
     >
