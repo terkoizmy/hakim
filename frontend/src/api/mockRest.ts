@@ -131,7 +131,7 @@ export const mockRestClient: RestClient = {
     };
   },
 
-  async chatBoard(ticker: string, message: string): Promise<{ reply: string }> {
+  async chatBoard(ticker: string, _message: string): Promise<{ reply: string }> {
     const up = ticker.trim().toUpperCase();
     return { reply: `Analisis keterkaitan ${up} selesai diinvestigasi.` };
   },

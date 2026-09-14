@@ -7,6 +7,7 @@ import {
   BackgroundVariant,
   Handle,
   Position,
+  EdgeLabelRenderer,
   type NodeProps,
   type Edge,
   type Node,
@@ -38,8 +39,31 @@ const SEV_CLS: Record<string, string> = {
   tinggi: 'text-[#c96a5a] border-[rgba(201,106,90,0.4)] bg-[rgba(201,106,90,0.06)]',
 };
 
-const CENTER_X = 440;
-const CENTER_Y = 280;
+const CENTER_X = 500;
+const CENTER_Y = 360;
+
+// Sektor arah tematik di sekeliling pusat kanvas investigasi
+const SECTOR_DIRECTIONS: Record<NodeType, { centerAngle: number; spread: number }> = {
+  fakta: { centerAngle: -Math.PI / 2, spread: Math.PI * 0.5 },     // Atas (Metrik Valuasi & Finansial)
+  orang: { centerAngle: -Math.PI * 0.05, spread: Math.PI * 0.38 },  // Kanan (Direksi & Manajemen)
+  kabar: { centerAngle: Math.PI * 0.28, spread: Math.PI * 0.36 },   // Bawah-Kanan (Filings & Aksi Korporasi)
+  redflag: { centerAngle: Math.PI * 0.62, spread: Math.PI * 0.44 }, // Bawah (Temuan Red Flags & Risiko)
+  pemegang: { centerAngle: Math.PI, spread: Math.PI * 0.55 },       // Kiri (Pemilik Saham & Broker)
+  emiten: { centerAngle: -Math.PI * 0.8, spread: Math.PI * 0.3 },   // Kiri-Atas (Afiliasi Emiten Silang)
+};
+
+export function formatBenchmarkValue(val: number | string | undefined | null, unit: string): string {
+  if (val === undefined || val === null || val === '') return '-';
+  const num = typeof val === 'number' ? val : parseFloat(String(val));
+  if (isNaN(num)) return `${val}${unit}`;
+  if (unit === 'x') {
+    return `${num.toFixed(2)}x`;
+  }
+  if (unit === '%') {
+    return `${num.toFixed(1)}%`;
+  }
+  return `${Number.isInteger(num) ? num : num.toFixed(2)}${unit}`;
+}
 
 interface FocusLayoutResult {
   nodes: Node[];
@@ -61,30 +85,26 @@ function calculateFocusLayout(
     return { nodes: [], edges: [], centerNode: allNodes[0], connectedCount: 0 };
   }
 
-  // Cari semua relasi benang yang tersambung langsung ke centerNode
+  // 1. Kumpulkan semua relasi benang aktif yang menyentuh node fokus
   const directEdges = allEdges.filter(
     (e) => (e.source === centerNode.id || e.target === centerNode.id) && activeEdgeTypes[e.type]
   );
 
-  // Kumpulkan ID node tetangga yang terhubung
   const neighborIds = new Set<string>();
   directEdges.forEach((e) => {
     if (e.source === centerNode.id) neighborIds.add(e.target);
     if (e.target === centerNode.id) neighborIds.add(e.source);
   });
 
-  // Filter tetangga berdasarkan tipe node aktif & filter lintas
+  // 2. Filter tetangga yang valid sesuai filter pengguna
   const validNeighbors = allNodes
     .filter((n) => n.id !== centerNode.id && neighborIds.has(n.id))
     .filter((n) => activeNodeTypes[n.type])
     .filter((n) => !crossOnly || n.data.cross || n.data.type === 'emiten');
 
-  const k = validNeighbors.length;
-  const radius = k > 7 ? 320 : k > 4 ? 275 : 240;
-
   const resultNodes: Node[] = [];
 
-  // 1. Node Pusat (Fokus Utama)
+  // Tambahkan Node Pusat (Fokus Utama)
   resultNodes.push({
     id: centerNode.id,
     type: 'board',
@@ -97,28 +117,133 @@ function calculateFocusLayout(
     },
   });
 
-  // 2. Node-node yang berhubungan mengelilingi pusat secara radial
-  validNeighbors.forEach((neighbor, idx) => {
-    const angle = (2 * Math.PI * idx) / (k || 1) - Math.PI / 2;
-    const x = Math.round(CENTER_X + radius * Math.cos(angle));
-    const y = Math.round(CENTER_Y + radius * Math.sin(angle));
+  const k = validNeighbors.length;
 
-    resultNodes.push({
-      id: neighbor.id,
-      type: 'board',
-      position: { x, y },
-      data: {
-        ...neighbor.data,
-        rotate: neighbor.rotate,
-        selected: false,
-        isCenter: false,
-      },
+  if (k <= 6) {
+    // Jika sedikit tetangga, sebar merata melingkar sederhana dengan radius lapang
+    const radius = k > 3 ? 360 : 300;
+    validNeighbors.forEach((neighbor, idx) => {
+      const angle = (2 * Math.PI * idx) / (k || 1) - Math.PI / 2;
+      const x = Math.round(CENTER_X + radius * Math.cos(angle));
+      const y = Math.round(CENTER_Y + radius * Math.sin(angle));
+
+      resultNodes.push({
+        id: neighbor.id,
+        type: 'board',
+        position: { x, y },
+        data: {
+          ...neighbor.data,
+          rotate: neighbor.rotate,
+          selected: false,
+          isCenter: false,
+        },
+      });
     });
-  });
+  } else {
+    // Jika banyak tetangga (seperti kasus emiten penuh dengan 30+ bukti),
+    // kelompokkan berdasarkan sektor tematik (Kiri: Pemegang, Kanan: Direksi, Atas: Fakta, Bawah: Red Flag)
+    // dan gunakan multi-ring konsentris agar tidak saling menumpuk.
+    const grouped: Partial<Record<NodeType, BoardNode[]>> = {};
+    validNeighbors.forEach((n) => {
+      const t = n.type as NodeType;
+      if (!grouped[t]) grouped[t] = [];
+      grouped[t]!.push(n);
+    });
+
+    const RINGS = [380, 660, 940]; // Jarak radius antar cincin (lapang dan luas)
+
+    (Object.keys(grouped) as NodeType[]).forEach((type) => {
+      const list = grouped[type] || [];
+      if (list.length === 0) return;
+
+      const sector = SECTOR_DIRECTIONS[type] || { centerAngle: 0, spread: Math.PI * 0.4 };
+
+      // Bagi node ke ring-ring konsentris
+      // Ring 0: max 4 node, Ring 1: max 6 node, Ring 2: sisanya
+      let ringIdx = 0;
+      const ringCapacity = [3, 5, 7];
+
+      // Hitung pembagian per ring terlebih dahulu
+      const ringBuckets: BoardNode[][] = [[], [], []];
+      list.forEach((item) => {
+        if (ringBuckets[ringIdx].length >= ringCapacity[ringIdx] && ringIdx < RINGS.length - 1) {
+          ringIdx++;
+        }
+        ringBuckets[ringIdx].push(item);
+      });
+
+      // Letakkan setiap ring dengan sudut yang terdistribusi rapi
+      ringBuckets.forEach((bucket, rIndex) => {
+        const count = bucket.length;
+        if (count === 0) return;
+
+        const currentRadius = RINGS[rIndex];
+        const angleStep = count > 1 ? sector.spread / (count - 1) : 0;
+        const startAngle = sector.centerAngle - (count > 1 ? sector.spread / 2 : 0);
+
+        // Sedikit offset selang-seling antar ring agar tidak menumpuk dalam garis lurus
+        const stagger = rIndex % 2 === 1 ? angleStep * 0.35 : 0;
+
+        bucket.forEach((nodeItem, itemIdx) => {
+          const angle = count === 1 ? sector.centerAngle : startAngle + itemIdx * angleStep + stagger;
+          const x = Math.round(CENTER_X + currentRadius * Math.cos(angle));
+          const y = Math.round(CENTER_Y + currentRadius * Math.sin(angle));
+
+          resultNodes.push({
+            id: nodeItem.id,
+            type: 'board',
+            position: { x, y },
+            data: {
+              ...nodeItem.data,
+              rotate: nodeItem.rotate,
+              selected: false,
+              isCenter: false,
+            },
+          });
+        });
+      });
+    });
+  }
+
+  // 3. Collision Resolution (Repulsion Relaxation Physics):
+  // Menjamin TIDAK ADA dua kartu yang bertumpukan (kartu lebar 210px, tinggi ~170px)
+  const MIN_DX = 240;
+  const MIN_DY = 190;
+  for (let pass = 0; pass < 25; pass++) {
+    for (let i = 0; i < resultNodes.length; i++) {
+      for (let j = i + 1; j < resultNodes.length; j++) {
+        const n1 = resultNodes[i];
+        const n2 = resultNodes[j];
+        if (n1.id === centerNode.id && n2.id === centerNode.id) continue;
+
+        const dx = n2.position.x - n1.position.x;
+        const dy = n2.position.y - n1.position.y;
+        const absX = Math.abs(dx);
+        const absY = Math.abs(dy);
+
+        if (absX < MIN_DX && absY < MIN_DY) {
+          // Ada tumpang tindih -> dorong saling menjauh
+          const overlapX = (MIN_DX - absX) * 0.55;
+          const overlapY = (MIN_DY - absY) * 0.55;
+          const signX = dx >= 0 ? 1 : -1;
+          const signY = dy >= 0 ? 1 : -1;
+
+          if (n1.id !== centerNode.id) {
+            n1.position.x -= overlapX * signX;
+            n1.position.y -= overlapY * signY;
+          }
+          if (n2.id !== centerNode.id) {
+            n2.position.x += overlapX * signX;
+            n2.position.y += overlapY * signY;
+          }
+        }
+      }
+    }
+  }
 
   const visibleIdSet = new Set(resultNodes.map((n) => n.id));
 
-  // 3. Hanya tampilkan benang antar node yang terlihat di kanvas
+  // 4. Hubungkan benang antar node yang aktif di kanvas
   const resultEdges: Edge[] = allEdges
     .filter((e) => activeEdgeTypes[e.type])
     .filter((e) => visibleIdSet.has(e.source) && visibleIdSet.has(e.target))
@@ -227,7 +352,7 @@ function BoardNodeCard({ data }: NodeProps) {
 const nodeTypes: NodeTypes = { board: BoardNodeCard };
 
 function BoardEdge({ sourceX, sourceY, targetX, targetY, data }: any) {
-  const meta = (data?.type && EDGE_META[data.type as EdgeType]) || { label: 'relasi', color: '#a89f90' };
+  const meta = (data?.type && EDGE_META[data.type as EdgeType]) || { label: 'relasi', color: '#c4b5a0' };
   const mx = (sourceX + targetX) / 2;
   const my = (sourceY + targetY) / 2;
   const path = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
@@ -237,36 +362,40 @@ function BoardEdge({ sourceX, sourceY, targetX, targetY, data }: any) {
         d={path}
         fill="none"
         stroke={meta.color}
-        strokeWidth={data?.active ? 2.4 : 1.4}
+        strokeWidth={data?.active ? 2.2 : 1.3}
         strokeDasharray={meta.dash}
-        strokeOpacity={data?.active ? 1 : 0.45}
-        className="transition-all duration-300"
+        strokeOpacity={data?.active ? 0.95 : 0.4}
+        className="transition-all duration-300 pointer-events-none"
       />
       {data?.label && (
-        <g transform={`translate(${mx}, ${my})`}>
-          <rect
-            x={-28}
-            y={-11}
-            width={56}
-            height={20}
-            rx={5}
-            fill="#12100d"
-            stroke={meta.color}
-            strokeWidth={1}
-            opacity={data?.active ? 0.98 : 0.85}
-          />
-          <text
-            x={0}
-            y={1}
-            dy="0.3em"
-            textAnchor="middle"
-            className="font-mono font-bold select-none"
-            fontSize={11}
-            fill={meta.color}
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${mx}px, ${my}px)`,
+              pointerEvents: 'all',
+            }}
+            className="nodrag nopan select-none z-10"
           >
-            {data.label}
-          </text>
-        </g>
+            <div
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-[0_2px_12px_rgba(0,0,0,0.9)] font-mono text-[10.5px] font-semibold tracking-wide transition-all duration-200 ${
+                data?.active
+                  ? 'bg-[#181410] ring-1 ring-white/15 shadow-[0_0_12px_rgba(0,0,0,0.9)]'
+                  : 'bg-[#12100d]/95 hover:bg-[#181410]'
+              }`}
+              style={{
+                borderColor: `${meta.color}80`,
+                color: meta.color,
+              }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full flex-none"
+                style={{ backgroundColor: meta.color }}
+              />
+              <span className="whitespace-nowrap leading-none">{data.label}</span>
+            </div>
+          </div>
+        </EdgeLabelRenderer>
       )}
     </>
   );
@@ -288,8 +417,8 @@ function FocusBoardFlow({
 
   useEffect(() => {
     const t = setTimeout(() => {
-      fitView({ duration: 450, padding: 0.18, minZoom: 0.35, maxZoom: 1.25 });
-    }, 50);
+      fitView({ duration: 400, padding: 0.1, minZoom: 0.15, maxZoom: 1.1 });
+    }, 60);
     return () => clearTimeout(t);
   }, [nodes.length, fitView]);
 
@@ -301,8 +430,8 @@ function FocusBoardFlow({
       edgeTypes={edgeTypes}
       onNodeClick={onNodeClick}
       fitView
-      fitViewOptions={{ padding: 0.18, minZoom: 0.35, maxZoom: 1.25 }}
-      minZoom={0.2}
+      fitViewOptions={{ padding: 0.1, minZoom: 0.15, maxZoom: 1.1 }}
+      minZoom={0.1}
       maxZoom={2.2}
       proOptions={{ hideAttribution: true }}
     >
@@ -446,7 +575,7 @@ export default function DetectiveBoardPage() {
         if (!alive) return;
         setBoardData(data);
         const mainNode =
-          data.nodes.find((n) => n.data.type === 'emiten' && !n.data.cross) ?? data.nodes[0];
+          data.nodes.find((n: BoardNode) => n.data.type === 'emiten' && !n.data.cross) ?? data.nodes[0];
         if (mainNode) setSelectedId(mainNode.id);
         setChatLog([
           {
@@ -844,7 +973,7 @@ export default function DetectiveBoardPage() {
                           .then((data) => {
                             setBoardData(data);
                             const mainNode =
-                              data.nodes.find((n) => n.data.type === 'emiten' && !n.data.cross) ??
+                              data.nodes.find((n: BoardNode) => n.data.type === 'emiten' && !n.data.cross) ??
                               data.nodes[0];
                             if (mainNode) setSelectedId(mainNode.id);
                           })
@@ -1131,10 +1260,10 @@ export default function DetectiveBoardPage() {
                           </div>
                           <div className="flex items-baseline justify-between">
                             <span className="font-mono text-sm font-bold text-text-0">
-                              {m.value}{m.unit}
+                              {formatBenchmarkValue(m.value, m.unit)}
                             </span>
-                            <span className="font-mono text-[10px] text-text-3">
-                              Sektor: {m.sectorAvg}{m.unit}
+                            <span className="font-mono text-[10.5px] text-text-3">
+                              Sektor: {formatBenchmarkValue(m.sectorAvg, m.unit)}
                             </span>
                           </div>
                         </div>

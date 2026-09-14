@@ -70,10 +70,10 @@ export interface TickerBoardData {
 }
 
 export const EDGE_META: Record<EdgeType, { label: string; color: string; dash?: string }> = {
-  memegang: { label: 'memegang saham', color: '#c96a5a' },
-  menjabat: { label: 'menjabat di', color: '#a89f90' },
-  redflag: { label: 'menandai red flag', color: '#c96a5a', dash: '6 4' },
-  fakta: { label: 'menunjuk fakta', color: '#6f675a' },
+  memegang: { label: 'memegang saham', color: '#e07a5f' },
+  menjabat: { label: 'menjabat di', color: '#c4b5a0' },
+  redflag: { label: 'menandai red flag', color: '#e65c5c', dash: '5 4' },
+  fakta: { label: 'menunjuk fakta', color: '#4cc98f' },
 };
 
 export const NODE_TYPE_META: Record<NodeType, { label: string; color: string }> = {
