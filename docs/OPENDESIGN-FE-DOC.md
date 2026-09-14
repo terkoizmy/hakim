@@ -81,7 +81,7 @@ Use `docs/design-prompts.md`: paste-quality GLOBAL block + the page's own block.
 5. `/journal` — JournalPage.tsx
 6. `/journal/:memoId/postmortem` — PostmortemPage.tsx
 
-Data available per page: read the existing page's TSX and `src/types/contract.ts` (`MemoJSON`, event payloads) to see exactly what fields exist — **do not invent data that isn't in the contract** (no price predictions, no targets). Mock fixtures in `src/api/mockData.ts` show realistic content (BBCA trial is the canonical example).
+Data available per page: read the existing page's TSX and `src/types/contract.ts` (`MemoJSON`, event payloads) to see exactly what fields exist — **do not invent data that isn't in the contract** (no price predictions, no targets). For realistic content, run a trial with the backend in `SECTORS_MODE=fixture` (BBCA is the canonical example) and read the memo it produces — the frontend no longer ships mock fixtures.
 
 ## Definition of done (per page)
 

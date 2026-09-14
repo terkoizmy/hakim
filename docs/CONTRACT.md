@@ -313,6 +313,5 @@ menjawab "berapa kredit sudah keluar untuk data", jadi sengaja **bukan** per hal
 
 ## 4. Mode & fixture
 
-- `SECTORS_MODE=fixture` (default dev): backend tidak menyentuh HTTP — baca `backend/app/sectors/fixtures/*.json` (BBCA, CUAN, GENERIC).
-- Frontend mock: `VITE_USE_MOCK=1` → `src/api/mockSse.ts` memutar `src/mocks/stream-BBCA.jsonl` (format baris = amplop SSE di atas, satu event per baris, field `trial_id` konsisten). Interface `mockSse` identik dengan `sse`.
-- Frontend live: `VITE_API_BASE` (default `http://localhost:8000`).
+- `SECTORS_MODE=fixture` (default dev): backend tidak menyentuh HTTP — baca `backend/app/sectors/fixtures/*.json` (BBCA, CUAN, GENERIC). Demo penuh tanpa kredit dijalankan lewat mode ini.
+- Frontend: satu implementasi saja — HTTP/SSE nyata ke backend. `VITE_API_BASE` (default `http://localhost:8000`). Tidak ada klien mock; kalau backend melaporkan `mode: "fixture"` di `trial_started`, UI menandainya di bilah perkara dan tiap baris tabel audit berlabel `cache: "fixture"` (§2).

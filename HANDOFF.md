@@ -40,8 +40,16 @@ Platform ini menggabungkan:
 
 ### C. Pembersihan Dependensi Mock Data Frontend
 - Menghapus ketergantungan pada folder `frontend/src/mocks/` dan `frontend/src/data/`.
-- Memperbaiki impor pada `frontend/src/api/mockRest.ts` dan `frontend/src/api/mockSse.ts` menggunakan *safe fallback stubs* agar bundler Vite tidak menghasilkan error kompilasi.
+- Memperbaiki impor pada klien mock menggunakan *safe fallback stubs* agar bundler Vite tidak menghasilkan error kompilasi.
 - Memastikan frontend berjalan dalam mode real live (`VITE_USE_MOCK=0`).
+
+> **Catatan (2026-09-15):** langkah di atas hanya menambal klien mock. Lapisan
+> mock frontend **sudah dihapus seluruhnya** — `api/mockRest.ts`, `mockSse.ts`,
+> `mockData.ts`, `mockStore.ts`, `scripts/validate-mock.mjs`,
+> `scripts/mock-replay-test.mjs`, dan `VITE_USE_MOCK` tidak ada lagi. Frontend
+> kini hanya punya satu implementasi: HTTP/SSE nyata ke backend. Untuk demo
+> tanpa kredit Sectors, jalankan **backend** dengan `SECTORS_MODE=fixture`.
+> Lihat `frontend/README.md`.
 
 ---
 
@@ -62,9 +70,7 @@ Platform ini menggabungkan:
 | [`frontend/src/pages/DetectiveBoardPage.tsx`](file:///C:/Users/terkoiz/Documents/hackathon/hakim/frontend/src/pages/DetectiveBoardPage.tsx) | Halaman Papan Investigasi Detektif (React Flow graph canvas, filters, inspector drawer, AI chat) |
 | [`frontend/src/types/board.ts`](file:///C:/Users/terkoiz/Documents/hackathon/hakim/frontend/src/types/board.ts) | Definisi TypeScript untuk nodes, edges, dan scorecard graf detektif |
 | [`frontend/src/api/rest.ts`](file:///C:/Users/terkoiz/Documents/hackathon/hakim/frontend/src/api/rest.ts) | Klien REST API live (fetch board, memo, journal, tickers, health) |
-| [`frontend/src/api/mockRest.ts`](file:///C:/Users/terkoiz/Documents/hackathon/hakim/frontend/src/api/mockRest.ts) | Mock REST client (sudah distub mandiri tanpa impor mock file) |
-| [`frontend/src/api/mockSse.ts`](file:///C:/Users/terkoiz/Documents/hackathon/hakim/frontend/src/api/mockSse.ts) | Mock SSE client (sudah distub mandiri tanpa impor mock file) |
-| [`frontend/src/config.ts`](file:///C:/Users/terkoiz/Documents/hackathon/hakim/frontend/src/config.ts) | Konfigurasi runtime frontend (`VITE_USE_MOCK`, `VITE_API_BASE`) |
+| [`frontend/src/config.ts`](file:///C:/Users/terkoiz/Documents/hackathon/hakim/frontend/src/config.ts) | Konfigurasi runtime frontend (`VITE_API_BASE`) |
 
 ---
 
@@ -90,9 +96,8 @@ Platform ini menggabungkan:
    ```bash
    cd frontend
    ```
-2. Pastikan file `.env` diatur ke mode live:
+2. Pastikan file `.env` menunjuk backend:
    ```env
-   VITE_USE_MOCK=0
    VITE_API_BASE=http://localhost:8000
    ```
 3. Jalankan dev server Vite:
