@@ -1,6 +1,8 @@
 # CONTRACT — Kontrak Backend ↔ Frontend SIDANG
 
-> **Status: FROZEN** · schema_version `1.6.0` · Tertulis 2026-09-09 oleh orkestrator.
+> **Status: FROZEN** · schema_version `1.7.0` · Tertulis 2026-09-09 oleh orkestrator.
+
+> **Changelog 1.7.0** (2026-09-15): **label asal-usul payload jadi tiga nilai** — `cache` bertipe `"hit" | "miss" | "fixture"` di `agent_tool_call`, `Citation`, `ToolCallAudit`, dan `BoardNodeData`. Cacat yang diperbaiki: mode `fixture` melabeli tiap baris tabel auditnya `"miss"`, padahal `"miss"` berarti payload **dibeli dari Sectors saat sidang ini**; memo demo karena itu mengaku menghabiskan kredit yang tidak pernah dipakai. Sekarang `"fixture"` = data contoh, tanpa jaringan, 0 kredit. **`retrieved_at` kini tanggal payload BENAR-BENAR diambil, bukan waktu sidang**: `SectorsResponse.fetched_at` diteruskan ke `ToolCall`, dan tiap `Citation` mewarisi pasangan `(cache, retrieved_at)` dari endpoint yang menjadi sumber faktanya (sebelumnya `created_at` memo untuk semua sitasi, dan `cache` dihitung "hit bila ada satu endpoint hit"). Nilai `retrieved_at` untuk data Sectors berformat **tanggal ISO `YYYY-MM-DD`** (bukan tanggal-waktu); FE memformatnya sebagai tanggal. Konsumen lama yang membandingkan `cache == "miss"` harus ikut memeriksa `"fixture"`.
 
 > **Changelog 1.6.0** (2026-09-14): **arsip permanen payload Sectors** — tabel `api_archive` + `GET /api/archive` (§3.3). Cacat yang diperbaiki: `cache` membuang isinya saat TTL 7 hari habis sehingga payload yang sudah dibayar kredit hilang; sekarang tiap payload berbayar disalin permanen (append-once, satu titik tulis di `SectorsClient._http_get`) dan TTL habis **tidak** berarti bayar ulang — arsip menjawab dengan `cache: "hit"` + tanggal ambil ASLI, 0 kredit. Saklar `ARCHIVE_FALLBACK=false` memulihkan perilaku lama. Mode fixture dan cache hit tidak pernah menyentuh arsip, jadi 0 efek pada tes.
 
@@ -51,7 +53,7 @@ Setiap event SSE berisi satu baris `data:` berupa JSON:
 | `trial_started` | `{ "ticker": "CUAN", "company_name": "Petrindo Jaya Kreator Tbk", "mode": "fixture\|live", "models": { "analyst": "...", "debate": "...", "judge": "..." } }` | Event pertama stream |
 | `phase_started` | `{ "phase": "evidence\|debate\|verdict", "round": 1 }` | `round` hanya ada saat `phase=debate` |
 | `agent_started` | `{ "agent_id": "fundamental", "agent_role": "analyst\|prosecutor\|defender\|judge", "display_name": "Analisis Fundamental", "model": "deepseek-v4-flash" }` | 5 analis: `fundamental, price, smartmoney, insider, antigorengan` |
-| `agent_tool_call` | `{ "agent_id": "fundamental", "tool": "company_report", "endpoint": "/v2/company/report/CUAN/", "params_summary": "sections=financials,valuation,peers", "cache": "hit\|miss" }` | Transparansi data |
+| `agent_tool_call` | `{ "agent_id": "fundamental", "tool": "company_report", "endpoint": "/v2/company/report/CUAN/", "params_summary": "sections=financials,valuation,peers", "cache": "hit\|miss\|fixture" }` | Transparansi data |
 | `agent_evidence` | `{ "agent_id": "fundamental", "evidence_id": "ev_12", "source_endpoint": "...", "headline": "Forward PE 8,4x vs peer 14,1x", "facts": [ { "label": "forward_pe", "value": 8.4, "unit": "x" } ] }` | Chip bukti di live feed |
 | `agent_finished` | `{ "agent_id": "fundamental", "summary_md": "…markdown…", "data_richness": "A\|B\|C", "evidence_ids": ["ev_10","ev_11","ev_12"] }` | Rangkuman per analis |
 | `debate_utterance` | `{ "round": 1, "side": "prosecution\|defense", "title": "…", "argument_md": "…", "cites": ["ev_12"], "rebuts": "ut_r3\|null" }` | `ut_` = id utterance sebelumnya yang dibalas |
@@ -116,8 +118,8 @@ Disimpan di SQLite, dikembalikan `GET /api/trials/{id}/memo` dan `GET /api/journ
       "source": "sectors_endpoint",
       "endpoint": "/v2/company/report/CUAN/?sections=valuation",
       "params_summary": "sections=valuation",
-      "retrieved_at": "2026-09-09T12:34:00Z",
-      "cache": "hit | miss"
+      "retrieved_at": "2026-09-09",
+      "cache": "hit | miss | fixture"
     }
   ],
   "tool_calls": [
@@ -126,8 +128,8 @@ Disimpan di SQLite, dikembalikan `GET /api/trials/{id}/memo` dan `GET /api/journ
       "tool": "company_report",
       "endpoint": "/v2/company/report/CUAN/",
       "params_summary": "sections=financials,valuation,...",
-      "retrieved_at": "2026-09-09T12:33:40Z",
-      "cache": "hit | miss"
+      "retrieved_at": "2026-09-09",
+      "cache": "hit | miss | fixture"
     }
   ],
   "disclaimer": "Memo ini adalah alat bantu riset & analisis, bukan rekomendasi investasi. Keputusan investasi sepenuhnya tanggung jawab masing-masing investor."
@@ -135,6 +137,18 @@ Disimpan di SQLite, dikembalikan `GET /api/trials/{id}/memo` dan `GET /api/journ
 ```
 
 **`tool_calls` (opsional, tambahan v1.1)** — catatan panggilan Sectors yang BENAR-BENAR terjadi selama sidang (satu entri per panggilan, dari event `agent_tool_call`). Ini sumber tabel audit "Sumber Data"; `citations` tetap anchor fakta → `key_facts`. Memo lama tanpa field ini tetap valid; UI fallback ke `citations`.
+
+**Label `cache` (sejak 1.7.0).** Tiga nilai, dan bedanya penting untuk kejujuran memo:
+
+| Nilai | Arti |
+|---|---|
+| `"hit"` | payload sudah pernah dibayar — dilayani cache lokal (TTL 7 hari) atau arsip permanen (§3.3). **0 kredit.** |
+| `"miss"` | payload **dibeli dari Sectors saat sidang ini**. Kredit terpakai. |
+| `"fixture"` | data contoh mode demo (berkas bawaan). **Tanpa jaringan, 0 kredit.** |
+
+Konsekuensinya: **jangan** memperlakukan `cache != "hit"` sebagai "kredit terpakai" — sejak 1.7.0 hanya `"miss"` yang berarti itu. Sebelum 1.7.0 mode fixture memakai `"miss"`, sehingga memo demo mengaku menghabiskan kredit yang tidak pernah dipakai.
+
+**`retrieved_at` (sejak 1.7.0).** Untuk data Sectors, isinya **tanggal payload itu benar-benar diambil** (`YYYY-MM-DD`), bukan waktu sidang berjalan — payload `hit` dari arsip bisa jauh lebih tua dari memonya. Frontend memformat nilai ini sebagai *tanggal*, bukan tanggal-waktu. Untuk entri yang tanggal ambilnya tidak diketahui, nilainya jatuh kembali ke waktu sidang. Tiap `Citation` mewarisi pasangan `(cache, retrieved_at)` dari endpoint yang menjadi sumber faktanya.
 
 **Id & sitasi (sejak 1.5.0).** `fact_id` wajib `f_1`, `f_2`, `f_3`, … **berurutan**
 (ejaan bergaris bawah). Setiap butir `bull_case.points`, `bear_case.points`,
@@ -225,7 +239,7 @@ bersaham yang tidak masuk registri pemegang saham — sebelumnya benang itu mema
 (`"2.666.921 lbr"`) sehingga pil labelnya jauh lebih lebar dari yang lain dan menutupi kartu
 tetangga. Jumlah lembar tetap tersedia di `data.detail` kartu (`Jumlah Lembar: …`).
 
-`BoardNodeData.retrievedAt` + `.cache` = provenance: `cache: "hit"` berarti payload berasal dari arsip cache dan `retrievedAt` adalah **tanggal payload itu benar-benar diambil** dari Sectors (bukan tanggal hari ini). `cache: "miss"` = baru diambil.
+`BoardNodeData.retrievedAt` + `.cache` = provenance, memakai kosakata yang sama dengan tabel audit memo (§2): `cache: "hit"` = payload sudah pernah dibayar (cache lokal atau arsip permanen) dan `retrievedAt` adalah **tanggal payload itu benar-benar diambil** dari Sectors (bukan tanggal hari ini); `"miss"` = baru diambil pada sidang itu; `"fixture"` = kartu dibangun dari data contoh mode demo (tanpa jaringan, 0 kredit).
 
 Kolom `aiInsights` memakai kunci per kategori: `pemegang`, `orang`, `redflag`, `valuasi`, `fakta` (dipakai panel detail).
 

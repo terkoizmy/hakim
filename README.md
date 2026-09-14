@@ -40,7 +40,7 @@ Berkas tiap tahap dipancarkan **live via SSE** ke ruang sidang — proses berpik
 |---|---|
 | **Memorandum Sidang** | Memo riset terstruktur: tiap angka bersitasi endpoint Sectors, peringkat kekayaan informasi A/B/C (lapisan kejujuran soal keterbatasan data) |
 | **Debat transparan** | Proses berpikir AI diperlihatkan (jaksa vs pembela, 2 ronde), bukan black box |
-| **Audit Sumber Data** | Tiap sidang mencatat ±13 panggilan: endpoint, parameter, status cache. `hit` = 0 kredit — bisa ditunjukkan ke juri, bukan diklaim |
+| **Audit Sumber Data** | Tiap sidang mencatat ±13 panggilan: endpoint, parameter, tanggal ambil asli, dan asal payload — `hit` (sudah dibayar, 0 kredit) / `miss` (dibeli di sidang ini) / `fixture` (data contoh, 0 kredit). Bisa ditunjukkan ke juri, bukan diklaim |
 | **Jurnal + post-mortem** | Akuntabilitas: putusan lama dinilai ulang terhadap harga yang benar-benar terjadi, lewat 9 cabang evaluasi. Alat ini mempublikasikan kesalahannya sendiri |
 | **Papan Bukti Detektif** | Graf kepemilikan, jejak broker, dan benang bukti antar emiten; pemakaian LLM kedua — untuk penelusuran, bukan putusan |
 | **Analis Anti-Gorengan** | Red flag khas Indonesia (suspensi, free float mini) dari data yang tidak dimiliki framework global |
@@ -75,10 +75,8 @@ npm run dev                              # http://localhost:5173
 | `npm run dev` | Dev server (butuh backend jalan) |
 | `npm run build` | Typecheck + build produksi |
 | `npm run typecheck` | `tsc -b` |
-| `npm run mock:check` | Validasi berkas mock terhadap kontrak |
-| `npm run mock:e2e` | Replay alur mock end-to-end |
 
-**Demo tanpa backend:** set `VITE_USE_MOCK=1`, lalu `npm run dev` — seluruh alur sidang direplay dari fixture, tidak perlu Python maupun API key. Rincian variabel di [`frontend/README.md`](frontend/README.md).
+Frontend adalah klien tipis: ia butuh backend jalan, tapi backend itu bisa dijalankan di mode `fixture` sehingga demo penuh berjalan **tanpa kredit Sectors dan tanpa jaringan**. Rincian di [`frontend/README.md`](frontend/README.md).
 
 ### Tes
 

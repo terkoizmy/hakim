@@ -205,10 +205,14 @@ Rekomendasi tiga ticker, masing-masing punya pekerjaan naratif:
 
 - **Chrome**, viewport 1440×900, ekspor 1080p. Jangan Edge.
 - Rekam narasi terpisah (mic terpisah dari screen recording), tempel di edit.
-- Perhatikan pil mode data: `LIVE` vs `DEMO`. Rekaman yang jujur itu baik, tapi untuk
-  penjurian lebih kuat kalau `LIVE`. Tentukan sadar, jangan tak sengaja.
-  **Kalau memakai memo `DEMO`, jangan sorot kolom cache** — di mode itu `miss`
-  berarti gratis, padahal tooltip-nya bilang "kredit terpakai" (Lampiran B.3).
+- Perhatikan pil mode sidang di bilah perkara: ia muncul hanya kalau backend
+  melaporkan `mode=fixture`. Untuk penjurian lebih kuat kalau tidak muncul (artinya
+  sidang live), tapi rekaman yang jujur tidak masalah — tentukan sadar, jangan
+  tak sengaja. Pil itu kini diturunkan dari mode sidang **yang sebenarnya**
+  dilaporkan backend, bukan dari konfigurasi frontend, jadi ia tidak bisa lagi
+  bertentangan dengan isi memo (dulu ini bug — Lampiran B.3).
+- Kolom cache di tabel Sumber Data kini jujur di ketiga mode (`hit` / `miss` /
+  `fixture`), jadi ia boleh disorot di rekaman mana pun.
 - Antarmuka kini dwi-bahasa (default Inggris). Putuskan **satu bahasa untuk mayoritas
   video** — kalau narasinya Indonesia, rekam UI dalam mode ID, lalu sisipkan 3 detik
   perpindahan ke EN sebagai bukti fitur. Mencampur keduanya sepanjang video membingungkan.
@@ -269,38 +273,74 @@ Keduanya ticker-free, sudah dibayar sidang sebelumnya, dan tersedia. Jadi `2/11`
 bukan tanda cache gagal — cache bekerja **tepat** pada dua endpoint yang memang
 bisa dibagi, dan tidak bisa bekerja pada sebelas yang memang khas emiten.
 
-### B.3 Kalau memo yang Anda lihat mode DEMO, labelnya salah
+### B.3 DIPERBAIKI: mode fixture kini berlabel `fixture`
 
-Ini temuan yang paling penting untuk demo, dan mudah direproduksi: memo `BBCA`
-mode `fixture` menampilkan **`2 / 11` yang identik** — padahal mode fixture
-**tidak menghubungi Sectors sama sekali dan tidak menghabiskan kredit apa pun**.
+Dulu memo mode `fixture` menampilkan tabel audit yang **identik** dengan mode
+live — padahal mode fixture **tidak menghubungi Sectors sama sekali dan tidak
+menghabiskan kredit apa pun**. Sebabnya `client.py`: setelah membaca fixture,
+responsnya tetap ditandai `cache="miss"`, dan tooltip kolom itu berbunyi
+*"Diambil langsung dari API Sectors — kredit terpakai"*.
 
-Sebabnya `client.py:187`: setelah membaca fixture, responsnya tetap ditandai
-`cache="miss"`. Lalu tooltip kolom itu berbunyi *"Diambil langsung dari API
-Sectors — kredit terpakai"*. Di mode DEMO kalimat itu tidak benar untuk
-kesebelas baris.
+Sekarang labelnya tiga nilai dan ketiganya jujur:
 
-Konsekuensi praktis: **rekam video judging dalam mode `LIVE`**, atau kalau
-memang memakai memo DEMO, jangan menyorot kolom cache sebagai bukti disiplin
-kredit. Jangan sampai juri melihat "kredit terpakai" di memo yang kreditnya nol.
+| Label | Arti |
+|---|---|
+| `hit` | payload sudah pernah dibayar — cache lokal (TTL 7 hari) atau arsip permanen |
+| `miss` | **dibeli dari Sectors saat sidang ini** — kredit terpakai |
+| `fixture` | data contoh mode demo — tanpa jaringan, 0 kredit |
 
-### B.4 TEMUAN: 22 dari 243 kredit (9%) dibayar untuk payload yang identik
+Badge di ruang sidang dan pil mode di bilah perkara ikut memakai kosakata yang
+sama, dan pil mode diturunkan dari `mode` yang **dilaporkan backend** — bukan
+dari konfigurasi frontend — sehingga tidak mungkin lagi bertentangan dengan isi
+memo. Diuji di `tests/test_api.py` (`tc["cache"] == "fixture"` untuk tiap baris)
+dan `tests/test_memo_cites.py` (`test_fixture_trial_never_claims_credits`).
 
-`cache_key` memasang simbol ke dalam kunci **meski responsnya tidak bergantung
-simbol** (`key = suspensions:ABBA:symbol=ABBA`). Akibatnya data pasar-luas yang
-sama dibeli ulang setiap kali ada emiten baru. Dari arsip:
+### B.4 DIKOREKSI: 24 kredit terbuang — semuanya untuk hasil yang KOSONG
 
-| Endpoint | Diambil | Payload unik | Kredit terbuang |
-|---|---|---|---|
-| `suspensions` | 11× | **1** | **10** |
-| `screener` | 17× | 10 | 7 |
-| `filings` | 11× | 6 | 5 |
-| | | | **22** |
+> **Koreksi.** Versi pertama lampiran ini mengklaim *"22 dari 243 kredit (9%)
+> dibayar untuk payload yang identik"* dan menuduh `cache_key` membeli ulang
+> data pasar-luas yang sama. **Klaim itu ditarik.** Setelah payload-nya dibuka
+> satu per satu, kesamaan hash itu bukan tanda data pasar-luas dibeli ulang —
+> melainkan tanda **responsnya kosong**, sehingga semua kosong itu memang
+> identik. Menghapus simbol dari `cache_key` tidak akan menghemat apa pun di
+> sini; yang bocor adalah panggilan yang memang tidak pernah mengembalikan baris.
 
-`suspensions` adalah kasus terjelas: **11 kredit, 1 payload** — hash-nya sama
-persis untuk ABBA, BBRI, ACES, BBCA, ACST, ARTO, TLKM, GOTO, AALI, AADI, AGRO.
-Kesebelasnya terbukti pembelian nyata (kolom `credits` = 1 di setiap baris,
-`fetched_at` tersebar 9–14 Sep), bukan fixture.
+Angka yang benar, dari `api_archive` (bukan dari `cache`), per 15 Sep 2026:
+
+| Endpoint | Baris | Payload unik | Kredit terbuang | Isi baris kembar |
+|---|---|---|---|---|
+| `suspensions` | 12 | **1** | **11** | `results: []`, `total_count: 0` |
+| `screener` | 18 | 10 | 8 | semua kembar = `where=symbol in ['X']`, `results: []` |
+| `filings` | 12 | 7 | 5 | semua kembar = `results: []` |
+| | | | **24** | |
+
+`screener` 12 baris sisanya **unik dan berisi**: itu paginasi seluruh pasar
+(`limit=200`, offset 0–800, dengan/tanpa `include_query_values`) yang dipakai
+membangun registri emiten. Jadi kredit itu tidak terbuang.
+
+**Temuan sebenarnya lebih tajam daripada klaim lama**, dan ini yang perlu
+diselidiki: ketiga endpoint itu dipanggil **per emiten**, dan ketiganya
+mengembalikan nol baris untuk **setiap** emiten.
+
+Kasus `screener` sebabnya sudah pasti, dan bukti ada di repo sendiri:
+`client.py:662` — kode yang memvalidasi ticker — sudah menulis komentarnya
+sendiri, *"The API stores symbols with the .JK suffix (e.g. `BBRI.JK`)"*, dan
+karena itu ia mencari `['{sym}','{sym}.JK']`. Arsip mengonfirmasi: baris
+pasar-luas mengembalikan `"symbol": "CASS.JK"`. Sedangkan `analysts.py:105`
+mencari `where=symbol in ['{ctx.ticker}']` — **tanpa bentuk `.JK`** — sehingga
+tidak pernah cocok. Perbaikannya satu baris.
+
+Kasus `suspensions` belum pasti: 12 dari 12 baris kosong (ABBA, BBRI, ACES,
+BBCA, ACST, ARTO, TLKM, GOTO, AALI, AADI, AGRO), yang mencurigakan untuk emiten
+seperti ACST/ARTO/GOTO. Penyebabnya bisa konvensi `.JK` yang sama, bisa nama
+parameter yang berbeda. Memastikannya butuh satu panggilan hidup, jadi belum
+dilakukan.
+
+**Konsekuensi untuk klaim produk:** analis Anti-Gorengan saat ini menyumbang
+**nol fakta** ke setiap memo di mode live — dan itu termasuk pemeriksaan
+suspensi, yang justru diferensiasi yang kita jual (`README.md`, "red flag khas
+Indonesia"). Di mode fixture ia tampak bekerja normal, karena fixture-nya
+berisi. Ini prioritas tertinggi yang masih terbuka.
 
 ### B.5 TEMUAN: kolom Param tidak selalu jujur
 
@@ -310,9 +350,9 @@ mengonfirmasi: **11 baris `foreign_flow`, `params` kosong**. Jadi kolom Param
 menampilkan parameter yang tidak pernah dikirim. Kuncinya pun
 `foreign_flow:AADI`, tanpa periode.
 
-### B.6 TEMUAN: kolom "Diambil" menunjukkan waktu sidang, bukan waktu data diambil
+### B.6 DIPERBAIKI: kolom "Diambil" kini tanggal payload diambil
 
-`ToolCall` tidak membawa `fetched_at` dari `SectorsResponse`, jadi kolom
+Dulu `ToolCall` tidak membawa `fetched_at` dari `SectorsResponse`, jadi kolom
 "Diambil" selalu diisi `now_iso()` saat sidang berjalan. Bukti dari AADI:
 
 ```
@@ -321,27 +361,33 @@ arsip  top_movers:…                 fetched_at   = 2026-09-09 20:55 waktu loka
 ```
 
 Payload itu **lima hari lebih tua** daripada tanggal yang tertulis di memo.
-`CONTRACT.md` sudah benar untuk Papan Bukti (`retrievedAt` = tanggal ambil
-asli) — tabel Sumber Data di memo belum ikut.
 
-### B.7 Perbaikan yang disarankan
+Sekarang `ToolCall` membawa `fetched_at` dari respons, dan `Citation` mewarisi
+pasangan `(cache, retrieved_at)` dari endpoint yang benar-benar menjadi sumber
+fakta — bukan lagi `created_at` memo, dan bukan lagi "hit kalau ada satu
+endpoint yang hit". Kalau tanggalnya tidak diketahui, baris itu jatuh kembali
+ke waktu sidang (dan itu satu-satunya nilai yang jujur). `SectorsResponse.
+fetched_at` adalah **tanggal ISO** (`YYYY-MM-DD`), jadi frontend memformatnya
+sebagai tanggal, bukan tanggal-waktu. Diuji di
+`tests/test_memo_cites.py::test_citations_inherit_the_real_fetch_date_and_cache_label`.
 
-Belum satupun dikerjakan — menunggu keputusan Anda, dan **tidak ada perubahan
-backend** dalam scope saat ini.
+### B.7 Status perbaikan
 
-1. Turunkan simbol dari `cache_key` untuk endpoint pasar-luas (`suspensions`,
-   `listed_companies`, `filings` bila memang tidak bergantung simbol).
-   Menghemat ~22 kredit per 11 emiten.
-2. Bedakan label `fixture` dari `miss` supaya mode DEMO tidak mengaku
-   menghabiskan kredit.
-3. Teruskan `fetched_at` ke `ToolCall` agar kolom "Diambil" jujur.
-4. Rapikan tooltip `hit`: sekarang berbunyi *"tersimpan di cache lokal (7 hari)"*,
-   padahal `hit` juga dilayani dari arsip permanen yang **tanpa TTL** dan bisa
-   jauh lebih tua dari 7 hari.
+| # | Temuan | Status |
+|---|---|---|
+| B.3 | Label `fixture` dibedakan dari `miss` | **selesai** |
+| B.6 | `fetched_at` diteruskan ke `ToolCall` + sitasi | **selesai** |
+| B.4 | Panggilan per-emiten mengembalikan 0 baris (screener `.JK`, suspensions) | **terbuka** — prioritas tertinggi |
+| B.5 | Kolom Param menampilkan `period=30d` yang tidak pernah dikirim | **terbuka** |
+| — | Tooltip `hit`: berbunyi *"cache lokal (7 hari)"*, padahal `hit` juga dilayani arsip permanen **tanpa TTL** | **selesai** |
 
-Poin 1 dan 2 justru bahan video yang kuat: *"kami menemukan kebocoran kredit —
-dan label yang salah — di alat kami sendiri, lewat audit yang kami bangun."*
-Itu bukti kedalaman teknis, bukan klaim.
+B.4 dan B.5 sengaja tidak dikerjakan: keduanya menyentuh perilaku panggilan API
+dan butuh panggilan hidup untuk diverifikasi, jadi menunggu keputusan.
+
+Yang sudah dikerjakan pun bahan video yang kuat: *"kami menemukan label yang
+salah dan tanggal yang menyesatkan di alat kami sendiri, lewat audit yang kami
+bangun — lalu kami perbaiki di depan Anda."* Itu bukti kedalaman teknis, bukan
+klaim.
 
 
 ---

@@ -319,3 +319,45 @@ Dari catatan sebelumnya — diprioritaskan setelah Papan Bukti:
   multiline/stdin piped — tulis script ke `$TEMP` dulu.
 - Test harus hermetic: `ollama_api_key=""` di fixture test (backend/.env berisi key asli).
 - API key hanya di `.env`, tidak pernah di-commit; jangan pernah mencetak nilainya.
+
+---
+
+## 6. Temuan audit provenance (2026-09-15) — status
+
+Dari audit tabel "Sumber Data" di memo AADI (`tr_f38a2b2626f8`, mode `live`).
+Rincian lengkap + angka mentahnya di `docs/SUBMISSION.md` Lampiran B.
+
+**Selesai:**
+- Label `cache` jadi tiga nilai (`hit` / `miss` / `fixture`). Mode fixture dulu
+  melabeli tiap barisnya `miss` — artinya memo demo mengaku menghabiskan kredit
+  yang tidak pernah dipakai. (CONTRACT 1.7.0)
+- `retrieved_at` kini tanggal payload BENAR-BENAR diambil, bukan `now_iso()` saat
+  sidang berjalan; `Citation` mewarisi pasangan `(cache, retrieved_at)` dari
+  endpoint sumber faktanya, bukan `created_at` memo.
+- Pil mode di ruang sidang diturunkan dari `mode` yang dilaporkan backend, bukan
+  dari konfigurasi frontend — tidak bisa lagi bertentangan dengan isi memo.
+
+**Terbuka, prioritas tertinggi — `analysts.py:105`:**
+`screener(where=f"symbol in ['{ctx.ticker}']")` **tidak pernah cocok**. Screener
+menyimpan simbol dengan sufiks `.JK` (`"CASS.JK"`) — `client.py:662` sudah
+menuliskan itu di komentarnya sendiri dan karena itu mencari `['{sym}','{sym}.JK']`,
+tapi pemanggilan analis Anti-Gorengan tidak. Akibatnya analis itu menyumbang
+**nol fakta** ke setiap memo di mode live, termasuk pemeriksaan suspensi yang
+justru diferensiasi yang kita jual. Fixture menyembunyikannya karena fixture-nya
+berisi. Perbaikannya satu baris.
+
+**Terbuka, perlu 1 panggilan hidup untuk memastikan:**
+`/v2/suspensions/?symbol=<X>` mengembalikan `results: []` untuk **12 dari 12**
+emiten yang terarsip (ABBA, BBRI, ACES, BBCA, ACST, ARTO, TLKM, GOTO, AALI,
+AADI, AGRO) — mencurigakan untuk ACST/ARTO/GOTO. Penyebabnya bisa konvensi `.JK`
+yang sama, bisa nama parameter yang berbeda. 11 kredit terbuang di sana.
+
+**Terbuka, kosmetik:**
+Kolom Param menampilkan `period=30d` untuk `foreign-flow`, padahal klien
+mengirim `{}` tanpa parameter (arsip: 11 baris `foreign_flow`, `params` kosong).
+
+**Catatan koreksi:** klaim awal "22 dari 243 kredit dibayar untuk payload
+identik" **ditarik**. Setelah payload dibuka, kesamaan hash itu bukan tanda data
+pasar-luas dibeli ulang — melainkan tanda responsnya **kosong**, sehingga semua
+yang kosong memang identik. Menghapus simbol dari `cache_key` tidak menghemat
+apa pun; yang bocor adalah panggilan yang tidak pernah mengembalikan baris.
