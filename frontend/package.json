@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b",
-    "mock:check": "node scripts/validate-mock.mjs",
-    "mock:e2e": "node scripts/mock-replay-test.mjs"
+    "typecheck": "tsc -b"
   },
   "dependencies": {
     "@xyflow/react": "^12.4.4",

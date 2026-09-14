@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import type { CacheStatus, MemoJSON, TrialMode, VerdictCategory } from '../types/contract';
-import { formatDate, formatDateTime, formatValue } from '../utils/format';
+import { formatDate, formatDateTime, formatStamp, formatValue } from '../utils/format';
 import { renderRich, useLabels, useLang } from '../i18n';
 import type { DictKey } from '../i18n/dict';
 import { Markdown } from '../utils/md';
@@ -146,6 +146,7 @@ export function MemoView({ memo }: { memo: MemoJSON }) {
   const { t } = useLang();
   const verdict = memo.verdict;
   const factsById = keyFactsById(memo);
+  const audit = auditRowsOf(memo);
   // Label polos untuk teks salin/tempel dan kalimat biasa; versi berpenekanan
   // (`verdictDoc`) hanya untuk judul, karena renderRich menghasilkan ReactNode.
   const vLabel = labels.verdict[verdict.category];
@@ -423,9 +424,11 @@ ${t('memo.copy.footer')}`;
               kicker={t('memo.section.audit.kicker')}
               title={t('memo.section.audit.title')}
               note={
-                memo.tool_calls?.length
-                  ? t('memo.section.audit.noteReal')
-                  : t('memo.section.audit.noteFallback')
+                audit.some((r) => r.cache === 'fixture')
+                  ? t('memo.section.audit.noteFixture')
+                  : memo.tool_calls?.length
+                    ? t('memo.section.audit.noteReal')
+                    : t('memo.section.audit.noteFallback')
               }
             />
             <div className="overflow-hidden rounded-[14px] border border-[#3a332a] bg-bg-2">
@@ -443,14 +446,14 @@ ${t('memo.copy.footer')}`;
                   </tr>
                 </thead>
                 <tbody>
-                  {auditRowsOf(memo).map((r, i) => (
+                  {audit.map((r, i) => (
                     <tr key={`${r.endpoint}-${r.at}-${i}`} className="transition-colors hover:bg-[#1a1713]">
                       <td className={`${TD_CLS} font-mono text-[11px] text-text-3`} title={r.agent ? t('memo.audit.calledBy', { agent: labels.agent[r.agent] ?? r.agent }) : r.endpoint}>{r.endpoint}</td>
                       <td className={`${TD_CLS} break-all font-mono text-[12.5px] text-text-3`}>{r.params || '—'}</td>
-                      <td className={`${TD_CLS} font-mono text-[12.5px]`} title={r.cache === 'hit' ? t('memo.audit.cacheHitTitle') : t('memo.audit.cacheMissTitle')}>
-                        <span className={r.cache === 'hit' ? 'text-[#7fb069]' : 'text-[#c96a5a]'}>{r.cache}</span>
+                      <td className={`${TD_CLS} font-mono text-[12.5px]`} title={t(CACHE_TITLE_KEY[r.cache])}>
+                        <span className={CACHE_CLS[r.cache]}>{r.cache}</span>
                       </td>
-                      <td className={`${TD_CLS} whitespace-nowrap font-mono text-[12.5px] text-text-3`}>{formatDateTime(r.at)}</td>
+                      <td className={`${TD_CLS} whitespace-nowrap font-mono text-[12.5px] text-text-3`}>{formatStamp(r.at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -463,6 +466,7 @@ ${t('memo.copy.footer')}`;
               {renderRich(t('memo.audit.legend'), {
                 b: (children) => <span className="text-[#7fb069]">{children}</span>,
                 em: (children) => <span className="text-[#c96a5a]">{children}</span>,
+                i: (children) => <span className="text-[color:var(--cache-fixture)]">{children}</span>,
               })}
             </p>
           </section>
@@ -579,6 +583,20 @@ function auditRowsOf(memo: MemoJSON): AuditRow[] {
     at: c.retrieved_at,
   }));
 }
+
+/** Tiga asal-usul payload — warna dan keterangannya berdampingan supaya
+ *  tidak ada label yang bisa terbaca sebagai "kredit terpakai" padahal bukan. */
+const CACHE_CLS: Record<CacheStatus, string> = {
+  hit: 'text-[#7fb069]',
+  miss: 'text-[#c96a5a]',
+  fixture: 'text-[color:var(--cache-fixture)]',
+};
+
+const CACHE_TITLE_KEY: Record<CacheStatus, DictKey> = {
+  hit: 'memo.audit.cacheHitTitle',
+  miss: 'memo.audit.cacheMissTitle',
+  fixture: 'memo.audit.cacheFixtureTitle',
+};
 
 /** Badge kecil baris id (mode data / info richness) — gaya .b-mode / .b-info mock. */
 function HeadBadge({ brass, children }: { brass?: boolean; children: ReactNode }) {

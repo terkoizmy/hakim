@@ -1,5 +1,5 @@
 /**
- * Hook inti halaman sidang: menghubungkan stream (SSE nyata / replay mock),
+ * Hook inti halaman sidang: menghubungkan stream SSE backend,
  * menurunkan event ke reducer, menangani reconnect dengan backoff exponential
  * dan resume via seq terakhir (Last-Event-ID), lalu menyatakan terminal ketika
  * memo_ready / trial_failed diterima.

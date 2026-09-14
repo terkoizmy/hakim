@@ -7,11 +7,6 @@ import type { enE } from './en.e';
  * Indonesia tidak berubah tampilannya.
  */
 export const idE = {
-  // -- pesan galat mock ------------------------------------------------------
-  'mockErr.tickerUnknown': 'Ticker tidak dikenal',
-  'mockErr.memoNotReady': 'Memorandum belum siap',
-  'mockErr.postmortemMissing': 'Post-mortem tidak ditemukan',
-
   // -- kepala halaman --------------------------------------------------------
   'board.header.kicker': 'Analisis lanjutan',
   'board.header.crumb': 'Papan Bukti Detektif',

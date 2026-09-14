@@ -2,55 +2,53 @@
 
 Panel sidang interaktif untuk **SIDANG** (stock court berbasis agen): 5 analis menggali bukti dari Sectors API → jaksa (bear) vs pembela (bull) berdebat 2 ronde → hakim menulis memorandum riset.
 
+Frontend ini adalah klien tipis: seluruh data — termasuk memo, papan bukti, dan balasan chat — datang dari backend lewat REST + SSE. Tidak ada data contoh yang ditanam di sisi frontend.
+
 ## Menjalankan
+
+Backend harus jalan lebih dulu (lihat `../backend/README.md`), lalu:
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173 (Vite)
 ```
 
-### Mode Mock vs Live
-
-- **Mock (default jalan tanpa backend):** set `VITE_USE_MOCK=1`. Replay alur `src/mocks/stream-BBCA.jsonl` lewat SSE palsu, feed REST palsu, dan jurnal/post-mortem fixture. Cocok untuk demo & development frontend.
-- **Live (backend):** biarkan `VITE_USE_MOCK` kosong, set `VITE_API_BASE` ke root backend (default `http://localhost:8000`).
-
-Contoh berkas: salin `.env.example` → `.env.local`, lalu ubah nilainya.
+Contoh berkas env: salin `.env.example` → `.env.local`.
 
 | Variabel | Default | Keterangan |
 | --- | --- | --- |
 | `VITE_API_BASE` | `http://localhost:8000` | Root API backend (REST + SSE). |
-| `VITE_USE_MOCK` | — | `1` = pakai mock SSE/REST. |
-| `VITE_MOCK_SPEED` | `1` | Faktor laju replay mock (`2` = 2× lebih cepat). |
-| `VITE_MOCK_DROP_ONCE` | — | `1` = simulasikan sekali koneksi putus saat replay (uji reconnect). |
-| `VITE_MOCK_SKIP_FILLER_MS` | `900` | Jeda maksimum antar-event mock dalam milidetik. |
+
+Untuk menjalankan sidang di atas data contoh tanpa memakai kredit Sectors, set `SECTORS_MODE=fixture` di backend — bukan di frontend. Frontend membaca mode yang **sebenarnya** dari payload `trial_started` dan menampilkan penanda `fixture` di bilah perkara.
 
 ## Perintah
 
 ```bash
 npm run build       # tsc -b && vite build
 npm run typecheck   # tsc -b (tanpa bundle)
-npm run mock:check  # validasi seluruh alur JSONL mock
-npm run mock:e2e    # uji alur mock end-to-end (Vite SSR, tanpa browser)
 npm run preview     # serve hasil build
 ```
+
+`typecheck` adalah pengaman utama proyek ini: kamus Indonesia ditulis `satisfies typeof en`, jadi satu kunci terjemahan yang kurang langsung menggagalkan build.
 
 ## Struktur
 
 ```
 src/
-  api/          StreamClient (sse.ts) + mock (mockSse.ts, mockRest.ts, mockData.ts, mockStore.ts)
-  mocks/        stream-BBCA.jsonl + fixture jurnal & post-mortem (journal.ts)
+  api/          StreamClient (sse.ts) + RestClient (rest.ts) — HTTP/SSE nyata ke backend
+  i18n/         LangProvider, useLang(), t(), renderRich(), dict/ (en kanonik + id), format.ts
   state/        trialReducer — event SSE → state UI
-  hooks/        useTrialStream — koneksi, reconnect (backoff), resume
-  pages/        Home, Courtroom, Memo, Journal, Postmortem, NotFound
-  components/   AppShell, icons
+  hooks/        useTrialStream — koneksi, reconnect (backoff), resume via Last-Event-ID
+  pages/        Home, Dashboard, Courtroom, Memo, Journal, Postmortem, TickerDetail,
+                DetectiveBoard, NotFound
+  components/   AppShell, icons, PriceChart, InfoBadge, VerdictBadge
   styles/       tokens.css (desain token) · base.css (primitif) · app.css (halaman)
-  types/        contract.ts — transkripsi 1 : 1 CONTRACT.md
+  types/        contract.ts — transkripsi 1 : 1 CONTRACT.md · board.ts — tipe papan bukti
 ```
 
 ## Catatan
 
-- UI berbahasa Indonesia; tema "ruang sidang" gelap dengan aksen kuningan (brass).
-- `StreamClient` punya antarmuka identik untuk live & mock — UI tidak peduli sumber data.
-- Mock `memo_ready` menulis memo ke `mockStore` agar halaman `/memo/:trialId` & jurnal dapat mengakses lintas rute.
+- **Dwi-bahasa, default Inggris.** Saklar `ID | EN` di header; pilihan disimpan di `localStorage` (`sidang.lang`). Yang diterjemahkan hanya chrome UI — putusan, argumen, ringkasan analis, dan balasan chat tetap Bahasa Indonesia karena dihasilkan backend. Panel chat papan mencantumkan keterangan kecil soal ini.
+- Tema "ruang sidang" gelap dengan aksen kuningan (brass).
+- `StreamClient`/`RestClient` adalah satu-satunya pintu ke backend; halaman tidak pernah tahu bagaimana datanya diambil.
 - Hanya boleh menulis di bawah `frontend/` — backend & `docs/` dipegang orkestrator.

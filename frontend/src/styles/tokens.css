@@ -54,9 +54,10 @@
   --rich-b: var(--brass-400);
   --rich-c: var(--prosecute-400);
 
-  /* --- Cache hit / miss --- */
+  /* --- Cache hit / miss / fixture --- */
   --cache-hit: #7fb069;
   --cache-miss: #d9a441;
+  --cache-fixture: #8a94a6;   /* netral: data contoh, bukan kredit, bukan cache */
 
   /* --- Teks (putih hangat) --- */
   --text-0: #ece7dd;         /* primer */

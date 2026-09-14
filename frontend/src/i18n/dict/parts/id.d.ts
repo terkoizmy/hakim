@@ -20,6 +20,7 @@ export const idD = {
   'courtroom.stats.analysts': 'Analis',
   'courtroom.stats.analystsOf': '/ {total} selesai',
   'courtroom.stats.data': 'Data',
+  'courtroom.stats.dataFixture': 'contoh',
   'courtroom.stats.duration': 'Durasi',
   'courtroom.stats.minutes': 'menit',
 
@@ -38,6 +39,20 @@ export const idD = {
   'courtroom.analyst.showLess': 'Tampilkan lebih sedikit',
   'courtroom.analyst.summary': 'Ringkasan — <b>{n} bukti</b>',
   'courtroom.analyst.readSummary': 'Baca kesimpulan',
+
+  // -- label asal-usul payload (badge cache) ---------------------------------
+  'courtroom.cache.hit': 'cache hit',
+  'courtroom.cache.miss': 'baru',
+  'courtroom.cache.fixture': 'contoh',
+  'courtroom.cache.fixtureTitle':
+    'Data contoh mode demo (berkas bawaan) — tanpa panggilan jaringan, 0 kredit',
+
+  // -- penanda mode sidang ---------------------------------------------------
+  // Menggantikan badge DEMO/LIVE lama: dulu ditentukan konfigurasi frontend,
+  // sekarang dari `mode` sidang yang dilaporkan backend.
+  'courtroom.mode.fixture': 'fixture',
+  'courtroom.mode.fixtureTitle':
+    'Sidang ini berjalan di atas data contoh (mode fixture backend) — tanpa panggilan jaringan Sectors, 0 kredit',
 
   // -- baris bukti -----------------------------------------------------------
   'courtroom.evidence.expand': 'Buka detail bukti',

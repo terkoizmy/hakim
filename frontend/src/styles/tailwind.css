@@ -285,6 +285,11 @@
     background: rgba(217, 164, 65, 0.12);
     border-color: rgba(217, 164, 65, 0.34);
   }
+  .badge-cache-fixture {
+    color: var(--cache-fixture);
+    background: rgba(138, 148, 166, 0.1);
+    border-color: rgba(138, 148, 166, 0.3);
+  }
 
   .rich-a {
     color: var(--rich-a);

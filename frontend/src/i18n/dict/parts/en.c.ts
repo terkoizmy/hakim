@@ -169,18 +169,22 @@ export const enC = {
   'memo.section.audit.title': 'Data Sources',
   'memo.section.audit.noteReal': 'Real Sectors calls · cache',
   'memo.section.audit.noteFallback': 'Sectors endpoints · cache',
+  'memo.section.audit.noteFixture': 'Demo mode · bundled sample data · 0 credits',
   'memo.audit.table.endpoint': 'Endpoint',
   'memo.audit.table.param': 'Param',
   'memo.audit.table.cache': 'Cache',
   'memo.audit.table.retrieved': 'Retrieved',
   'memo.audit.calledBy': 'called by {agent}',
-  'memo.audit.cacheHitTitle': 'Data still in the local cache (7 days) — 0 credits',
+  'memo.audit.cacheHitTitle':
+    'Already paid for — local cache (7-day TTL) or the permanent archive — 0 credits',
   'memo.audit.cacheMissTitle': 'Fetched straight from the Sectors API — credits used',
-  // `hit`/`miss` sengaja tetap literal — itu istilah teknis dari API dan
-  // pasangan istilahnya dipakai di sel tabel di atasnya. Penanda `<b>`/`<em>`
-  // di sini hanya kait warna, bukan penekanan.
+  'memo.audit.cacheFixtureTitle':
+    'Sample data from demo mode (bundled file) — no network call, 0 credits',
+  // `hit`/`miss`/`fixture` sengaja tetap literal — itu istilah dari API dan
+  // pasangan istilahnya dipakai di sel tabel di atasnya. Penanda
+  // `<b>`/`<em>`/`<i>` di sini hanya kait warna, bukan penekanan.
   'memo.audit.legend':
-    '<b>hit</b> = data from the local cache (7-day TTL, 0 credits) · <em>miss</em> = fetched straight from the Sectors API (credits used). The first trial of a ticker is almost entirely misses — the cache saves credits on shared endpoints (indices, top-changes, issuer list).',
+    '<b>hit</b> = already paid for — local cache (7-day TTL) or permanent archive, 0 credits · <em>miss</em> = fetched straight from the Sectors API (credits used) · <i>fixture</i> = demo sample data, 0 credits. The first trial of a ticker is almost entirely misses — the cache saves credits on shared endpoints (indices, top-changes, issuer list).',
 
   // -- memorandum: tabel fakta kunci ----------------------------------------
   'memo.facts.empty': 'No key facts on record.',

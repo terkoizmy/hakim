@@ -24,8 +24,6 @@ const idCore = {
   'nav.cta': 'Berkas Perkara',
   'nav.langLabel': 'Bahasa',
   'nav.langSwitchTo': 'Tampilkan antarmuka dalam {lang}',
-  'nav.badgeFixture': 'Data fixture — tidak memakai kredit API',
-  'nav.badgeLive': 'Terhubung ke data Sectors',
   'nav.disclaimer':
     '<b>Disclaimer GLOBAL No. 10.</b> SIDANG adalah alat bantu riset, bukan rekomendasi investasi. Seluruh putusan, kategori, dan konfidensi merupakan hasil analisis otomatis dari data arsip dan tidak menjamin akurasi prediksi. Harga yang tampil hanya berasal dari arsip sidang — <em>tidak ada harga real-time</em>. Keputusan investasi sepenuhnya tanggung jawab Anda.',
 

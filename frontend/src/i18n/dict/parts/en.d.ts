@@ -25,6 +25,7 @@ export const enD = {
   'courtroom.stats.analysts': 'Analysts',
   'courtroom.stats.analystsOf': '/ {total} done',
   'courtroom.stats.data': 'Data',
+  'courtroom.stats.dataFixture': 'fixture',
   'courtroom.stats.duration': 'Duration',
   'courtroom.stats.minutes': 'min',
 
@@ -44,6 +45,23 @@ export const enD = {
   'courtroom.analyst.showLess': 'Show less',
   'courtroom.analyst.summary': 'Summary — <b>{n} evidence</b>',
   'courtroom.analyst.readSummary': 'Read the summary',
+
+  // -- label asal-usul payload (badge cache) ---------------------------------
+  // Istilah `hit`/`miss`/`fixture` tetap literal: itu istilah teknis API dan
+  // pasangan istilahnya muncul di kolom tabel audit memo.
+  'courtroom.cache.hit': 'cache hit',
+  'courtroom.cache.miss': 'fresh',
+  'courtroom.cache.fixture': 'fixture',
+  'courtroom.cache.fixtureTitle':
+    'Sample data from demo mode (bundled file) — no network call, 0 credits',
+
+  // -- penanda mode sidang ---------------------------------------------------
+  // Menggantikan badge DEMO/LIVE lama: dulu ditentukan konfigurasi frontend,
+  // sekarang dari `mode` sidang yang dilaporkan backend — jadi labelnya tidak
+  // pernah bertentangan dengan isi memo.
+  'courtroom.mode.fixture': 'fixture',
+  'courtroom.mode.fixtureTitle':
+    'This trial runs on sample data (backend fixture mode) — no Sectors network call, 0 credits',
 
   // -- baris bukti -----------------------------------------------------------
   'courtroom.evidence.expand': 'Open evidence details',

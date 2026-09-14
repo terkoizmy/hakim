@@ -78,7 +78,12 @@ export interface AgentStartedPayload {
   model: string;
 }
 
-export type CacheStatus = 'hit' | 'miss';
+/** Asal-usul satu payload Sectors.
+ *  `hit`     = sudah pernah dibayar (cache lokal masih berlaku / arsip permanen)
+ *  `miss`    = dibeli dari Sectors saat sidang ini — kredit terpakai
+ *  `fixture` = data contoh mode demo — tanpa jaringan, tanpa kredit
+ */
+export type CacheStatus = 'hit' | 'miss' | 'fixture';
 
 export interface AgentToolCallPayload {
   agent_id: string;

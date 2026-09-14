@@ -1,6 +1,5 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { GavelIcon, RadioIcon } from './icons';
-import { isMockMode } from '../api';
+import { GavelIcon } from './icons';
 import { LANGS, LANG_LABEL, LANG_NAME, renderRich, useLang } from '../i18n';
 
 /** Cincin fokus bersama. Sebelumnya tidak ada indikator fokus sama sekali —
@@ -82,17 +81,6 @@ export default function AppShell() {
               })}
             </div>
 
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-pill px-[11px] py-[5px] font-mono text-[11px] tracking-[0.03em] ${
-                isMockMode
-                  ? 'border border-brass-700 bg-[rgba(201,162,74,0.06)] text-brass-400'
-                  : 'border border-[rgba(127,176,105,0.4)] bg-[rgba(127,176,105,0.06)] text-defend-400'
-              }`}
-              title={isMockMode ? t('nav.badgeFixture') : t('nav.badgeLive')}
-            >
-              <RadioIcon size={12} />
-              {isMockMode ? 'DEMO' : 'LIVE'}
-            </span>
             <Link
               to="/dashboard"
               className={`hidden rounded-pill border border-brass-700 px-4 py-2 font-mono text-[12px] tracking-[0.04em] text-brass-400 transition-colors duration-200 hover:border-brass-500 hover:bg-brass-500 hover:text-bg-1 sm:inline-block ${FOCUS}`}

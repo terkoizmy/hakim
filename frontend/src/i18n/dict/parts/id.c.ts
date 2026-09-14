@@ -155,15 +155,19 @@ export const idC = {
   'memo.section.audit.title': 'Sumber Data',
   'memo.section.audit.noteReal': 'Panggilan Sectors nyata · cache',
   'memo.section.audit.noteFallback': 'Endpoint Sectors · cache',
+  'memo.section.audit.noteFixture': 'Mode demo · data contoh bawaan · 0 kredit',
   'memo.audit.table.endpoint': 'Endpoint',
   'memo.audit.table.param': 'Param',
   'memo.audit.table.cache': 'Cache',
   'memo.audit.table.retrieved': 'Diambil',
   'memo.audit.calledBy': 'dipanggil oleh {agent}',
-  'memo.audit.cacheHitTitle': 'Data masih tersimpan di cache lokal (7 hari) — 0 kredit',
+  'memo.audit.cacheHitTitle':
+    'Sudah pernah dibayar — cache lokal (TTL 7 hari) atau arsip permanen — 0 kredit',
   'memo.audit.cacheMissTitle': 'Diambil langsung dari API Sectors — kredit terpakai',
+  'memo.audit.cacheFixtureTitle':
+    'Data contoh mode demo (berkas bawaan) — tanpa panggilan jaringan, 0 kredit',
   'memo.audit.legend':
-    '<b>hit</b> = data dari cache lokal (TTL 7 hari, 0 kredit) · <em>miss</em> = diambil langsung dari API Sectors (kredit terpakai). Sidang pertama sebuah emiten memang hampir seluruhnya miss — cache menghemat kredit pada endpoint yang dipakai bersama (indeks, top-changes, daftar emiten).',
+    '<b>hit</b> = sudah pernah dibayar — cache lokal (TTL 7 hari) atau arsip permanen, 0 kredit · <em>miss</em> = diambil langsung dari API Sectors (kredit terpakai) · <i>fixture</i> = data contoh mode demo, 0 kredit. Sidang pertama sebuah emiten memang hampir seluruhnya miss — cache menghemat kredit pada endpoint yang dipakai bersama (indeks, top-changes, daftar emiten).',
 
   // -- memorandum: tabel fakta kunci ----------------------------------------
   'memo.facts.empty': 'Tidak ada fakta kunci tercatat.',

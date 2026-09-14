@@ -1,7 +1,7 @@
 /**
- * Interface API klien frontend — implementasi nyata (SSE/REST) dan mock
- * (mockSse/mockRest) WAJIB identik. Tugas orkestrasi memilih implementasi
- * berdasarkan VITE_USE_MOCK.
+ * Interface API klien frontend — kontrak antara halaman dan lapisan transport.
+ * Hanya ada satu implementasi (SSE/REST nyata ke backend SIDANG); antarmuka ini
+ * yang menjaga halaman tidak pernah tahu bagaimana datanya diambil.
  */
 import type {
   CreateTrialResponse,
@@ -18,7 +18,7 @@ import type { BoardChatResponse } from '../types/board';
 
 export type TrialModeInput = 'auto' | 'fixture';
 
-/* ---------------- Stream (SSE / mock replay) ------------- */
+/* ---------------- Stream (SSE) ------------- */
 
 export type StreamStatus = 'connecting' | 'open' | 'closed' | 'error';
 
@@ -32,7 +32,7 @@ export interface StreamHandlers {
   onStatus: (status: StreamStatus) => void;
 }
 
-/** Satu sumber event sidang; interface identik antara sse.ts dan mockSse.ts. */
+/** Satu sumber event sidang (SSE dari backend). */
 export interface StreamClient {
   connect(trialId: string, handlers: StreamHandlers, opts?: StreamConnectOptions): () => void;
 }

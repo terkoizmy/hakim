@@ -1,5 +1,5 @@
 /**
- * Reducer pure: event SSE (atau replay mock) → state UI sidang (useReducer).
+ * Reducer pure: event SSE → state UI sidang (useReducer).
  * Dapat diuji tanpa DOM.
  */
 import type {
@@ -50,7 +50,9 @@ export interface TrialUiState {
   analysts: Record<string, AnalystUi>;
   /** Analis selesai, urut selesai → untuk indikator kemajuan. */
   completedCount: number;
-  toolCallsByCache: { hit: number; miss: number };
+  /** Asal-usul tiap panggilan data. `fixture` = data contoh mode demo (0 kredit),
+   *  jadi ia dihitung terpisah — bukan bagian dari hit/miss. */
+  toolCallsByCache: { hit: number; miss: number; fixture: number };
   debate: DebateUi[];
   /** Teks hakim yang di-streaming (memo_token). */
   memoText: string;
@@ -75,7 +77,7 @@ export const initialTrialState: TrialUiState = {
   roundsSeen: [],
   analysts: Object.fromEntries(ANALYST_IDS.map((id) => [id, initialAnalyst(id)])),
   completedCount: 0,
-  toolCallsByCache: { hit: 0, miss: 0 },
+  toolCallsByCache: { hit: 0, miss: 0, fixture: 0 },
   debate: [],
   memoText: '',
   memo: null,
@@ -139,6 +141,7 @@ export function trialReducer(state: TrialUiState, action: TrialAction): TrialUiS
         toolCallsByCache: {
           hit: state.toolCallsByCache.hit + (p.cache === 'hit' ? 1 : 0),
           miss: state.toolCallsByCache.miss + (p.cache === 'miss' ? 1 : 0),
+          fixture: state.toolCallsByCache.fixture + (p.cache === 'fixture' ? 1 : 0),
         },
       };
     }

@@ -4,6 +4,7 @@ import { useTrialStream } from '../hooks/useTrialStream';
 import {
   type AgentEvidencePayload,
   type AgentId,
+  type CacheStatus,
   type DebateSide,
   type Phase,
   type TrialErrorCode,
@@ -12,7 +13,6 @@ import { renderRich, useLabels, useLang } from '../i18n';
 import { ANALYST_META } from '../utils/analysts';
 import { Markdown } from '../utils/md';
 import { formatValue } from '../utils/format';
-import { isMockMode } from '../api';
 import type { AnalystUi, TrialUiState } from '../state/trialReducer';
 import {
   AlertIcon,
@@ -21,6 +21,7 @@ import {
   BuildingIcon,
   ChartIcon,
   DatabaseIcon,
+  FileIcon,
   FingerprintIcon,
   GavelIcon,
   RefreshIcon,
@@ -164,8 +165,16 @@ export default function CourtroomPage() {
             <div className="mt-2 flex flex-wrap items-center gap-2.5">
               {company && <span className="font-display text-[16px] text-text-2">{company}</span>}
               {stream.trial && <TrialStatusBadge streaming={streaming} error={stream.error != null} />}
-              {isMockMode && (
-                <span className="rounded-[6px] border border-line-1 px-2.5 py-[5px] font-mono text-[11.5px] text-text-2">fixture</span>
+              {stream.trial?.mode === 'fixture' && (
+                /* Ditentukan oleh mode data sidang yang SEBENARNYA (dari
+                   backend), bukan oleh konfigurasi frontend — supaya labelnya
+                   tidak pernah bertentangan dengan memo. */
+                <span
+                  className="rounded-[6px] border border-line-1 px-2.5 py-[5px] font-mono text-[11.5px] text-text-2"
+                  title={t('courtroom.mode.fixtureTitle')}
+                >
+                  {t('courtroom.mode.fixture')}
+                </span>
               )}
               <span
                 className="font-mono text-[12px] tracking-[0.5px] text-text-3"
@@ -197,9 +206,23 @@ export default function CourtroomPage() {
             <small>{t('courtroom.stats.analystsOf', { total: 5 })}</small>
           </Stat>
           <Stat label={t('courtroom.stats.data')}>
-            <span className="text-[color:var(--defend-400)]">{stream.toolCallsByCache.hit}</span>
-            <span className="text-text-2"> / </span>
-            <span className="text-prosecute-400">{stream.toolCallsByCache.miss}</span> <small>hit/miss</small>
+            {stream.toolCallsByCache.fixture > 0 ? (
+              /* Mode demo: seluruh payload dari berkas contoh — 0 kredit, jadi
+                 "0 / 0 hit/miss" hanya akan membingungkan. */
+              <>
+                <span className="text-[color:var(--cache-fixture)]">
+                  {stream.toolCallsByCache.fixture}
+                </span>{' '}
+                <small>{t('courtroom.stats.dataFixture')}</small>
+              </>
+            ) : (
+              <>
+                <span className="text-[color:var(--defend-400)]">{stream.toolCallsByCache.hit}</span>
+                <span className="text-text-2"> / </span>
+                <span className="text-prosecute-400">{stream.toolCallsByCache.miss}</span>{' '}
+                <small>hit/miss</small>
+              </>
+            )}
           </Stat>
           <Stat label={t('courtroom.stats.duration')} last>
             {mmss(elapsed)} <small>{t('courtroom.stats.minutes')}</small>
@@ -616,11 +639,27 @@ function SummaryModal({
   );
 }
 
-export function CacheBadge({ cache }: { cache: 'hit' | 'miss' }) {
-  return cache === 'hit' ? (
-    <span className="badge badge-cache-hit"><BoltIcon size={11} /> cache&thinsp;hit</span>
-  ) : (
-    <span className="badge badge-cache-miss"><RefreshIcon size={11} /> fresh</span>
+export function CacheBadge({ cache }: { cache: CacheStatus }) {
+  const { t } = useLang();
+  if (cache === 'hit') {
+    return (
+      <span className="badge badge-cache-hit">
+        <BoltIcon size={11} /> {t('courtroom.cache.hit')}
+      </span>
+    );
+  }
+  if (cache === 'fixture') {
+    // Netral, bukan hijau/merah: ini bukan cache dan bukan kredit.
+    return (
+      <span className="badge badge-cache-fixture" title={t('courtroom.cache.fixtureTitle')}>
+        <FileIcon size={11} /> {t('courtroom.cache.fixture')}
+      </span>
+    );
+  }
+  return (
+    <span className="badge badge-cache-miss">
+      <RefreshIcon size={11} /> {t('courtroom.cache.miss')}
+    </span>
   );
 }
 

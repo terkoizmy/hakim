@@ -1,7 +1,6 @@
-/** Bagian kamus: Papan Detektif (/board) dan pesan galat milik frontend
- * (api/mockRest.ts).
+/** Bagian kamus: Papan Detektif (/board).
  *
- * Kunci di sini WAJIB berprefiks `board.` atau `mockErr.`.
+ * Kunci di sini WAJIB berprefiks `board.`.
  *
  * Teks papan yang dibangun BACKEND (label simpul/sisi dari payload, balasan
  * chat) tidak masuk kamus — backend tidak berubah, jadi teks itu tetap
@@ -13,17 +12,8 @@
  *   (yang hanya berbahasa Indonesia), bukan chrome UI. Menerjemahkannya
  *   membuat percakapan campur bahasa; `board.chatNote` sudah menjelaskan
  *   bahwa jawabannya berbahasa Indonesia.
- * - `initialChat` di mockRest: itu payload tiruan backend, bukan pesan galat.
  */
 export const enE = {
-  // -- pesan galat mock (api/mockRest.ts) ------------------------------------
-  // mockRest bukan komponen React, jadi tidak bisa memakai hook `useLang()`.
-  // Pesannya diambil dari kamus ini lewat `readStoredLang()` saat galat
-  // dilempar — lihat catatan di berkasnya.
-  'mockErr.tickerUnknown': 'Unknown ticker',
-  'mockErr.memoNotReady': 'Memorandum is not ready yet',
-  'mockErr.postmortemMissing': 'Post-mortem not found',
-
   // -- kepala halaman --------------------------------------------------------
   'board.header.kicker': 'Deeper analysis',
   'board.header.crumb': 'Detective Evidence Board',

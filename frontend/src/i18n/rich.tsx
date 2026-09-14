@@ -1,13 +1,16 @@
 import { Fragment, type ReactNode } from 'react';
 
-/** Penanda penekanan di dalam string kamus: `<b>…</b>` dan `<em>…</em>`. */
-const TOKEN = /<(b|em)>([\s\S]*?)<\/\1>/g;
+/** Penanda di dalam string kamus: `<b>…</b>`, `<em>…</em>`, `<i>…</i>`.
+ *  `<i>` ada untuk kait warna ketiga (label `fixture`), bukan penekanan. */
+const TOKEN = /<(b|em|i)>([\s\S]*?)<\/\1>/g;
 
 export interface RichTags {
   /** Pembungkus `<b>`; default `<strong>`. */
   b?: (children: ReactNode) => ReactNode;
   /** Pembungkus `<em>`; default `<em>`. */
   em?: (children: ReactNode) => ReactNode;
+  /** Pembungkus `<i>`; default `<em>`. */
+  i?: (children: ReactNode) => ReactNode;
 }
 
 /**
@@ -22,8 +25,12 @@ export interface RichTags {
  * jadi teks tidak pernah hilang hanya karena salah tulis.
  */
 export function renderRich(text: string, tags: RichTags = {}): ReactNode {
-  const wrapB = tags.b ?? ((children: ReactNode) => <strong>{children}</strong>);
   const wrapEm = tags.em ?? ((children: ReactNode) => <em>{children}</em>);
+  const wrappers: Record<string, (children: ReactNode) => ReactNode> = {
+    b: tags.b ?? ((children: ReactNode) => <strong>{children}</strong>),
+    em: wrapEm,
+    i: tags.i ?? wrapEm,
+  };
   const token = new RegExp(TOKEN.source, 'g'); // regex lokal: tanpa state bersama
   const out: ReactNode[] = [];
   let last = 0;
@@ -32,7 +39,7 @@ export function renderRich(text: string, tags: RichTags = {}): ReactNode {
   for (let match = token.exec(text); match; match = token.exec(text)) {
     if (match.index > last) out.push(text.slice(last, match.index));
     const inner = match[2];
-    out.push(<Fragment key={key++}>{match[1] === 'b' ? wrapB(inner) : wrapEm(inner)}</Fragment>);
+    out.push(<Fragment key={key++}>{wrappers[match[1]](inner)}</Fragment>);
     last = match.index + match[0].length;
   }
   if (last < text.length) out.push(text.slice(last));

@@ -38,8 +38,6 @@ export const enCore = {
   'nav.cta': 'Case Files',
   'nav.langLabel': 'Language',
   'nav.langSwitchTo': 'Show the interface in {lang}',
-  'nav.badgeFixture': 'Fixture data — no API credits used',
-  'nav.badgeLive': 'Connected to Sectors data',
   'nav.disclaimer':
     '<b>Global disclaimer No. 10.</b> SIDANG is a research aid, not investment advice. Every verdict, category, and confidence score is the output of automated analysis over archived data and does not guarantee predictive accuracy. Prices shown come only from the trial archive — <em>no real-time prices</em>. Investment decisions are entirely your own responsibility.',
 

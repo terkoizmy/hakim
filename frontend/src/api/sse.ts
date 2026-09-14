@@ -4,7 +4,6 @@
  * - Dibangun di atas fetch + ReadableStream agar reconnect dapat membawa
  *   `Last-Event-ID` (resume dari `seq` terakhir) — sesuai kontrak §1.
  * - Heartbeat (±15 detik, type "heartbeat") diabaikan oleh reducer.
- * - Interface identik dengan mockSse.ts (lihat types.ts).
  */
 import type { TrialEvent } from '../types/contract';
 import type { StreamClient, StreamStatus } from './types';

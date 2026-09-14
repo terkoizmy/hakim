@@ -50,8 +50,9 @@ export interface BoardNodeData {
   cross?: boolean;
   selected?: boolean;
   retrievedAt?: string;
-  /** 'hit' = payload dari arsip cache (tanggal = kapan benar-benar diambil) */
-  cache?: 'hit' | 'miss';
+  /** 'hit' = payload dari arsip cache (tanggal = kapan benar-benar diambil);
+   *  'fixture' = data contoh mode demo (0 kredit) */
+  cache?: 'hit' | 'miss' | 'fixture';
 }
 
 export interface BoardNode {

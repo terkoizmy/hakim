@@ -110,6 +110,21 @@ export function formatDateTime(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : fmt().dateTime.format(d);
 }
 
+/** Stempel provenance: backend mengirim TANGGAL AMBIL payload (YYYY-MM-DD) untuk
+ * data Sectors dan jam kejadian (ISO lengkap) untuk hal lain. Tanggal saja
+ * ditampilkan sebagai tanggal — mencetaknya sebagai "00.00" akan mengarang jam
+ * yang tidak pernah ada. */
+export function formatStamp(iso: string): string {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.exec(iso);
+  if (dateOnly) {
+    // Dibangun sebagai tanggal LOKAL: `new Date('2026-09-09')` adalah tengah
+    // malam UTC, yang di zona barat akan mundur sehari.
+    const [y, m, d] = iso.split('-').map(Number);
+    return fmt().date.format(new Date(y, m - 1, d));
+  }
+  return formatDateTime(iso);
+}
+
 export function formatTime(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : fmt().time.format(d);
