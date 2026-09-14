@@ -23,8 +23,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.board import (
+    _EVIDENCE_TYPES,
     _chat_context,
+    _evidence_edges,
+    _evidence_targets,
     _fmt_pct,
+    _num_units,
     _pct_from_executive,
     _pct_from_registry,
     answer_board_question,
@@ -41,7 +45,7 @@ from app.sectors import SectorsClient
 
 # Kosakata graf — CONTRACT §3.2. Papan tidak boleh memakai tipe di luar ini.
 NODE_TYPES = {"emiten", "pemegang", "orang", "aliran", "redflag", "kabar", "fakta"}
-EDGE_TYPES = {"memegang", "menjabat", "aliran", "redflag", "fakta"}
+EDGE_TYPES = {"memegang", "menjabat", "aliran", "redflag", "fakta", "bukti"}
 
 PERSON_TYPES = {"pemegang", "orang"}
 
@@ -344,6 +348,148 @@ def test_center_node_reports_provenance(tmp_path):
     center = next(n for n in board.nodes if n.data.type == "emiten")
     assert center.data.retrievedAt, "node pusat tanpa tanggal pengambilan"
     assert center.data.cache in {"hit", "miss"}
+
+
+# ------------------------------------------------------- benang bukti (bukti)
+# Benang `bukti` = tuduhan (red flag) → kartu penopangnya. Aturan yang diuji:
+# rujukan harus PERSIS dan TUNGGAL; kalau ambigu atau tidak ada, benangnya TIDAK
+# digambar. Papan bukti lebih jujur tanpa benang daripada benang yang salah.
+
+
+def _nd(nid: str, ntype: str, label: str, **kw) -> BoardNode:
+    return BoardNode(
+        id=nid,
+        type=ntype,
+        position={"x": 0.0, "y": 0.0},
+        data=BoardNodeData(type=ntype, label=label, **kw),
+    )
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        # Regresi: satuan persen selalu diikuti spasi/tanda baca. Versi pertama
+        # memakai `\b` di ujung pola, dan `\b` tidak cocok di antara dua karakter
+        # non-kata ("%" lalu spasi) — akibatnya TIDAK ADA persen yang terbaca.
+        ("Konsentrasi kepemilikan 54.9% oleh satu entitas", {(54.9, "%")}),
+        ("Laba menyusut -0.1% YoY", {(-0.1, "%")}),
+        # Ambang batas dalam tanda kurung (">2x") tidak ikut: angka bulat, tanpa desimal.
+        ("Debt/Equity 2.50x (>2x)", {(2.50, "x")}),
+        ("Kepemilikan 54,9% (koma desimal)", {(54.9, "%")}),
+        # Angka bulat tanpa desimal sengaja TIDAK jadi jangkar: "1" terlalu lemah.
+        ("Terdapat 1 aksi korporasi berisiko", set()),
+        # Jumlah lembar bukan satuan yang bisa dirujuk ke kartu.
+        ("Institusi Sell: 308.546.720 lbr", set()),
+    ],
+)
+def test_num_units_requires_decimal_and_a_real_unit(text, expected):
+    assert _num_units(text) == expected
+
+
+def test_evidence_edge_links_flag_to_the_card_holding_the_same_number():
+    evidence = [
+        _nd("pemegang_dwimuria", "pemegang", "PT Dwimuria Investama Andalan", value="54.9%"),
+        _nd("fakta_pe", "fakta", "Price / Earnings", value="13.7x"),
+    ]
+    targets = _evidence_targets("Konsentrasi kepemilikan 54.9% oleh satu entitas", evidence, [])
+    assert targets == ["pemegang_dwimuria"]
+
+
+def test_evidence_edge_never_fabricates_a_support_it_cannot_find():
+    """Tuduhan tanpa kartu penopang di papan → tidak ada benang. Ini disengaja."""
+    evidence = [_nd("fakta_pe", "fakta", "Price / Earnings", value="13.7x")]
+    flag_text = "Terdapat 1 aksi korporasi berisiko (contoh stock split) yang dapat mempengaruhi struktur modal"
+    assert _evidence_targets(flag_text, evidence, []) == []
+
+
+def test_evidence_edge_skips_ambiguous_number_match():
+    """Dua kartu memuat angka yang sama → tidak ada yang boleh dipilih."""
+    evidence = [
+        _nd("kabar_dividen_1", "kabar", "Dividen", value="2.50x"),
+        _nd("kabar_dividen_2", "kabar", "Dividen", value="2.50x"),
+    ]
+    assert _evidence_targets("Rasio 2.50x menandakan beban", evidence, []) == []
+
+
+def test_evidence_edge_skips_ambiguous_label_match():
+    evidence = [
+        _nd("kabar_dividen_1", "kabar", "Dividen"),
+        _nd("kabar_dividen_2", "kabar", "Dividen"),
+    ]
+    assert _evidence_targets("Aksi korporasi Dividen tahun ini", evidence, []) == []
+
+
+def test_evidence_edge_matches_label_but_not_short_labels():
+    evidence = [_nd("kabar_suspensi", "kabar", "Suspensi")]
+    assert _evidence_targets("Emiten kena Suspensi BEI", evidence, []) == ["kabar_suspensi"]
+    # Label < 4 karakter tidak boleh jadi jangkar (terlalu mudah cocok).
+    short = [_nd("kabar_x", "kabar", "ARB")]
+    assert _evidence_targets("Saham kena ARB hari ini", short, []) == []
+
+
+def test_evidence_hint_from_detector_outranks_guessing():
+    """Detektor tahu persis kartu mana yang dibangun dari datum yang sama."""
+    evidence = [
+        _nd("fakta_der", "fakta", "Debt / Equity", value="2.50x"),
+        _nd("fakta_pe", "fakta", "Price / Earnings", value="13.7x"),
+    ]
+    hints = [("fakta", "debt/equity")]
+    assert _evidence_targets("Debt-to-Equity Ratio tinggi: 2.50x (>2x)", evidence, hints) == [
+        "fakta_der"
+    ]
+
+
+def test_evidence_edge_shape_and_vocabulary():
+    """Setiap benang `bukti` berawal dari red flag dan berakhir di kartu bukti."""
+    nodes = [
+        _nd("rf_1_konsentrasi", "redflag", "Konsentrasi 54.9%", detail=["Konsentrasi 54.9% satu entitas"]),
+        _nd("rf_2_stock_split", "redflag", "Stock split", detail=["Terdapat 1 aksi korporasi berisiko"]),
+        _nd("pemegang_dwimuria", "pemegang", "PT Dwimuria Investama Andalan", value="54.9%"),
+        _nd("rf_3_kabar", "redflag", "Tuduhan lain", detail=["Tuduhan tanpa penopang"]),
+    ]
+    edges = _evidence_edges(nodes, {})
+
+    assert [e.type for e in edges] == ["bukti"]
+    by_id = {n.id: n for n in nodes}
+    for e in edges:
+        assert by_id[e.source].data.type == "redflag"
+        assert by_id[e.target].data.type in _EVIDENCE_TYPES
+    # Flag tanpa kartu penopang tidak muncul sebagai sumber.
+    assert {e.source for e in edges} == {"rf_1_konsentrasi"}
+
+
+def test_evidence_edge_is_capped_and_deduped():
+    """Satu tuduhan paling banyak ditopang 2 kartu, tanpa benang kembar."""
+    nodes = [
+        _nd(
+            "rf_1",
+            "redflag",
+            "Konsentrasi 54.9% dan laba -0.1%",
+            detail=["Konsentrasi 54.9% dan laba -0.1% sekaligus"],
+        ),
+        _nd("pemegang_dwimuria", "pemegang", "Dwimuria", value="54.9%"),
+        _nd("fakta_laba", "fakta", "Pertumbuhan Laba YoY", value="-0.1%"),
+        _nd("fakta_pe", "fakta", "Price / Earnings", value="13.7x"),
+    ]
+    edges = _evidence_edges(nodes, {})
+    targets = [e.target for e in edges]
+    assert len(targets) == len(set(targets)) <= 2
+
+
+def test_chat_context_lists_evidence_threads_and_flags_the_unsupported():
+    board = _stub_board()
+    board.edges.append(
+        BoardEdge(id="eb1", source="redflag_c", target="pemegang_a", type="bukti", label="bukti")
+    )
+    ctx = _chat_context(board)
+
+    assert "Benang bukti (red flag ← kartu penopangnya)" in ctx
+    assert "Utang jatuh tempo ← Grup Uji" in ctx
+    # Red flag yang tidak punya benang disebut eksplisit, supaya LLM tidak
+    # mengarang penopangnya.
+    board.nodes.append(_nd("redflag_z", "redflag", "Kabar tanpa penopang"))
+    ctx2 = _chat_context(board)
+    assert "Red flag tanpa kartu penopang di papan: Kabar tanpa penopang" in ctx2
 
 
 # --------------------------------------------------------------------- the chat

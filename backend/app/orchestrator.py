@@ -381,15 +381,74 @@ async def _produce_memo(
             raise TrialFailed("llm_error", f"Memo invalid setelah repair: {exc}", phase="verdict")
 
 
+def _alias_key(value: str) -> str:
+    """Compact spelling of an id/label: `f_1` -> `f1`, `Forward PE` -> `forwardpe`."""
+    return "".join(ch for ch in value.lower() if ch.isalnum())
+
+
+def _canonical_fact_ids(key_facts: list[dict[str, Any]]) -> dict[str, str]:
+    """Renumber key_facts to the contract's `f_1, f_2, ...`; return a cite alias map.
+
+    The judge invents its own fact ids (`f_1`, `f1`, `fact_001`, even `ev_3`),
+    so `cites` can only be resolved against the memo's own vocabulary. The alias
+    map is built FROM key_facts (original id, compact form, and the fact label),
+    so mapping a cite back to a fact_id is deterministic data lookup — not a
+    guess.
+    """
+    aliases: dict[str, str] = {}
+    for i, f in enumerate(key_facts, start=1):
+        canonical = f"f_{i}"
+        original = f.get("fact_id")
+        f["fact_id"] = canonical
+        for alias in (original, canonical, f.get("label")):
+            if isinstance(alias, str) and alias.strip():
+                aliases.setdefault(alias.strip(), canonical)
+                aliases.setdefault(_alias_key(alias), canonical)
+    return aliases
+
+
+def _remap_cites(raw: Any, aliases: dict[str, str]) -> list[str]:
+    """Resolve judge-written cites to canonical fact_ids.
+
+    Accepts a fact_id in any spelling the judge used, or a fact *label*, and
+    drops only cites that match no key_fact at all (logged by _log_uncited).
+    """
+    cites: list[str] = []
+    for c in raw if isinstance(raw, list) else []:
+        if not isinstance(c, str) or not c.strip():
+            continue
+        target = aliases.get(c.strip()) or aliases.get(_alias_key(c))
+        if target and target not in cites:
+            cites.append(target)
+    return cites
+
+
+def _log_uncited(data: dict[str, Any]) -> None:
+    """A memo whose points/findings cite nothing is fact-anchored on paper only."""
+    total = uncited = 0
+    items = [p for s in ("bull_case", "bear_case") for p in data.get(s, {}).get("points", [])]
+    items += [x for s in ("smart_money_findings", "insider_findings", "red_flags") for x in data.get(s, [])]
+    for item in items:
+        total += 1
+        uncited += not item.get("cites")
+    if uncited:
+        logger.warning("Memo tanpa sitasi fakta: %d/%d butir punya cites kosong", uncited, total)
+
+
 def _finalize_memo(
     data: dict[str, Any], base: dict[str, Any], tool_calls: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    """Fill required fields, rebuild citations from key_facts, drop dangling cites.
+    """Fill required fields, rebuild citations from key_facts, resolve point cites.
 
     `tool_calls` are the REAL Sectors calls recorded during the trial — they
     become memo.tool_calls (the audit table). Fact citations stay keyed to
     key_facts; their cache flag is upgraded to `hit` when an identical real
     call was served from cache.
+
+    key_facts are renumbered to the contract spelling (`f_1...`) and every
+    `cites` entry is resolved through the memo's own id/label vocabulary, so a
+    judge that cites `f1`, `fact_001`, `ev_3`, or a label still lands on the
+    right fact instead of silently losing the citation.
     """
     data.update(base)
     data.setdefault("schema_version", "1.0.0")
@@ -404,11 +463,10 @@ def _finalize_memo(
     data.setdefault("red_flags", [])
     data.setdefault("verdict", {"category": "perlu_kehati_hatian", "confidence": 0.5, "rationale_md": "", "verification_questions": []})
 
-    for i, f in enumerate(data["key_facts"], start=1):
-        f.setdefault("fact_id", f"f_{i}")
+    for f in data["key_facts"]:
         f.setdefault("label", "fakta")
         f.setdefault("source_endpoint", "")
-    valid_ids = {f["fact_id"] for f in data["key_facts"]}
+    cite_aliases = _canonical_fact_ids(data["key_facts"])
 
     data["tool_calls"] = tool_calls
     data["citations"] = [
@@ -427,10 +485,11 @@ def _finalize_memo(
 
     for section in ("bull_case", "bear_case"):
         for p in data.get(section, {}).get("points", []):
-            p["cites"] = [c for c in p.get("cites", []) if c in valid_ids]
+            p["cites"] = _remap_cites(p.get("cites"), cite_aliases)
     for section in ("smart_money_findings", "insider_findings", "red_flags"):
         for item in data.get(section, []):
-            item["cites"] = [c for c in item.get("cites", []) if c in valid_ids]
+            item["cites"] = _remap_cites(item.get("cites"), cite_aliases)
+    _log_uncited(data)
     return data
 
 
@@ -454,6 +513,14 @@ def _judge_messages(
         "red_flags[{flag_md,severity(low/medium/high),cites}], "
         "verdict{category(layak_diteliti_lanjut/perlu_kehati_hatian/red_flag_berat),confidence(0-1),rationale_md,verification_questions[]}, "
         "citations[], disclaimer. "
+        "PENTING (sitasi fakta): fact_id setiap key_fact WAJIB berurutan \"f_1\", "
+        "\"f_2\", \"f_3\", ... Setiap butir bull_case.points, bear_case.points, "
+        "smart_money_findings, insider_findings, dan red_flags WAJIB memuat \"cites\": "
+        "array berisi MINIMAL SATU fact_id dari key_facts — cites kosong [] TIDAK BOLEH. "
+        "cites hanya berisi fact_id dari key_facts; DILARANG memakai evidence_id "
+        "(\"ev_...\") atau id karangan lain. Contoh butir yang benar: "
+        "{\"point_id\": \"bp_1\", \"argument_md\": \"Valuasi murah vs peer.\", \"cites\": [\"f_1\"]} "
+        "dan {\"flag_md\": \"Free float tipis.\", \"severity\": \"medium\", \"cites\": [\"f_2\"]}. "
         "PENTING: source_endpoint setiap key_fact WAJIB salah satu endpoint Sectors "
         f"yang benar-benar dipanggil sidang ini: {real_endpoints}. Jangan mengarang "
         "nama endpoint lain."

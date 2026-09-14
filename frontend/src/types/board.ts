@@ -9,7 +9,7 @@ export type NodeType =
   | 'kabar'
   | 'fakta';
 
-export type EdgeType = 'memegang' | 'menjabat' | 'aliran' | 'redflag' | 'fakta';
+export type EdgeType = 'memegang' | 'menjabat' | 'aliran' | 'redflag' | 'fakta' | 'bukti';
 
 /** Node yang ditampilkan saat papan pertama dibuka (mode "ringkas").
  *  Sisanya dibuka lewat tombol "Perluas jaringan". */
@@ -92,6 +92,9 @@ export const EDGE_META: Record<EdgeType, { label: string; color: string; dash?: 
   aliran: { label: 'jejak transaksi', color: '#8ba888', dash: '2 3' },
   redflag: { label: 'menandai red flag', color: '#e65c5c', dash: '5 4' },
   fakta: { label: 'menunjuk fakta', color: '#4cc98f' },
+  // Tuduhan → kartu yang menopangnya. Titik-rapat: ini benang pembuktian, bukan
+  // relasi struktural; digambar paling akhir supaya tampak "ditambahkan".
+  bukti: { label: 'dibuktikan oleh', color: '#e8b64c', dash: '1 2' },
 };
 
 export const NODE_TYPE_META: Record<NodeType, { label: string; color: string }> = {

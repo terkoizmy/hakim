@@ -1,6 +1,8 @@
 # CONTRACT — Kontrak Backend ↔ Frontend SIDANG
 
-> **Status: FROZEN** · schema_version `1.4.0` · Tertulis 2026-09-09 oleh orkestrator.
+> **Status: FROZEN** · schema_version `1.5.0` · Tertulis 2026-09-09 oleh orkestrator.
+
+> **Changelog 1.5.0** (2026-09-14): tipe edge **`bukti`** — benang tuduhan→penopang yang menghubungkan node `redflag` ke kartu buktinya (satu-satunya benang yang tidak berpangkal di kartu pusat); aturan resolusi + sikap "ambigu = tidak digambar" di §3.2. §2 **Id & sitasi**: `fact_id` wajib `f_1…f_n` berurutan, `cites` wajib minimal satu `fact_id` dari `key_facts` memo itu sendiri dan dilarang memuat `evidence_id` — sebelum ini prompt hakim tidak pernah menjelaskan isi `cites`, dan finalizer membuang cite non-identik secara diam-diam sehingga seluruh lapisan sitasi mati (9 memo di `sidang.db` tersimpan tanpa satu pun cite).
 >
 > **Changelog 1.4.0** (2026-09-14): `POST /api/board/{ticker}/chat` **kini memanggil LLM sungguhan** dan balasannya menambah `mode` (`"llm"`/`"heuristik"`) + `model` — FE wajib menandai balasan heuristik sebagai bukan analisis AI (lihat §3.2). Aturan identitas orang di §3.2: satu orang di registri pemegang saham DAN di manajemen = **satu** node `pemegang` (jabatan masuk `sub`, kedua benang tetap ada); ejaan alias Sectors dinormalisasi. Kedua endpoint board kini menjawab `422 Ticker tidak dikenal` untuk ticker di luar registry.
 
@@ -132,6 +134,27 @@ Disimpan di SQLite, dikembalikan `GET /api/trials/{id}/memo` dan `GET /api/journ
 
 **`tool_calls` (opsional, tambahan v1.1)** — catatan panggilan Sectors yang BENAR-BENAR terjadi selama sidang (satu entri per panggilan, dari event `agent_tool_call`). Ini sumber tabel audit "Sumber Data"; `citations` tetap anchor fakta → `key_facts`. Memo lama tanpa field ini tetap valid; UI fallback ke `citations`.
 
+**Id & sitasi (sejak 1.5.0).** `fact_id` wajib `f_1`, `f_2`, `f_3`, … **berurutan**
+(ejaan bergaris bawah). Setiap butir `bull_case.points`, `bear_case.points`,
+`smart_money_findings`, `insider_findings`, dan `red_flags` **wajib** memuat `cites`
+berisi **minimal satu `fact_id` dari `key_facts` memo itu sendiri**; `"cites": []`
+bukan memo yang valid. `cites` **tidak boleh** memuat `evidence_id` (`ev_…`) — itu
+namespace stream debat (§1 `debate_utterance`), bukan namespace fakta memo.
+`point_id` memakai `bp_1…bp_n` (bull) dan `br_1…br_n` (bear).
+
+> **Kenapa ditulis eksplisit (1.5.0).** Sebelum ini prompt hakim hanya menyebut
+> *nama* field `cites` tanpa menjelaskan isinya, sementara prompt debat sudah lama
+> berbunyi `"cites": ["ev_..."]` dan utterance debat ikut disuapkan ke hakim — jadi
+> satu-satunya konvensi yang terbaca hakim adalah namespace yang salah. Ditambah
+> finalizer yang **membuang diam-diam** cite apa pun yang tidak byte-identik dengan
+> `fact_id` karangan hakim sendiri, akibatnya seluruh lapisan sitasi mati tanpa suara:
+> 9 memo di `sidang.db` tersimpan dengan `cites` kosong di semua bagian, dan
+> korelasinya 100% dengan ejaan `fact_id` non-kanonik (`f1`, `fact_001`).
+> Parser backend kini **memetakan** ejaan apa pun (`f1`, `f_1`, `fact_001`, bahkan
+> label fakta) ke `fact_id` kanonik lewat kosakata `key_facts` memo itu sendiri, dan
+> menulis `WARNING` bila ada butir yang tetap tanpa sitasi. Memo yang ditulis harus
+> tetap mengeluarkan `f_1…f_n`.
+
 Validasi: pydantic di backend; jika JSON hakim invalid → 1x repair loop → bila tetap gagal, `trial_failed` dengan `error_code: "llm_error"`.
 
 ---
@@ -171,7 +194,28 @@ CORS: allow `http://localhost:5173` (Vite default).
 | `kabar` | Bukti dari filings / suspensi / aksi korporasi |
 | `fakta` | Metrik & fakta angka |
 
-`type` pada edge: `memegang` (hanya dari `pemegang`/`orang` bersaham), `menjabat`, `aliran` (jejak transaksi — pasangan dari node `aliran`), `redflag`, `fakta`.
+`type` pada edge: `memegang` (hanya dari `pemegang`/`orang` bersaham), `menjabat`, `aliran` (jejak transaksi — pasangan dari node `aliran`), `redflag`, `fakta`, `bukti`.
+
+**Benang `bukti` (sejak 1.5.0).** Semua benang lain berpangkal di kartu pusat (`emiten`);
+`bukti` satu-satunya yang **tidak** — ia menghubungkan node `redflag` ke kartu yang
+**menopang tuduhan itu** (`fakta`, `kabar`, `pemegang`, atau `aliran`). Tujuannya: papan
+tidak berhenti pada "ada red flag", tetapi menunjukkan angka/kartu mana yang membuat
+tuduhan itu berdiri — mis. red flag "Konsentrasi kepemilikan 54.9%" → kartu pemegang
+`PT Dwimuria Investama Andalan (54.9%)`. Rujukan diresolusi tiga aturan, dan **masing-masing
+wajib cocok TUNGGAL**:
+
+1. provenance eksplisit dari detektor papan (`support`) — kartu yang dibangun dari datum yang sama;
+2. pasangan (angka, satuan) yang sama persis dengan `value` kartu (`54.9%`, `-0.1%`, `2.50x`);
+   **wajib berdesimal**, supaya angka bulat lemah seperti `1` tidak jadi jangkar palsu;
+3. label kartu (≥ 4 karakter) muncul verbatim di teks red flag.
+
+Bila rujukannya tidak ada **atau ambigu** (dua kartu memuat angka/label yang sama, mis. tiga
+kartu "Dividen"), benangnya **tidak digambar** — tuduhan tanpa benang lebih jujur daripada
+benang yang menunjuk kartu salah. Jumlah benang per red flag dibatasi 2. Karena itu papan
+**boleh** memuat red flag tanpa benang `bukti` sama sekali: di BBCA, flag "aksi korporasi
+berisiko (stock split)" memang tidak punya kartu penopang, jadi dibiarkan tanpa benang.
+`_chat_context` menyebutkan red flag yang tanpa penopang secara eksplisit supaya LLM tidak
+mengarang buktinya.
 
 `label` pada edge: `memegang` **selalu persen** (`"54.9%"`, `"0.01%"`), termasuk untuk direksi
 bersaham yang tidak masuk registri pemegang saham — sebelumnya benang itu memakai jumlah lembar

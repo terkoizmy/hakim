@@ -616,6 +616,11 @@ async def build_board_for_ticker(
             )
     # ------------------------------------------------------------- 4. Red Flag Nodes (dari berbagai sumber)
     red_flags: list[dict[str, Any]] = []
+    # Provenance untuk benang bukti (`_evidence_edges`): node red flag → kartu
+    # yang dibangun dari datum yang SAMA. Hanya diisi oleh detektor di bawah,
+    # yang memang tahu asal flag-nya; red flag dari memo tidak punya petunjuk
+    # eksplisit dan mengandalkan pencocokan angka/label.
+    redflag_hints: dict[str, list[tuple[str, str]]] = {}
 
     # 4a. Suspensi BEI — red flag kritis
     for sus in suspensions_list:
@@ -627,7 +632,12 @@ async def build_board_for_ticker(
         flag_text = f"Suspensi BEI ({sus_date[:10]}): {reason}"
         if status:
             flag_text += f" [Status: {status}]"
-        red_flags.append({"flag_md": flag_text, "severity": "high", "source": "Sectors Suspensions"})
+        red_flags.append({
+            "flag_md": flag_text,
+            "severity": "high",
+            "source": "Sectors Suspensions",
+            "support": [("kabar", "suspen")],
+        })
 
     # 4b. Insider Selling dari filings — red flag jika insider menjual
     insider_sells: list[dict[str, Any]] = []
@@ -651,7 +661,12 @@ async def build_board_for_ticker(
             if total_sell_value > 0
             else f"Insider Selling: {', '.join(sell_names)} melepas saham"
         )
-        red_flags.append({"flag_md": flag_text, "severity": severity, "source": "Sectors Filings"})
+        red_flags.append({
+            "flag_md": flag_text,
+            "severity": severity,
+            "source": "Sectors Filings",
+            "support": [("kabar", "transaksi insider")],
+        })
 
     # 4c. Foreign outflow — red flag jika asing keluar masif
     if net_foreign is not None and net_foreign < -1e9:
@@ -659,6 +674,7 @@ async def build_board_for_ticker(
             "flag_md": f"Net Foreign Outflow {_fmt_rp(net_foreign)} (30 hari) — modal asing keluar",
             "severity": "medium",
             "source": "Sectors Foreign Flow",
+            "support": [("fakta", "arus modal asing")],
         })
 
     # 4d. High DER — red flag jika leverage tinggi
@@ -667,6 +683,7 @@ async def build_board_for_ticker(
             "flag_md": f"Debt-to-Equity Ratio tinggi: {real_der:.2f}x (>2x)",
             "severity": "medium",
             "source": "Sectors Financials",
+            "support": [("fakta", "debt/equity")],
         })
 
     # 4e. Earnings decline — red flag jika laba menurun
@@ -676,6 +693,7 @@ async def build_board_for_ticker(
             "flag_md": f"Laba kuartalan menyusut {pct:.1f}% YoY",
             "severity": "high" if yoy_earnings_growth < -0.2 else "medium",
             "source": "Sectors Financials",
+            "support": [("fakta", "pertumbuhan laba")],
         })
 
     # 4f. Red flags from memo (if available)
@@ -694,6 +712,7 @@ async def build_board_for_ticker(
         sev = rf.get("severity") or "medium"
         source = rf.get("source") or "Analisis"
         node_id = f"rf_{i}_{slugify(flag_text)[:12]}"
+        redflag_hints[node_id] = rf.get("support") or []
 
         nodes.append(
             BoardNode(
@@ -1482,6 +1501,10 @@ async def build_board_for_ticker(
         else f"Analisis struktur korporasi dan relasi kepemilikan {sym} ({company_name}) dari data resmi IDX & Sectors."
     )
 
+    # Benang bukti ditarik paling akhir: butuh SEMUA kartu sudah ada di `nodes`
+    # supaya rujukannya bisa diverifikasi ke kartu yang benar-benar tampil.
+    edges.extend(_evidence_edges(nodes, redflag_hints))
+
     return BoardResponse(
         ticker=sym,
         name=company_name,
@@ -1508,6 +1531,104 @@ BOARD_CHAT_SYSTEM = (
 )
 
 _CHAT_LIMIT = 6  # maksimum entri per kategori yang dikirim ke LLM (hemat token)
+
+
+# ============================================== benang bukti (tuduhan → bukti)
+# Red flag di papan ini lahir dari dua tempat: detektor di dalam
+# `build_board_for_ticker` sendiri, dan memorandum sidang. Keduanya menyebut
+# angka atau istilah yang SUDAH tampil sebagai kartu lain di papan — persen
+# kepemilikan, metrik, aksi korporasi. Benang `bukti` ditarik hanya kalau
+# rujukannya ketemu PERSIS dan TUNGGAL:
+#
+#   1. provenance eksplisit dari detektor (`support`), yaitu kartu yang dibangun
+#      dari datum yang sama dengan flag-nya;
+#   2. angka + satuan yang sama persis dengan `value` sebuah kartu
+#      (`54.9%`, `-0.1%`, `2.50x`) — wajib berdesimal supaya angka bulat
+#      seperti "1" tidak jadi jangkar palsu;
+#   3. label kartu muncul verbatim di dalam teks red flag (>= 4 karakter).
+#
+# Kalau rujukannya tidak ada, atau ambigu (dua kartu memuat angka/label yang
+# sama, mis. tiga kartu "Dividen"), benangnya TIDAK digambar. Di papan bukti,
+# tuduhan tanpa benang lebih jujur daripada benang yang menunjuk kartu salah.
+
+_EVIDENCE_TYPES = {"fakta", "kabar", "pemegang", "aliran"}
+# Satuan diakhiri lookahead, BUKAN `\b`: sesudah "%" datang spasi, dan `\b` tidak
+# pernah cocok di antara dua karakter non-kata — dengan `\b` tidak ada satu pun
+# persen yang terbaca (bug ini sempat meloloskan semua red flag konsentrasi).
+_NUM_UNIT_RE = re.compile(r"(-?\d+[.,]\d+)\s*(%|x)(?![0-9A-Za-z])", re.IGNORECASE)
+
+
+def _num_units(text: str) -> set[tuple[float, str]]:
+    """Pasangan (angka, satuan) yang bisa jadi jangkar bukti."""
+    out: set[tuple[float, str]] = set()
+    for m in _NUM_UNIT_RE.finditer(text or ""):
+        try:
+            out.add((float(m.group(1).replace(",", ".")), m.group(2).lower()))
+        except ValueError:
+            continue
+    return out
+
+
+def _flat(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip().lower())
+
+
+def _evidence_targets(
+    flag_text: str,
+    evidence: list[BoardNode],
+    hints: list[tuple[str, str]],
+) -> list[str]:
+    """Kartu yang benar-benar menopang satu red flag (unik, maks 2)."""
+    picked: list[str] = []
+
+    def add(node_id: str) -> None:
+        if node_id not in picked and len(picked) < 2:
+            picked.append(node_id)
+
+    for want_type, needle in hints:
+        cands = [n for n in evidence if n.data.type == want_type and needle in _flat(n.data.label)]
+        if len(cands) == 1:
+            add(cands[0].id)
+
+    flag_nums = _num_units(flag_text)
+    if flag_nums:
+        cands = [n for n in evidence if flag_nums & _num_units(n.data.value or "")]
+        if len(cands) == 1:
+            add(cands[0].id)
+
+    flat_flag = _flat(flag_text)
+    for n in evidence:
+        label = _flat(n.data.label)
+        if len(label) < 4 or label not in flat_flag:
+            continue
+        twins = [m for m in evidence if _flat(m.data.label) == label]
+        if len(twins) == 1:
+            add(n.id)
+
+    return picked
+
+
+def _evidence_edges(
+    nodes: list[BoardNode], hints: dict[str, list[tuple[str, str]]]
+) -> list[BoardEdge]:
+    evidence = [n for n in nodes if n.data.type in _EVIDENCE_TYPES]
+    out: list[BoardEdge] = []
+    for rf in nodes:
+        if rf.data.type != "redflag":
+            continue
+        flag_text = " ".join(rf.data.detail or []) or rf.data.label
+        targets = _evidence_targets(flag_text, evidence, hints.get(rf.id, []))
+        for i, target in enumerate(targets):
+            out.append(
+                BoardEdge(
+                    id=f"edge_bukti_{rf.id}_{i}",
+                    source=rf.id,
+                    target=target,
+                    type="bukti",
+                    label="bukti",
+                )
+            )
+    return out
 
 
 def _chat_context(board: BoardResponse) -> str:
@@ -1546,6 +1667,27 @@ def _chat_context(board: BoardResponse) -> str:
     for key, label in category_labels.items():
         if buckets[key]:
             lines.append(f"{label}: " + "; ".join(buckets[key]))
+
+    # Benang bukti: red flag mana yang benar-benar ditopang kartu mana. Red flag
+    # tanpa baris di sini berarti tuduhannya belum punya bukti di papan — itu
+    # informasi penting bagi LLM supaya tidak mengarang penopangnya.
+    label_by_id = {n.id: n.data.label for n in board.nodes}
+    bukti: dict[str, list[str]] = {}
+    for edge in board.edges:
+        if edge.type == "bukti":
+            bukti.setdefault(edge.source, []).append(label_by_id.get(edge.target, edge.target))
+    if bukti:
+        lines.append(
+            "Benang bukti (red flag ← kartu penopangnya): "
+            + "; ".join(
+                f"{label_by_id.get(src, src)} ← {', '.join(targets)}"
+                for src, targets in bukti.items()
+            )
+        )
+        unsupported = [n.data.label for n in board.nodes if n.data.type == "redflag" and n.id not in bukti]
+        if unsupported:
+            lines.append("Red flag tanpa kartu penopang di papan: " + "; ".join(unsupported))
+
     if board.thesisSummary:
         lines.append(f"Ringkasan tesis sidang: {board.thesisSummary}")
     if board.riskScore:

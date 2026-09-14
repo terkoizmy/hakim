@@ -93,6 +93,20 @@ function estimatePillWidth(label: string): number {
 }
 
 /**
+ * Terjemahkan `dash` gaya SVG ("5 4" = 5px garis, 4px jeda) jadi latar bergaris
+ * untuk contoh di legenda, supaya contoh garis di legenda persis sama dengan
+ * yang digambar di kanvas. `undefined` → benang solid, tidak ada latar khusus.
+ */
+function dashSample(dash: string | undefined, color: string): { backgroundImage: string } | null {
+  if (!dash) return null;
+  const [on, off] = dash.split(/\s+/).map(Number);
+  if (!on || !off) return null;
+  return {
+    backgroundImage: `repeating-linear-gradient(90deg, ${color} 0 ${on}px, transparent ${on}px ${on + off}px)`,
+  };
+}
+
+/**
  * Seberapa jauh (dalam fraksi panjang benang) benang keluar dari kartu yang
  * titik tengahnya jadi pangkalnya. Tepi kartu terpotong pada parameter
  * terkecil antara setengah lebar/|dx| dan setengah tinggi/|dy|.
@@ -265,7 +279,6 @@ function calculateFocusLayout(
   centerId: string,
   activeNodeTypes: Record<NodeType, boolean>,
   activeEdgeTypes: Record<EdgeType, boolean>,
-  crossOnly: boolean,
 ): FocusLayoutResult {
   const centerNode = allNodes.find((n) => n.id === centerId) ?? allNodes[0];
   if (!centerNode) {
@@ -286,8 +299,7 @@ function calculateFocusLayout(
   // 2. Filter tetangga yang valid sesuai filter pengguna
   const validNeighbors = allNodes
     .filter((n) => n.id !== centerNode.id && neighborIds.has(n.id))
-    .filter((n) => activeNodeTypes[n.type])
-    .filter((n) => !crossOnly || n.data.cross || n.data.type === 'emiten');
+    .filter((n) => activeNodeTypes[n.type]);
 
   const resultNodes: Node[] = [];
 
@@ -555,15 +567,22 @@ function BoardEdge({ sourceX, sourceY, targetX, targetY, data }: any) {
   const anchor = data?.labelAnchor as { x: number; y: number } | null | undefined;
 
   const path = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+  // Benang `bukti` tidak menyentuh kartu pusat, jadi `active` selalu false untuknya
+  // — kalau memakai aturan redam yang sama, benang pembuktian justru jadi yang
+  // paling tidak terbaca. Ia dapat bobotnya sendiri, sedikit di bawah benang
+  // pusat tapi jelas di atas benang latar.
+  const isBukti = data?.type === 'bukti';
+  const width = isBukti ? 1.9 : data?.active ? 2.2 : 1.3;
+  const opacity = isBukti ? 0.85 : data?.active ? 0.95 : 0.4;
   return (
     <>
       <path
         d={path}
         fill="none"
         stroke={meta.color}
-        strokeWidth={data?.active ? 2.2 : 1.3}
+        strokeWidth={width}
         strokeDasharray={meta.dash}
-        strokeOpacity={data?.active ? 0.95 : 0.4}
+        strokeOpacity={opacity}
         className="transition-all duration-300 pointer-events-none"
       />
       {label && anchor && (
@@ -907,10 +926,17 @@ export default function DetectiveBoardPage() {
     buildToggles(Object.keys(EDGE_META) as EdgeType[], DEFAULT_VISIBLE_EDGES),
   );
 
-  const [crossOnly, setCrossOnly] = useState(false);
   const [chat, setChat] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
   const [chatLog, setChatLog] = useState<
-    { role: 'user' | 'ai'; text: string; mode?: 'llm' | 'heuristik'; model?: string | null }[]
+    {
+      role: 'user' | 'ai';
+      text: string;
+      mode?: 'llm' | 'heuristik';
+      model?: string | null;
+      id?: string;
+      pending?: boolean; // balasan belum datang — gelembung menampilkan animasi
+    }[]
   >([
     {
       role: 'ai',
@@ -934,9 +960,8 @@ export default function DetectiveBoardPage() {
         selectedId,
         activeNodeTypes,
         activeEdgeTypes,
-        crossOnly,
       ),
-    [currentBoard, selectedId, activeNodeTypes, activeEdgeTypes, crossOnly],
+    [currentBoard, selectedId, activeNodeTypes, activeEdgeTypes],
   );
 
   const selected = centerNode;
@@ -1003,27 +1028,41 @@ export default function DetectiveBoardPage() {
 
   const sendQuestion = (text: string) => {
     const q = text.trim();
-    if (!q) return;
-    setChatLog((l) => [...l, { role: 'user', text: q }]);
+    if (!q || chatBusy) return;
+
+    // Gelembung "sedang berpikir" ditambahkan SEKARANG dan duduk di posisi
+    // balasan; begitu jawaban tiba, gelembung yang sama diganti isinya (bukan
+    // ditambah), jadi percakapan tidak pernah menampilkan dua balasan.
+    const pendingId = `pending_${Date.now()}`;
+    const settle = (entry: {
+      role: 'ai';
+      text: string;
+      mode?: 'llm' | 'heuristik';
+      model?: string | null;
+    }) => {
+      setChatLog((l) => l.map((m) => (m.id === pendingId ? { ...entry, id: pendingId } : m)));
+      setChatBusy(false);
+    };
+
+    setChatLog((l) => [
+      ...l,
+      { role: 'user', text: q, id: `q_${pendingId}` },
+      { role: 'ai', text: '', id: pendingId, pending: true },
+    ]);
     setChat('');
+    setChatBusy(true);
 
     api
       .chatBoard(selectedTicker, q)
       .then((res) => {
-        setChatLog((l) => [
-          ...l,
-          { role: 'ai', text: res.reply, mode: res.mode, model: res.model },
-        ]);
+        settle({ role: 'ai', text: res.reply, mode: res.mode, model: res.model });
       })
       .catch(() => {
-        setChatLog((l) => [
-          ...l,
-          {
-            role: 'ai',
-            mode: 'heuristik',
-            text: `Analisis keterkaitan ${selectedTicker}: Ditemukan ${connectedCount} entitas relasi aktif pada fokus ${selected?.data.label ?? selectedTicker}. (Jawaban lokal — server tidak terjangkau.)`,
-          },
-        ]);
+        settle({
+          role: 'ai',
+          mode: 'heuristik',
+          text: `Analisis keterkaitan ${selectedTicker}: Ditemukan ${connectedCount} entitas relasi aktif pada fokus ${selected?.data.label ?? selectedTicker}. (Jawaban lokal — server tidak terjangkau.)`,
+        });
       });
   };
 
@@ -1216,11 +1255,11 @@ export default function DetectiveBoardPage() {
                         className="w-3.5 h-[2px] justify-self-center"
                         style={{
                           background: EDGE_META[k].color,
-                          ...(k === 'redflag'
-                            ? {
-                                backgroundImage: `repeating-linear-gradient(90deg, ${EDGE_META[k].color} 0 3px, transparent 3px 6px)`,
-                              }
-                            : {}),
+                          // Contoh garis mengikuti `dash` milik tipe itu sendiri —
+                          // sebelumnya hanya `redflag` yang diputus-putus, jadi
+                          // legenda `aliran` (yang di kanvas putus-putus) tampil
+                          // sebagai garis penuh: legenda berbohong soal kanvas.
+                          ...(dashSample(EDGE_META[k].dash, EDGE_META[k].color) ?? {}),
                         }}
                       />
                       <span className="min-w-0 truncate" title={EDGE_META[k].label}>
@@ -1230,17 +1269,29 @@ export default function DetectiveBoardPage() {
                   ))}
                 </div>
                 <div className="border-t border-[#2a251e] my-2" />
-                <label className={`${LEGEND_ROW} text-brass-400`}>
+                {/* Saklar ini SENGAJA mati. Papan hanya memuat satu emiten, jadi
+                    tidak ada benang ANTAR-emiten yang bisa digambar — dulu
+                    saklar ini hanya menyaring kartu bertanda `cross`, bukan
+                    menggambar benang, sehingga menjanjikan sesuatu yang tidak
+                    ada. Daripada berbohong, dimatikan dengan alasan tertulis. */}
+                <label
+                  className={`${LEGEND_ROW} text-text-3 cursor-not-allowed`}
+                  title="Belum tersedia: papan hanya memuat satu emiten, jadi belum ada benang antar-emiten yang bisa digambar."
+                >
                   <input
                     type="checkbox"
-                    checked={crossOnly}
-                    onChange={() => setCrossOnly((v) => !v)}
-                    className="accent-[#c9a24a] w-3 h-3 m-0"
+                    checked={false}
+                    disabled
+                    readOnly
+                    className="accent-[#c9a24a] w-3 h-3 m-0 cursor-not-allowed"
                   />
-                  {/* sel contoh garis dikosongkan supaya label ini rata dengan
-                      label legenda di atasnya */}
                   <span aria-hidden className="block" />
-                  <span className="min-w-0">Benang merah lintas emiten</span>
+                  <span className="min-w-0 truncate">
+                    Benang merah lintas emiten{' '}
+                    <span className="font-mono text-[10px] tracking-wide text-text-3/80">
+                      · belum tersedia
+                    </span>
+                  </span>
                 </label>
               </div>
             </div>
@@ -1485,14 +1536,14 @@ export default function DetectiveBoardPage() {
                 <div className="flex flex-col gap-3 max-h-[260px] overflow-y-auto mb-4 pr-1">
                   {chatLog.map((m, i) => (
                     <div
-                      key={i}
+                      key={m.id ?? i}
                       className={`text-[13px] leading-relaxed ${
                         m.role === 'user'
                           ? 'text-text-0 text-right bg-brass-500/10 border border-brass-500/30 rounded-lg p-3 ml-12'
                           : 'text-text-2 bg-bg-1 border border-[#2e271f] rounded-lg p-3 mr-6'
-                      }`}
+                      } ${m.pending ? 'animate-fade-in' : ''}`}
                     >
-                      {m.role === 'ai' && (
+                      {m.role === 'ai' && !m.pending && (
                         <div className="font-mono text-[10.5px] font-semibold text-brass-400 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="flex items-center gap-1.5">
                             <SparkIcon size={11} /> Analisis Hakim AI:
@@ -1515,7 +1566,45 @@ export default function DetectiveBoardPage() {
                           ) : null}
                         </div>
                       )}
-                      {m.text}
+                      {m.pending ? (
+                        // Animasi "asisten sedang menelusuri papan": tiga titik
+                        // memantul bergantian + garis progres. LLM bisa butuh
+                        // beberapa detik, jadi harus terlihat hidup — bukan
+                        // gelembung kosong yang tampak seperti jawaban hampa.
+                        <div
+                          className="flex flex-col gap-2"
+                          role="status"
+                          aria-live="polite"
+                          aria-label={`Asisten sedang menelusuri papan ${selectedTicker}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-[3px]" aria-hidden>
+                              {[0, 1, 2].map((d) => (
+                                <span
+                                  key={d}
+                                  className="h-1.5 w-1.5 rounded-full bg-brass-400 animate-bounce motion-reduce:animate-none"
+                                  style={{ animationDelay: `${d * 0.16}s`, animationDuration: '1.05s' }}
+                                />
+                              ))}
+                            </span>
+                            <span className="font-mono text-[10.5px] text-brass-300/90 tracking-wide">
+                              Menelusuri papan {selectedTicker}… menimbang benang bukti &amp; red flag
+                            </span>
+                          </div>
+                          {/* Bar progres tak-tentu. Memakai keyframe `livebar`
+                              (menggeser `left`), bukan `strip-slide` yang
+                              menganimasikan `backgroundPosition` — yang terakhir
+                              tidak menggerakkan elemen berwarna solid apa pun. */}
+                          <span
+                            className="relative h-[2px] w-full overflow-hidden rounded-full bg-brass-500/15"
+                            aria-hidden
+                          >
+                            <span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-brass-400/70 animate-livebar motion-reduce:animate-none" />
+                          </span>
+                        </div>
+                      ) : (
+                        m.text
+                      )}
                     </div>
                   ))}
                   <div ref={chatEndRef} />
@@ -1533,8 +1622,13 @@ export default function DetectiveBoardPage() {
                         key={idx}
                         type="button"
                         onClick={() => sendQuestion(chip)}
-                        className="text-left font-mono text-[11px] rounded-md border border-[#3a332a] bg-bg-1 px-3 py-1.5 text-text-2 hover:border-brass-500 hover:text-brass-300 hover:bg-brass-500/10 transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brass-500"
-                        title="Klik untuk langsung menanyakan ini ke AI"
+                        disabled={chatBusy}
+                        className="text-left font-mono text-[11px] rounded-md border border-[#3a332a] bg-bg-1 px-3 py-1.5 text-text-2 hover:border-brass-500 hover:text-brass-300 hover:bg-brass-500/10 transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brass-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#3a332a] disabled:hover:text-text-2 disabled:hover:bg-bg-1"
+                        title={
+                          chatBusy
+                            ? 'Tunggu jawaban sebelumnya selesai dulu.'
+                            : 'Klik untuk langsung menanyakan ini ke AI'
+                        }
                       >
                         💬 {chip}
                       </button>
@@ -1552,14 +1646,26 @@ export default function DetectiveBoardPage() {
                   <input
                     value={chat}
                     onChange={(e) => setChat(e.target.value)}
-                    placeholder={`Ketik pertanyaan mandiri soal ${selected?.data.label ?? selectedTicker}…`}
+                    placeholder={
+                      chatBusy
+                        ? `Menunggu jawaban untuk ${selected?.data.label ?? selectedTicker}…`
+                        : `Ketik pertanyaan mandiri soal ${selected?.data.label ?? selectedTicker}…`
+                    }
                     className="flex-1 bg-bg-1 border border-[#3a332a] rounded-md px-3.5 py-2.5 text-sm text-text-0 placeholder:text-text-3 focus-visible:border-brass-500 focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(201,162,74,.12)] transition-shadow"
                   />
                   <button
                     type="submit"
-                    className="font-mono text-xs tracking-wider text-[#14120f] bg-brass-500 rounded-md px-4 py-2.5 transition-colors hover:bg-brass-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/50 font-semibold"
+                    disabled={chatBusy}
+                    aria-busy={chatBusy}
+                    className="font-mono text-xs tracking-wider text-[#14120f] bg-brass-500 rounded-md px-4 py-2.5 transition-colors hover:bg-brass-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500/50 font-semibold disabled:opacity-60 disabled:cursor-wait disabled:hover:bg-brass-500 inline-flex items-center gap-2"
                   >
-                    Kirim
+                    {chatBusy && (
+                      <span
+                        className="h-3 w-3 rounded-full border-2 border-[#14120f]/30 border-t-[#14120f] animate-spin motion-reduce:animate-none"
+                        aria-hidden
+                      />
+                    )}
+                    {chatBusy ? 'Menganalisis…' : 'Kirim'}
                   </button>
                 </form>
 
