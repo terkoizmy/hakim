@@ -12,3 +12,10 @@ node_modules/
 # Smoke-test artifacts
 dev-smoke.out
 dev-smoke.err
+
+# Referensi desain & arsip lokal — tidak ikut repo (keputusan 2026-09-14).
+# mock_design/ adalah HTML mock yang jadi acuan visual-diff, sidang.zip arsipnya.
+# Berkasnya sengaja DIBIARKAN di disk supaya acuan desain tetap ada saat kerja
+# lokal; hanya tidak lagi dilacak git.
+mock_design/
+sidang.zip
