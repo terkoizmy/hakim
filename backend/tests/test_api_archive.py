@@ -340,3 +340,23 @@ def test_archive_payload_is_readable_json(tmp_path):
     raw = conn.execute("SELECT payload FROM api_archive WHERE cache_key = 'k'").fetchone()["payload"]
     conn.close()
     assert json.loads(raw) == REPORT
+
+
+def test_archive_put_honours_an_explicit_fetched_at(tmp_path):
+    """Backfill menyelamatkan payload LAMA: tanggal ambil aslinya harus dipertahankan.
+
+    Kalau `fetched_at` diabaikan, arsip akan mengklaim data 9 Sep diambil hari ini
+    — provenance yang berbohong, persis yang dilarang §3.3.
+    """
+    db = Database(str(tmp_path / "test.db"))
+    old = time.time() - 30 * 86400
+    db.archive_put("k", "company_report", "TEST", "", REPORT, credits=3, fetched_at=old)
+
+    payload, fetched_at = db.archive_get("k")
+    assert payload == REPORT
+    assert fetched_at == old
+    rows, _ = db.archive_list()
+    assert rows[0]["credits"] == 3
+    # Tanpa argumen, perilaku lama (sekarang) tetap dipertahankan.
+    db.archive_put("k2", "company_report", "TEST", "sections=x", REPORT)
+    assert db.archive_get("k2")[1] >= time.time() - 5

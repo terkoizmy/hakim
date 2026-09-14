@@ -352,6 +352,7 @@ class Database:
         params: str,
         payload: dict[str, Any],
         credits: int = 1,
+        fetched_at: Optional[float] = None,
     ) -> None:
         """Simpan payload live yang BARU SAJA dibayar kreditnya. Append-once.
 
@@ -359,6 +360,10 @@ class Database:
         kombinasi (endpoint, symbol, params) hanya menyimpan payload pertama.
         Payload yang sama di-refresh lagi tetap memakai isi arsip yang lama —
         arsip adalah catatan historis, bukan cache kedua.
+
+        `fetched_at` boleh diisi eksplisit untuk backfill: payload lama yang
+        diselamatkan dari `cache` harus tetap melaporkan tanggal ambil ASLINYA,
+        bukan tanggal skrip dijalankan — kalau tidak, provenance arsip berbohong.
         """
         conn = self._connect()
         try:
@@ -372,7 +377,7 @@ class Database:
                     symbol,
                     params,
                     json.dumps(payload, ensure_ascii=False),
-                    time.time(),
+                    time.time() if fetched_at is None else fetched_at,
                     credits,
                 ),
             )
