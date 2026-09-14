@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../api';
+import Reveal from '../components/Reveal';
 import {
   AlertIcon,
   ArrowRightIcon,
@@ -14,36 +15,13 @@ import {
 
 const TICKER_RE = /^[A-Za-z]{4}$/;
 
-/** Reveal — scroll-reveal halus, hormati prefers-reduced-motion. */
-function Reveal({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      el.classList.add('is-in');
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((en) => {
-          if (en.isIntersecting) {
-            en.target.classList.add('is-in');
-            io.unobserve(en.target);
-          }
-        });
-      },
-      { threshold: 0.12 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return (
-    <div ref={ref} className={`reveal ${className}`}>
-      {children}
-    </div>
-  );
-}
+// Reveal diimpor dari komponen bersama — sebelumnya halaman ini punya salinan
+// lokal sendiri yang memakai IntersectionObserver `threshold: 0.12` tanpa
+// jaring pengaman. Blok yang TERLOMPATI oleh gulir cepat (tombol End, drag
+// scrollbar) tak pernah memicu callback "terlihat" sehingga tetap
+// `opacity: 0` selamanya dan halaman terlihat berhenti di tengah. Komponen
+// bersama menutup celah itu lewat satu pendengar gulir bersama. Dua salinan
+// juga berarti perbaikan di satu tempat tidak menyentuh yang lain.
 
 // Mock sidang-landing: kepala seksi bernomor romawi + garis gradien.
 function SecHead({ num, title }: { num: string; title: React.ReactNode }) {

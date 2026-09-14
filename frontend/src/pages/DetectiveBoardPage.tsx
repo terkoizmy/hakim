@@ -683,6 +683,14 @@ function FocusBoardFlow({
     return () => clearTimeout(t);
   }, [nodes.length, fitAll, centerOnFocused, getZoom]);
 
+  /* Roda gulir di atas kanvas TIDAK boleh mengunci halaman.
+     Default React Flow (`preventScrolling: true` + `zoomOnScroll: true`)
+     menelan event wheel di atas pane dan memanggil preventDefault, sehingga
+     halaman tidak bisa digulir sama sekali selama kursor berada di atas graf
+     — itu bug "scroll ke bawah mentok" yang dilaporkan. Kebijakan di sini:
+     roda = gulir HALAMAN, zoom = tombol / cubit / Ctrl+roda
+     (zoomActivationKeyCode bawaan "Control" di Windows & Linux, "Meta" di macOS)
+     supaya kanvas tetap bisa di-zoom tanpa merampas gulir halaman. */
   return (
     <ReactFlow
       nodes={nodes}
@@ -694,6 +702,8 @@ function FocusBoardFlow({
       fitViewOptions={{ padding: 0.12, minZoom: 0.22, maxZoom: 1.1 }}
       minZoom={0.22}
       maxZoom={2.2}
+      preventScrolling={false}
+      zoomOnScroll={false}
       proOptions={{ hideAttribution: true }}
     >
       <Background
@@ -719,6 +729,13 @@ function FocusBoardFlow({
         >
           Fit semua
         </button>
+      </Panel>
+      {/* Petunjuk gulir/zoom: roda sengaja TIDAK mengezum kanvas lagi (lihat
+          catatan di atas) supaya halaman tetap bisa digulir di atas graf. */}
+      <Panel position="bottom-left" className="!m-3">
+        <span className="pointer-events-none select-none font-mono text-[10.5px] text-text-3">
+          Roda gulir = gulir halaman · Ctrl + roda = zoom kanvas
+        </span>
       </Panel>
     </ReactFlow>
   );
