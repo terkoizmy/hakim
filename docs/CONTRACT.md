@@ -173,6 +173,11 @@ CORS: allow `http://localhost:5173` (Vite default).
 
 `type` pada edge: `memegang` (hanya dari `pemegang`/`orang` bersaham), `menjabat`, `aliran` (jejak transaksi — pasangan dari node `aliran`), `redflag`, `fakta`.
 
+`label` pada edge: `memegang` **selalu persen** (`"54.9%"`, `"0.01%"`), termasuk untuk direksi
+bersaham yang tidak masuk registri pemegang saham — sebelumnya benang itu memakai jumlah lembar
+(`"2.666.921 lbr"`) sehingga pil labelnya jauh lebih lebar dari yang lain dan menutupi kartu
+tetangga. Jumlah lembar tetap tersedia di `data.detail` kartu (`Jumlah Lembar: …`).
+
 `BoardNodeData.retrievedAt` + `.cache` = provenance: `cache: "hit"` berarti payload berasal dari arsip cache dan `retrievedAt` adalah **tanggal payload itu benar-benar diambil** dari Sectors (bukan tanggal hari ini). `cache: "miss"` = baru diambil.
 
 Kolom `aiInsights` memakai kunci per kategori: `pemegang`, `orang`, `redflag`, `valuasi`, `fakta` (dipakai panel detail).

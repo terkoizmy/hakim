@@ -235,13 +235,21 @@ def _payload_two_registries() -> dict:
             "key_executives": [
                 {"name": "Tan Ho Hien/Subur Atau Dipanggil Subur Tan", "position": "Director"},
                 {"name": "Siti Lain", "position": "Commissioner"},
+                {"name": "Budi Direktur Bersaham", "position": "Director"},
             ],
             "executives_shareholdings": [
                 {
                     "name": "Tan Ho Hien/Subur Atau Dipanggil Subur Tan",
                     "share_percentage": 0.0001,
                     "share_amount": 11788002,
-                }
+                },
+                # Hanya di manajemen + punya saham → benang `memegang` khusus
+                # direksi (id `edge_esh_*`).
+                {
+                    "name": "Budi Direktur Bersaham",
+                    "share_percentage": 0.00035,
+                    "share_amount": 2666921,
+                },
             ],
         },
     }
@@ -288,6 +296,32 @@ def test_management_only_person_gets_orang_type(tmp_path):
     assert len(siti) == 1
     assert siti[0].data.type == "orang"
     assert siti[0].data.value is None
+
+
+def test_director_holding_label_is_percent_not_share_count(tmp_path):
+    """Benang `memegang` direksi bersaham memakai persen, bukan jumlah lembar.
+
+    Label "2.666.921 lbr" membuat pil label di kanvas sangat lebar sampai
+    menutupi kartu tetangga; persen konsisten dengan benang `memegang` lain dan
+    angka lembarnya tetap tersimpan di `detail` kartu.
+    """
+    board = _board_from_payload(_payload_two_registries(), tmp_path)
+
+    budi = [n for n in board.nodes if n.data.label == "Budi Direktur Bersaham"]
+    assert len(budi) == 1
+    assert budi[0].data.type == "orang"
+
+    own_edges = [
+        e for e in board.edges if e.type == "memegang" and e.source == budi[0].id
+    ]
+    assert len(own_edges) == 1, f"benang kepemilikan direksi hilang: {board.edges}"
+    label = own_edges[0].label or ""
+    assert label.endswith("%"), f"label bukan persen: {label!r}"
+    assert "lbr" not in label
+
+    # Angka mentahnya tidak hilang — pindah ke detail kartu.
+    detail = " ".join(budi[0].data.detail or [])
+    assert "Jumlah Lembar: 2.666.921" in detail
 
 
 def test_aliran_never_claims_share_ownership(tmp_path):

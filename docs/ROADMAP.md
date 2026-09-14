@@ -256,9 +256,36 @@ Sisa benang yang tersembunyi filter disebut eksplisit ("N benang tersembunyi ole
 - Ruang mati kolom kanan dihapus — yang melar mengisi kolom adalah **daftar benang**
   (`flex-1`), bukan kartu detail yang menyisakan lubang.
 
+### 5. Pil label benang tidak lagi menutupi kartu (temuan lanjutan dari tangkapan layar)
+
+Pil label digambar di **titik tengah benang**, dan karena handle node ada di tengah kartu,
+titik tengah itu sering mendarat **di dalam kartu** — pil menutupi label kartu ("2.666.921 lbr"
+menimpa kartu tetangga, "0.35%" menimpa kartu pemiliknya). Dua akar masalah:
+
+1. **Label terlalu lebar.** Benang `memegang` untuk direksi bersaham memakai jumlah lembar
+   (11 karakter angka + " lbr"), sedangkan benang `memegang` lain memakai persen. Sekarang
+   semuanya persen; jumlah lembar tetap ada di `detail` kartu (CONTRACT §3.2).
+2. **Penempatan per benang.** Tiap pil dihitung sendiri-sendiri, jadi beberapa benang yang
+   masuk ke celah yang sama (`memegang` + `menjabat` milik orang yang sama) saling menimpa.
+
+Sekarang `planEdgeLabels` merencanakan posisi **semua** pil sekaligus: tiap pil hanya boleh
+duduk di celah bebas antara kedua kartu ujungnya, menghindari kartu lain **dan** pil yang sudah
+ditempatkan; yang celahnya paling sempit ditempatkan lebih dulu. Kalau celahnya lebih sempit
+dari lebar pil, pilnya **tidak digambar** — informasi itu tetap terbaca di kartu (persen di
+`value`, jabatan di `sub`) dan di panel "Benang Terhubung".
+
+Terukur di kanvas (geometri DOM, bukan perkiraan):
+
+| Mode | Kartu | Benang | Pil | Pil×kartu | Pil×pil |
+|---|---|---|---|---|---|
+| Ringkas | 11 | 14 | 10 | **0** | **0** |
+| Perluas jaringan | 41 | 44 | 33 | **0** | **0** |
+
+Sebelum perbaikan: 4 tabrakan pil×pil di mode ringkas. 0 error konsol.
+
 ### Verifikasi
 
-`pytest` **65 lulus** (33 tes papan baru di `backend/tests/test_board.py`, semuanya hermetic:
+`pytest` **66 lulus** (34 tes papan di `backend/tests/test_board.py`, semuanya hermetic:
 `sectors_mode="fixture"` + `ollama_api_key=""` → 0 kredit & 0 token) · `tsc -b` bersih ·
 `vite build` bersih · jalur LLM diuji lewat UI sungguhan. CONTRACT dinaikkan ke **1.4.0**.
 

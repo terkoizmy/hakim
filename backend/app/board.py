@@ -599,13 +599,12 @@ async def build_board_for_ticker(
                 )
             )
         # Direksi bersaham yang tidak masuk registri pemegang saham: benang
-        # kepemilikannya tetap digambar agar jejaknya tidak hilang.
+        # kepemilikannya tetap digambar agar jejaknya tidak hilang. Labelnya
+        # memakai persen dulu (sama seperti benang `memegang` lain) — jumlah
+        # lembar bikin pil label jadi sangat lebar sampai menutupi kartu lain,
+        # dan angkanya tetap tersedia di `detail` kartu.
         if not is_holder and (exec_pct_str or person["share_amount"]):
-            label = (
-                f"{int(person['share_amount']):,} lbr".replace(",", ".")
-                if person["share_amount"]
-                else exec_pct_str
-            )
+            label = exec_pct_str or f"{int(person['share_amount']):,} lbr".replace(",", ".")
             edges.append(
                 BoardEdge(
                     id=f"edge_esh_{node_id}",

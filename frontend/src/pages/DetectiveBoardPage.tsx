@@ -3,6 +3,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStore,
   Background,
   BackgroundVariant,
   Panel,
@@ -51,6 +52,181 @@ const LEGEND_ROW =
 
 const CENTER_X = 500;
 const CENTER_Y = 360;
+
+// --------------------------------------------------------------- pil benang
+// Handle node ada di TENGAH kartu, jadi titik akhir benang = titik tengah
+// kartu. Menaruh pil label di titik tengah benang (0.5) karena itu sering
+// mendarat DI DALAM kartu — terutama kartu pusat emiten yang tinggi — sehingga
+// pil menutupi teks kartu. Pil sekarang hanya boleh duduk di celah bebas
+// antara kedua kartu ujungnya.
+const CARD_W = 248; // harus sama dengan `w-[248px]` di BoardCard
+const CARD_H_FALLBACK = 176; // tinggi kartu bervariasi; dipakai sebelum terukur
+const PILL_H = 22;
+const PILL_GAP = 8; // jarak minimum pil dari tepi kartu
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Satu benang yang perlu ditempatkan pil labelnya. */
+interface LabelJob {
+  id: string;
+  source: string;
+  target: string;
+  ax: number; // titik tengah kartu sumber (= pangkal benang)
+  ay: number;
+  dx: number;
+  dy: number;
+  len: number;
+  t0: number; // celah bebas, dalam fraksi panjang benang
+  t1: number;
+  need: number; // lebar pil yang dibutuhkan
+  room: number; // lebar celah yang tersedia (px)
+}
+
+/** Perkiraan lebar pil dari panjang teks (mono 10.5px + padding + titik). */
+function estimatePillWidth(label: string): number {
+  return 34 + label.length * 6.4;
+}
+
+/**
+ * Seberapa jauh (dalam fraksi panjang benang) benang keluar dari kartu yang
+ * titik tengahnya jadi pangkalnya. Tepi kartu terpotong pada parameter
+ * terkecil antara setengah lebar/|dx| dan setengah tinggi/|dy|.
+ */
+function cardExitFraction(dx: number, dy: number, halfW: number, halfH: number): number {
+  const fx = dx !== 0 ? halfW / Math.abs(dx) : Infinity;
+  const fy = dy !== 0 ? halfH / Math.abs(dy) : Infinity;
+  return Math.min(fx, fy);
+}
+
+function rectsOverlap(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+/**
+ * Titik tengah pil di sepanjang benang, atau `null` bila tidak ada ruang.
+ *
+ * Kandidat pertama adalah tengah celah bebas; kalau ada kartu KETIGA (atau pil
+ * lain) yang kebetulan melintas di situ, pil digeser maju/mundur sepanjang
+ * celah sampai menemukan tempat bersih. Bila celahnya lebih sempit dari lebar
+ * pil, pil tidak digambar sama sekali — lebih baik hilang daripada menutupi
+ * data kartu.
+ */
+function pickLabelAnchor(job: LabelJob, obstacles: Rect[]): { x: number; y: number } | null {
+  const { ax, ay, dx, dy, len, t0, t1, need } = job;
+  if (len < 1) return null;
+
+  const mid = (t0 + t1) / 2;
+  const span = (t1 - t0) / 2;
+  const margin = Math.min(span, need / 2 / len);
+  const STEPS = 12;
+
+  for (let i = 0; i <= STEPS; i++) {
+    const off = (i / STEPS) * (span - margin);
+    const candidates = i === 0 ? [mid] : [mid - off, mid + off];
+    for (const t of candidates) {
+      const x = ax + dx * t;
+      const y = ay + dy * t;
+      const box: Rect = { x: x - need / 2, y: y - PILL_H / 2, w: need, h: PILL_H };
+      if (!obstacles.some((o) => rectsOverlap(box, o))) return { x, y };
+    }
+  }
+  return null;
+}
+
+/**
+ * Rencanakan posisi pil untuk SEMUA benang sekaligus.
+ *
+ * Harus sekaligus, bukan per benang: beberapa benang masuk ke celah yang sama
+ * (mis. `memegang` + `menjabat` milik orang yang sama sama-sama menuju kartu
+ * pusat), jadi kalau tiap pil dihitung sendiri-sendiri mereka akan saling
+ * menimpa. Yang celahnya paling sempit ditempatkan lebih dulu — pilihannya
+ * paling sedikit — lalu pil yang longgar mengalah dan mencari tempat lain.
+ */
+function planEdgeLabels(edges: Edge[], nodes: Node[]): Map<string, { x: number; y: number } | null> {
+  const cards: { id: string; rect: Rect }[] = [];
+  const centers = new Map<string, { cx: number; cy: number; w: number; h: number }>();
+
+  for (const n of nodes) {
+    const w = n.measured?.width ?? CARD_W;
+    const h = n.measured?.height ?? CARD_H_FALLBACK;
+    cards.push({ id: n.id, rect: { x: n.position.x, y: n.position.y, w, h } });
+    centers.set(n.id, {
+      cx: n.position.x + w / 2,
+      cy: n.position.y + h / 2,
+      w,
+      h,
+    });
+  }
+
+  const jobs: LabelJob[] = [];
+  for (const e of edges) {
+    const raw = (e.data as { label?: unknown } | undefined)?.label;
+    const label = typeof raw === 'string' ? raw : '';
+    const a = centers.get(e.source);
+    const b = centers.get(e.target);
+    if (!label || !a || !b) continue;
+
+    const dx = b.cx - a.cx;
+    const dy = b.cy - a.cy;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) continue;
+
+    const t0 = cardExitFraction(dx, dy, a.w / 2, a.h / 2) + PILL_GAP / len;
+    const t1 = 1 - cardExitFraction(dx, dy, b.w / 2, b.h / 2) - PILL_GAP / len;
+    const need = estimatePillWidth(label);
+
+    jobs.push({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      ax: a.cx,
+      ay: a.cy,
+      dx,
+      dy,
+      len,
+      t0,
+      t1,
+      need,
+      room: (t1 - t0) * len,
+    });
+  }
+
+  jobs.sort((p, q) => p.room - q.room);
+
+  const plan = new Map<string, { x: number; y: number } | null>();
+  const placed: Rect[] = [];
+
+  for (const job of jobs) {
+    if (job.room < job.need) {
+      plan.set(job.id, null);
+      continue;
+    }
+    // Kartu ujung sendiri tidak perlu jadi penghalang: celah bebas sudah
+    // dihitung dari tepi keduanya, jadi pil pasti di luar kedua kartu itu.
+    const obstacles = cards
+      .filter((c) => c.id !== job.source && c.id !== job.target)
+      .map((c) => c.rect)
+      .concat(placed);
+
+    const anchor = pickLabelAnchor(job, obstacles);
+    plan.set(job.id, anchor);
+    if (anchor) {
+      placed.push({
+        x: anchor.x - job.need / 2,
+        y: anchor.y - PILL_H / 2,
+        w: job.need,
+        h: PILL_H,
+      });
+    }
+  }
+
+  return plan;
+}
 
 // Sektor arah tematik di sekeliling pusat kanvas investigasi
 const SECTOR_DIRECTIONS: Record<NodeType, { centerAngle: number; spread: number }> = {
@@ -372,8 +548,12 @@ const nodeTypes: NodeTypes = { board: BoardNodeCard };
 
 function BoardEdge({ sourceX, sourceY, targetX, targetY, data }: any) {
   const meta = (data?.type && EDGE_META[data.type as EdgeType]) || { label: 'relasi', color: '#c4b5a0' };
-  const mx = (sourceX + targetX) / 2;
-  const my = (sourceY + targetY) / 2;
+  const label = data?.label as string | undefined;
+  // Posisi pil dihitung sekali untuk semua benang oleh `planEdgeLabels`
+  // (lihat FocusBoardFlow) supaya pil tidak saling menimpa; `null` = tidak ada
+  // celah yang cukup, jadi labelnya tidak digambar.
+  const anchor = data?.labelAnchor as { x: number; y: number } | null | undefined;
+
   const path = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
   return (
     <>
@@ -386,15 +566,15 @@ function BoardEdge({ sourceX, sourceY, targetX, targetY, data }: any) {
         strokeOpacity={data?.active ? 0.95 : 0.4}
         className="transition-all duration-300 pointer-events-none"
       />
-      {data?.label && (
+      {label && anchor && (
         <EdgeLabelRenderer>
           <div
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${mx}px, ${my}px)`,
+              transform: `translate(-50%, -50%) translate(${anchor.x}px, ${anchor.y}px)`,
               pointerEvents: 'all',
             }}
-            className="nodrag nopan select-none z-10"
+            className="nodrag nopan select-none"
           >
             <div
               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-[0_2px_12px_rgba(0,0,0,0.9)] font-mono text-[10.5px] font-semibold tracking-wide transition-all duration-200 ${
@@ -411,7 +591,7 @@ function BoardEdge({ sourceX, sourceY, targetX, targetY, data }: any) {
                 className="w-1.5 h-1.5 rounded-full flex-none"
                 style={{ backgroundColor: meta.color }}
               />
-              <span className="whitespace-nowrap leading-none">{data.label}</span>
+              <span className="whitespace-nowrap leading-none">{label}</span>
             </div>
           </div>
         </EdgeLabelRenderer>
@@ -433,6 +613,19 @@ function FocusBoardFlow({
   onNodeClick: (_: any, node: Node) => void;
 }) {
   const { fitView, getZoom } = useReactFlow();
+
+  // Ukuran kartu baru diketahui setelah React Flow selesai mengukur, dan
+  // penempatan pil perlu tahu ukuran semua kartu — jadi `useStore` di sini,
+  // bukan di dalam tiap BoardEdge.
+  const measuredNodes = useStore((s) => s.nodes);
+  const edgesWithLabels = useMemo(() => {
+    const plan = planEdgeLabels(edges, measuredNodes);
+    if (plan.size === 0) return edges;
+    return edges.map((e) => ({
+      ...e,
+      data: { ...(e.data ?? {}), labelAnchor: plan.get(e.id) ?? null },
+    }));
+  }, [edges, measuredNodes]);
 
   /* Skala minimum agar kartu tetap terbaca (label 16.5px → ≈9px di layar).
      Canvas tengah hanya ~740px lebar, sedangkan 12 kartu butuh ~3000px area:
@@ -474,7 +667,7 @@ function FocusBoardFlow({
   return (
     <ReactFlow
       nodes={nodes}
-      edges={edges}
+      edges={edgesWithLabels}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       onNodeClick={onNodeClick}
