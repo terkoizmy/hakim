@@ -30,12 +30,15 @@ def _dates(days_back: int) -> tuple[str, str]:
 async def gather_fundamental(ctx: Any) -> GatherResult:
     tool_calls: list[ToolCall] = []
     cr = await ctx.sectors.company_report(ctx.ticker, SECTIONS_FUNDAMENTAL)
+    # Simpan RESPON utuh (bukan hanya payload) supaya analis berikutnya yang
+    # memakai ulang data ini bisa mewarisi label cache + tanggal ambil aslinya.
     ctx.shared["company_report"] = cr.payload
-    tool_calls.append(ToolCall("company_report", f"/v2/company/report/{ctx.ticker}/", f"sections={SECTIONS_FUNDAMENTAL}", cr.cache))
+    ctx.shared["company_report_resp"] = cr
+    tool_calls.append(ToolCall("company_report", f"/v2/company/report/{ctx.ticker}/", f"sections={SECTIONS_FUNDAMENTAL}", cr.cache, cr.fetched_at))
     qf = await ctx.sectors.quarterly_financials(ctx.ticker)
-    tool_calls.append(ToolCall("quarterly_financials", f"/v2/financials/quarterly/{ctx.ticker}/", "n_quarters=4", qf.cache))
+    tool_calls.append(ToolCall("quarterly_financials", f"/v2/financials/quarterly/{ctx.ticker}/", "n_quarters=4", qf.cache, qf.fetched_at))
     rs = await ctx.sectors.revenue_segments(ctx.ticker)
-    tool_calls.append(ToolCall("revenue_segments", f"/v2/company/get-segments/{ctx.ticker}/", "", rs.cache))
+    tool_calls.append(ToolCall("revenue_segments", f"/v2/company/get-segments/{ctx.ticker}/", "", rs.cache, rs.fetched_at))
     return GatherResult(
         data={"company_report": cr.payload, "quarterly_financials": qf.payload, "revenue_segments": rs.payload},
         tool_calls=tool_calls,
@@ -48,11 +51,11 @@ async def gather_price(ctx: Any) -> GatherResult:
     dt = await ctx.sectors.daily_transaction(ctx.ticker, start, end)
     # Keep the raw payload for the price-series snapshot (CONTRACT 1.1.0).
     ctx.shared["daily_transaction"] = dt.payload
-    tool_calls.append(ToolCall("daily_transaction", f"/v2/daily/{ctx.ticker}/", f"start={start}&end={end}", dt.cache))
+    tool_calls.append(ToolCall("daily_transaction", f"/v2/daily/{ctx.ticker}/", f"start={start}&end={end}", dt.cache, dt.fetched_at))
     idx = await ctx.sectors.index_daily("IHSG", start, end)
-    tool_calls.append(ToolCall("index_daily", "/v2/index-daily/ihsg/", f"start={start}&end={end}", idx.cache))
+    tool_calls.append(ToolCall("index_daily", "/v2/index-daily/ihsg/", f"start={start}&end={end}", idx.cache, idx.fetched_at))
     tm = await ctx.sectors.top_movers()
-    tool_calls.append(ToolCall("top_movers", "/v2/companies/top-changes/", "classifications=both&periods=7d", tm.cache))
+    tool_calls.append(ToolCall("top_movers", "/v2/companies/top-changes/", "classifications=both&periods=7d", tm.cache, tm.fetched_at))
     return GatherResult(
         data={"daily_transaction": dt.payload, "index_daily": idx.payload, "top_movers": tm.payload},
         tool_calls=tool_calls,
@@ -63,9 +66,9 @@ async def gather_smartmoney(ctx: Any) -> GatherResult:
     tool_calls: list[ToolCall] = []
     start, end = _dates(30)
     tb = await ctx.sectors.top_brokers(ctx.ticker, start, end)
-    tool_calls.append(ToolCall("top_brokers", f"/v2/broker-summary/{ctx.ticker}/", f"start={start}&end={end}", tb.cache))
+    tool_calls.append(ToolCall("top_brokers", f"/v2/broker-summary/{ctx.ticker}/", f"start={start}&end={end}", tb.cache, tb.fetched_at))
     ff = await ctx.sectors.foreign_flow(ctx.ticker)
-    tool_calls.append(ToolCall("foreign_flow", f"/v2/foreign-flow/{ctx.ticker}/", "period=30d", ff.cache))
+    tool_calls.append(ToolCall("foreign_flow", f"/v2/foreign-flow/{ctx.ticker}/", "period=30d", ff.cache, ff.fetched_at))
     return GatherResult(
         data={"top_brokers": tb.payload, "foreign_flow": ff.payload},
         tool_calls=tool_calls,
@@ -74,15 +77,19 @@ async def gather_smartmoney(ctx: Any) -> GatherResult:
 
 async def gather_insider(ctx: Any) -> GatherResult:
     tool_calls: list[ToolCall] = []
-    if "company_report" in ctx.shared:
-        cr_payload = ctx.shared["company_report"]
-        tool_calls.append(ToolCall("company_report", f"/v2/company/report/{ctx.ticker}/", "sections=management,ownership", "hit"))
+    reused = ctx.shared.get("company_report_resp")
+    if reused is not None:
+        # Data yang sama, sudah diambil analis Fundamental sesaat lalu. Ia BUKAN
+        # "hit" (tidak ada pembacaan cache/arsip) — labelnya diwarisi apa adanya
+        # dari panggilan aslinya, termasuk tanggal ambil aslinya.
+        cr_payload = reused.payload
+        tool_calls.append(ToolCall("company_report", f"/v2/company/report/{ctx.ticker}/", "sections=management,ownership", reused.cache, reused.fetched_at))
     else:
         cr = await ctx.sectors.company_report(ctx.ticker, "management,ownership")
         cr_payload = cr.payload
-        tool_calls.append(ToolCall("company_report", f"/v2/company/report/{ctx.ticker}/", "sections=management,ownership", cr.cache))
+        tool_calls.append(ToolCall("company_report", f"/v2/company/report/{ctx.ticker}/", "sections=management,ownership", cr.cache, cr.fetched_at))
     fl = await ctx.sectors.filings(ctx.ticker)
-    tool_calls.append(ToolCall("filings", "/v2/filings/", f"symbol={ctx.ticker}", fl.cache))
+    tool_calls.append(ToolCall("filings", "/v2/filings/", f"symbol={ctx.ticker}", fl.cache, fl.fetched_at))
     return GatherResult(
         data={"company_report": cr_payload, "filings": fl.payload},
         tool_calls=tool_calls,
@@ -92,11 +99,11 @@ async def gather_insider(ctx: Any) -> GatherResult:
 async def gather_antigorengan(ctx: Any) -> GatherResult:
     tool_calls: list[ToolCall] = []
     sp = await ctx.sectors.suspensions(ctx.ticker)
-    tool_calls.append(ToolCall("suspensions", "/v2/suspensions/", f"symbol={ctx.ticker}", sp.cache))
+    tool_calls.append(ToolCall("suspensions", "/v2/suspensions/", f"symbol={ctx.ticker}", sp.cache, sp.fetched_at))
     ca = await ctx.sectors.corporate_actions(ctx.ticker)
-    tool_calls.append(ToolCall("corporate_actions", f"/v2/company/corporate-actions/{ctx.ticker}/", "", ca.cache))
+    tool_calls.append(ToolCall("corporate_actions", f"/v2/company/corporate-actions/{ctx.ticker}/", "", ca.cache, ca.fetched_at))
     sc = await ctx.sectors.screener(where=f"symbol in ['{ctx.ticker}']", limit=10)
-    tool_calls.append(ToolCall("screener", "/v2/companies/", f"where=symbol in ['{ctx.ticker}']", sc.cache))
+    tool_calls.append(ToolCall("screener", "/v2/companies/", f"where=symbol in ['{ctx.ticker}']", sc.cache, sc.fetched_at))
     return GatherResult(
         data={"suspensions": sp.payload, "corporate_actions": ca.payload, "screener": sc.payload},
         tool_calls=tool_calls,

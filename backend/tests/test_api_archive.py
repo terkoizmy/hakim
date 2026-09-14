@@ -237,7 +237,9 @@ def test_fixture_mode_ignores_a_poisoned_archive(tmp_path):
     assert calls == []
     assert resp.payload.get("financials", {}).get("revenue") != 4242
     # Fixture dibaca dari berkas, bukan dari arsip — tanggalnya hari ini.
-    assert resp.cache == "miss"
+    # Labelnya "fixture", BUKAN "miss": "miss" berarti payload dibeli dari
+    # Sectors (kredit terpakai), dan mode demo tidak membeli apa pun.
+    assert resp.cache == "fixture"
 
 
 # --------------------------------------------------------------- credit accounting

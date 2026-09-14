@@ -382,3 +382,63 @@ def test_settings_are_hermetic(tmp_path):
     settings = _settings(tmp_path)
     assert settings.ollama_api_key == ""
     assert settings.sectors_mode == "fixture"
+
+
+# ---------------------------------------------------------------------------
+# Provenance sitasi (Lampiran B: kolom "Diambil" & label cache)
+# ---------------------------------------------------------------------------
+
+
+def test_citations_inherit_the_real_fetch_date_and_cache_label():
+    """Kolom "Diambil" harus tanggal payload BENAR-BENAR diambil.
+
+    Dulu `retrieved_at` sitasi diisi `created_at` memo, jadi payload arsip
+    yang diambil lima hari lalu dicap "diambil hari ini" — dan label cache
+    sitasi hanya dihitung "hit kalau ada endpoint yang hit, selain itu miss",
+    sehingga memo mode demo bisa mengaku memakai kredit padahal 0.
+    """
+    archived = "/v2/company/report/TEST/?sections=valuation"
+    data = {
+        "key_facts": [
+            {"fact_id": "f_1", "label": "forward_pe", "value": 8.4, "unit": "x",
+             "source_endpoint": archived},
+            {"fact_id": "f_2", "label": "roe_ttm", "value": 18.2, "unit": "%",
+             "source_endpoint": "/v2/daily/TEST/"},
+        ]
+    }
+    base = {"memo_id": "mm_uji", "trial_id": "tr_uji", "ticker": "TEST", "company_name": "PT Uji",
+            "created_at": "2026-09-14T10:00:00Z", "data_mode": "live"}
+    tool_calls = [
+        {"agent_id": "fundamental", "tool": "company_report", "endpoint": archived,
+         "params_summary": "sections=valuation", "cache": "hit", "retrieved_at": "2026-09-09"},
+    ]
+
+    out = _finalize_memo(data, base, tool_calls)
+
+    by_endpoint = {c["endpoint"]: c for c in out["citations"]}
+    # Fakta dari endpoint yang dilayani arsip 9 Sep ditulis 9 Sep, bukan hari ini.
+    assert by_endpoint[archived]["cache"] == "hit"
+    assert by_endpoint[archived]["retrieved_at"] == "2026-09-09"
+    # Fakta tanpa panggilan yang cocok jatuh ke created_at (perkiraan terbaik).
+    assert by_endpoint["/v2/daily/TEST/"]["retrieved_at"] == base["created_at"]
+
+
+def test_fixture_trial_never_claims_credits():
+    """Mode demo: tidak ada label yang boleh terbaca sebagai "kredit terpakai"."""
+    data = {
+        "key_facts": [
+            {"fact_id": "f_1", "label": "forward_pe", "value": 8.4, "unit": "x",
+             "source_endpoint": ENDPOINT},
+        ]
+    }
+    base = {"memo_id": "mm_demo", "trial_id": "tr_demo", "ticker": "TEST", "company_name": "PT Uji",
+            "created_at": "2026-09-14T10:00:00Z", "data_mode": "fixture"}
+    tool_calls = [
+        {"agent_id": "fundamental", "tool": "company_report", "endpoint": ENDPOINT,
+         "params_summary": "sections=valuation", "cache": "fixture", "retrieved_at": "2026-09-14"},
+    ]
+
+    out = _finalize_memo(data, base, tool_calls)
+
+    assert out["tool_calls"][0]["cache"] == "fixture"
+    assert out["citations"][0]["cache"] == "fixture"

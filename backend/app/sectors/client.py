@@ -95,7 +95,7 @@ class TickerNotFound(Exception):
 @dataclass
 class SectorsResponse:
     payload: dict[str, Any]
-    cache: str  # "hit" | "miss"
+    cache: str  # "hit" | "miss" | "fixture"
     fetched_at: str = ""  # ISO date payload ini benar-benar diambil dari Sectors
 
 
@@ -104,7 +104,8 @@ class ToolCall:
     tool: str
     endpoint: str
     params_summary: str
-    cache: str  # "hit" | "miss"
+    cache: str  # "hit" | "miss" | "fixture"
+    fetched_at: str = ""  # ISO date payload ini BENAR-BENAR diambil (kosong = tak diketahui)
 
 
 @dataclass
@@ -183,8 +184,11 @@ class SectorsClient:
             )
 
         if self.settings.sectors_mode == "fixture":
+            # Mode demo: payload contoh dari berkas, TANPA jaringan dan TANPA
+            # kredit. Karena itu labelnya bukan "miss" — "miss" berarti "dibeli
+            # dari Sectors", dan memo demo tidak boleh mengklaim itu.
             payload = self._fixture_lookup(name, symbol, params)
-            return SectorsResponse(payload=payload, cache="miss", fetched_at=date.today().isoformat())
+            return SectorsResponse(payload=payload, cache="fixture", fetched_at=date.today().isoformat())
 
         # Cache kosong/kedaluwarsa. Arsip permanen dipakai lebih dulu supaya
         # data yang sudah pernah dibayar tidak dibeli ulang (ROADMAP poin 1).

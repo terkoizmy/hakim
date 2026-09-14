@@ -21,6 +21,10 @@ DISCLAIMER = (
 SCHEMA_VERSION = "1.0.0"
 
 DataMode = Literal["fixture", "live"]
+# "hit"  = payload sudah pernah dibayar (cache lokal masih berlaku / arsip permanen)
+# "miss" = dibeli dari Sectors saat sidang ini (kredit terpakai)
+# "fixture" = data contoh mode demo — tanpa jaringan, tanpa kredit
+CacheLabel = Literal["hit", "miss", "fixture"]
 InfoRichness = Literal["A", "B", "C"]
 VerdictCategory = Literal["layak_diteliti_lanjut", "perlu_kehati_hatian", "red_flag_berat"]
 
@@ -81,7 +85,7 @@ class Citation(BaseModel):
     endpoint: str
     params_summary: str
     retrieved_at: str
-    cache: Literal["hit", "miss"]
+    cache: CacheLabel
 
 
 class ToolCallAudit(BaseModel):
@@ -91,8 +95,8 @@ class ToolCallAudit(BaseModel):
     tool: str
     endpoint: str
     params_summary: str = ""
-    retrieved_at: str
-    cache: Literal["hit", "miss"]
+    retrieved_at: str  # kapan payload BENAR-BENAR diambil, bukan kapan sidang berjalan
+    cache: CacheLabel
 
 
 class MemoJSON(BaseModel):
@@ -246,7 +250,7 @@ class BoardNodeData(BaseModel):
     source: Optional[str] = None
     cross: Optional[bool] = None
     retrievedAt: Optional[str] = None
-    cache: Optional[str] = None  # 'hit' | 'miss' — data dari cache arsip vs ambil baru
+    cache: Optional[str] = None  # CacheLabel — 'hit' (arsip/cache) | 'miss' (ambil baru) | 'fixture'
 
 
 class BoardNode(BaseModel):

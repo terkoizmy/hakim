@@ -347,7 +347,7 @@ def test_center_node_reports_provenance(tmp_path):
 
     center = next(n for n in board.nodes if n.data.type == "emiten")
     assert center.data.retrievedAt, "node pusat tanpa tanggal pengambilan"
-    assert center.data.cache in {"hit", "miss"}
+    assert center.data.cache in {"hit", "miss", "fixture"}
 
 
 # ------------------------------------------------------- benang bukti (bukti)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -125,7 +126,13 @@ def test_full_flow_memo_journal_postmortem(app_env):
         for tc in memo["tool_calls"]:
             assert tc["endpoint"].startswith("/v2/")
             assert tc["agent_id"]
-            assert tc["cache"] in ("hit", "miss")
+            assert tc["cache"] in ("hit", "miss", "fixture")
+            # Sidang ini mode fixture: setiap baris tabel audit harus jujur
+            # menyebut "fixture" — bukan "miss" yang berarti kredit terpakai
+            # (ini yang dulu membuat memo demo mengaku menghabiskan kredit).
+            assert tc["cache"] == "fixture"
+            # "Diambil" = tanggal payload benar-benar diambil, bukan now().
+            assert tc["retrieved_at"][:10] <= date.today().isoformat()
 
         # journal
         jr = client.get("/api/journal")

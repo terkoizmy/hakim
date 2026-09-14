@@ -142,6 +142,10 @@ def template_memo(
         default="C",
     )
 
+    # Mode demo tidak membeli apa pun dari Sectors; menandainya "miss" berarti
+    # mengaku memakai kredit. `_finalize_memo` menimpanya dengan provenance
+    # panggilan nyata bila `tool_calls` ada — nilai ini untuk jalur tanpa itu.
+    fallback_cache = "fixture" if data_mode == "fixture" else "miss"
     citations = [
         {
             "cite_id": f["fact_id"],
@@ -149,7 +153,7 @@ def template_memo(
             "endpoint": f["source_endpoint"],
             "params_summary": f["source_endpoint"].split("?", 1)[1] if "?" in f["source_endpoint"] else "",
             "retrieved_at": created_at,
-            "cache": "miss",
+            "cache": fallback_cache,
         }
         for f in key_facts
     ]

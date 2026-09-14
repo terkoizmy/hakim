@@ -114,7 +114,10 @@ async def _run_analyst(ctx: TrialContext, spec: AnalystSpec, evidence_counter: l
                 "endpoint": tc.endpoint,
                 "params_summary": tc.params_summary,
                 "cache": tc.cache,
-                "retrieved_at": now_iso(),
+                # Tanggal payload BENAR-BENAR diambil dari Sectors — bukan jam
+                # sidang ini berjalan. Bisa jauh lebih tua daripada sidangnya
+                # (payload arsip), dan itu justru yang ingin ditunjukkan.
+                "retrieved_at": tc.fetched_at or now_iso(),
             }
             ctx.tool_calls.append(record)
             await ctx.bus.publish(ctx.trial_id, "agent_tool_call", record)
@@ -442,8 +445,9 @@ def _finalize_memo(
 
     `tool_calls` are the REAL Sectors calls recorded during the trial — they
     become memo.tool_calls (the audit table). Fact citations stay keyed to
-    key_facts; their cache flag is upgraded to `hit` when an identical real
-    call was served from cache.
+    key_facts; each one inherits the cache label AND the real fetch date of the
+    call to that endpoint, so the memo can never claim a credit it did not
+    spend nor stamp today's date on data pulled days ago.
 
     key_facts are renumbered to the contract spelling (`f_1...`) and every
     `cites` entry is resolved through the memo's own id/label vocabulary, so a
@@ -469,16 +473,18 @@ def _finalize_memo(
     cite_aliases = _canonical_fact_ids(data["key_facts"])
 
     data["tool_calls"] = tool_calls
+    # Sitasi mewarisi provenance panggilan nyata untuk endpoint yang sama
+    # (label cache + tanggal ambil). Memo lama tanpa tool_calls tetap memakai
+    # created_at sebagai perkiraan terbaik.
+    provenance = {tc["endpoint"]: (tc["cache"], tc["retrieved_at"]) for tc in tool_calls}
     data["citations"] = [
         {
             "cite_id": f["fact_id"],
             "source": "sectors_endpoint",
             "endpoint": f["source_endpoint"],
             "params_summary": f["source_endpoint"].split("?", 1)[1] if "?" in f["source_endpoint"] else "",
-            "retrieved_at": base["created_at"],
-            "cache": "hit"
-            if any(tc["endpoint"] == f["source_endpoint"] and tc["cache"] == "hit" for tc in tool_calls)
-            else "miss",
+            "retrieved_at": provenance.get(f["source_endpoint"], (None, base["created_at"]))[1],
+            "cache": provenance.get(f["source_endpoint"], ("miss", None))[0],
         }
         for f in data["key_facts"]
     ]
