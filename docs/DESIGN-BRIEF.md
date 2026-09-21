@@ -20,7 +20,7 @@
 ## 3. Layar yang dimock (4)
 
 ### A. Home / Input Ticker
-- Hero singkat: wordmark SIDANG + tagline *"Sebelum beli, aduli dulu."*
+- Hero singkat: wordmark SIDANG + tagline *"Sebelum beli, adili dulu."*
 - Input ticker besar (mono, uppercase, maks 4 huruf) + tombol **"Mulai Sidang"**.
 - Di bawah: teaser "Jurnal Sidang" (3 memo terakhir, kategori putusan sebagai badge).
 

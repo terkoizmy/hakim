@@ -10,7 +10,7 @@ import type { enA } from './en.a';
 export const idA = {
   // -- beranda: hero --------------------------------------------------------
   'home.hero.badge': 'Multi-Agent · Data Sectors · Bahasa Indonesia',
-  'home.hero.title': 'Sebelum beli, <em>aduli</em> dulu.',
+  'home.hero.title': 'Sebelum beli, <em>adili</em> dulu.',
   'home.hero.lead':
     'Lima analis menggali bukti dari data Sectors — <b>jaksa bear</b> berdebat melawan <b>pembela bull</b> dalam dua ronde, lalu <b>hakim menulis memorandum riset</b>. Semua tayang, semua tersimpan.',
 

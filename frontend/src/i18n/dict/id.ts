@@ -14,7 +14,7 @@ import { idE } from './parts/id.e';
 const idCore = {
   'meta.title': 'SIDANG — Sidang Pasar Modal Indonesia',
   'meta.description':
-    'Sebelum beli, aduli dulu. Multi-agent AI meneliti saham IDX: debat jaksa vs pembela di atas data Sectors, putusan komite 5 menit.',
+    'Sebelum beli, adili dulu. Multi-agent AI meneliti saham IDX: debat jaksa vs pembela di atas data Sectors, putusan komite 5 menit.',
 
   'nav.brand': 'SIDANG — Beranda',
   'nav.aria': 'Navigasi utama',

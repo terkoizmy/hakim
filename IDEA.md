@@ -2,7 +2,7 @@
 
 > **Master Idea · Sectors Hackathon Indonesia 2026 · Track 1: AI Agents & Assistants**
 
-**Tagline:** *"Sebelum beli, aduli dulu."*
+**Tagline:** *"Sebelum beli, adili dulu."*
 **Pun killer:** Indonesia punya **20,3 juta SID** (Single Investor ID). **Setiap SID butuh SIDANG.**
 
 ---

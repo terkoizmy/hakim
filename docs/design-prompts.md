@@ -60,7 +60,7 @@ ATURAN ANTI-"AI-LOOK" (wajib, pelanggaran = gagal):
 Desain landing page tunggal untuk SIDANG (konteks: blok GLOBAL).
 
 Isi halaman, urut dari atas:
-1. HERO dua kolom: kiri — judul serif besar "Sebelum beli, aduli dulu."
+1. HERO dua kolom: kiri — judul serif besar "Sebelum beli, adili dulu."
    (satu warna ivory), sub 1–2 kalimat: "Lima analis menggali bukti dari
    data Sectors. Jaksa dan pembela berdebat dua ronde, lalu hakim
    menuliskan putusannya — terbuka dari awal sampai akhir." Dua tombol
