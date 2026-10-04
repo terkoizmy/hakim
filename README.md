@@ -1,3 +1,5 @@
+![SIDANG](docs/logo-banner.png)
+
 # SIDANG ⚖️🐂🐻
 
 > **"Sebelum beli, adili dulu."** — 20,3 juta investor ritel Indonesia punya SID. Setiap SID butuh SIDANG.
