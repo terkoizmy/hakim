@@ -361,3 +361,92 @@ identik" **ditarik**. Setelah payload dibuka, kesamaan hash itu bukan tanda data
 pasar-luas dibeli ulang — melainkan tanda responsnya **kosong**, sehingga semua
 yang kosong memang identik. Menghapus simbol dari `cache_key` tidak menghemat
 apa pun; yang bocor adalah panggilan yang tidak pernah mengembalikan baris.
+
+---
+
+## 7. Temuan & perbaikan 2026-10-07 — model LLM di-retire, panel chat pindah
+
+### 7a. `deepseek-v4-flash:0731` di-retire Ollama → SELURUH jalur LLM gagal senyap
+
+Ollama menghentikan `deepseek-v4-flash:0731` pada **2026-09-25**. Setiap panggilan
+sejak itu mengembalikan **HTTP 410** (`was retired at 2026-09-25 … ref:
+8d346be7`). Karena `answer_board_question()` — dan orkestrator sidang — menangkap
+exception apa pun lalu jatuh ke heuristik/template, kegagalannya **tidak
+kelihatan sebagai galat**:
+
+- Sidang tetap "selesai", tapi isinya template deterministik, bukan analisis LLM.
+- Chat papan menjawab dengan chip **kuning `heuristik`**, bukan chip hijau model.
+
+Perbaikan: `MODEL_ANALYST/DEBATE/JUDGE` → **`deepseek-v4.1-flash`** (penerus
+satu keluarga, terverifikasi 3,6 s). Kandidat lain yang diuji: `deepseek-v4-pro:0813`
+hidup (7,5 s), `glm-5.3-flash` mengembalikan respons kosong.
+
+Terverifikasi: jalur chat sungguhan (`build_board_for_ticker` + 
+`answer_board_question`) mengembalikan `mode="llm"` dengan jawaban bersitasi papan
+(Dwimuria 54,9%; free float 46,0%; skor risiko Rendah), dan UI menampilkan chip
+hijau `deepseek-v4.1-flash`. **0 kredit Sectors** (papan dari arsip).
+
+> Pelajaran yang lebih penting dari perbaikannya: **fallback yang senyap
+> menyembunyikan outage model.** Kalau nanti sidang terasa "hampa", periksa
+> chip mode di ruang sidang/chat lebih dulu, lalu daftar model yang hidup:
+> `GET https://ollama.com/v1/models` dengan header `Authorization: Bearer $OLLAMA_API_KEY`.
+> Catatan ini juga ditulis di `backend/README.md`.
+
+### 7b. Panel tanya-jawab pindah ke bawah kanvas (sesuai sketsa §2)
+
+Sketsa pemilik proyek menaruh "AI Agent chat soal emiten yang sedang dianalisis"
+**di kolom tengah, di bawah kanvas**. Implementasinya menaruh panel itu di
+section bawah halaman (~1.600px dari atas, di bawah blok "Investigation
+breakdown"), jadi fiturnya ada tapi tidak ada yang menemukannya. Sekarang panel
+duduk tepat di bawah kanvas (jarak 37px dari kanvas ke judul panel).
+
+Dua hal yang harus dipegang saat memindahkannya:
+
+- **Tinggi baris harus dikunci** (`lg:grid-rows-[1154px]` = kanvas 720 + celah 14
+  + panel chat 420). Menaruh `h-full` di kolom kiri/kanan tanpa itu membuat
+  tinggi kolom resolve ke `auto` → kolom daftar emiten meregang mengikuti
+  panjang isinya, dan halaman jadi ~1.000px lebih tinggi (terukur: 1.991 → 3.134).
+- Kolom kiri/kanan ikut meregang setinggi kolom tengah, jadi tinggi ketiganya
+  sama seperti di sketsa.
+
+Section bawah kini hanya berisi grafik harga & benchmark metrik, berdampingan.
+
+### 7c. Harga di kartu grafik masih hardcode (sisa era mock)
+
+Kepala kartu grafik menampilkan `selectedTicker === 'BBCA' ? 'Rp 9.850' : …` —
+peta harga yang ditulis tangan. Di halaman bertema bukti itu menampilkan angka
+yang tidak berasal dari mana pun, tepat di sebelah grafik yang justru kosong
+("No price chart available"). Sekarang: titik terakhir `priceHistory` kalau ada,
+kalau tidak `price_at_trial` dari jurnal, kalau tidak ada keduanya **"—"**.
+
+### Verifikasi
+
+`pytest` **119 lulus** · `tsc -b` bersih · `vite build` bersih · jalur LLM diuji
+lewat UI sungguhan (chip pertanyaan + pertanyaan bebas). Backend dijalankan tanpa
+`--reload`, jadi perubahan `.env` **wajib restart**.
+
+### 7d. Sidang live + demo "tanya AI" masuk video judging (j9)
+
+Dua hal yang diminta pemilik proyek setelahnya:
+
+1. **Sidang live dijalankan** untuk membuktikan seluruh rantai LLM sehat:
+   ANTM, selesai **118,7 detik**, verdict `perlu_kehati_hatian` (keyakinan 0,7),
+   13 fakta kunci, 4 red flag, isi benar-benar dari LLM (ROE TTM 19,7% · laba
+   +16,2% YoY · forward PE 22,93x vs rata-rata 10 peer 11,05x · intrinsik 2.577
+   di bawah harga 3.250). Biaya **8 kredit** — 8 panggilan, semuanya `miss`.
+2. **Chat AI diuji untuk emiten yang lolos sidang**: **6 dari 6** dijawab LLM
+   (UNVR, ICBP, ASII, BBCA, AISA, AKRA) dengan angka spesifik masing-masing
+   (Unilever Holding 85,0% · Indofood 80,5% · Jardine 50,1% · Dwimuria 54,9% ·
+   Pangan Sejahtera 58,7% · Arthakencana 64,6%), **0 kredit Sectors** — papannya
+   dibangun dari arsip. Satu emiten (BMRI) belum terarsip sehingga sengaja
+   dilewati supaya tidak menarik data live tanpa disadari.
+
+Demo itu juga **masuk video judging** (j9): `record_board_chat.py` (baru) merekam
+papan + tanya-jawab (ANTM), narasi j9 ditambah satu kalimat, dan visualnya memakai
+satu potongan utuh mulai detik 11,6 rekaman — papan tergambar → gulir → tanya →
+jawab, berurutan seperti yang diminta narasi. j9 5,7s → **12,2s**; total video
+163,7s → **170,2s** (batas 180).
+
+> Jebakan yang tertangkap: memulai potongan dari detik 4,0 menghasilkan frame
+> papan yang **masih memuat** ("Menyusun berkas investigasi…") — seluruh fase
+> pertama terbuang. Titik potong diambil dari penanda waktu perekam, bukan tebakan.

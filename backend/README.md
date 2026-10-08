@@ -42,9 +42,17 @@ membutuhkan `SECTORS_API_KEY` dan `OLLAMA_API_KEY`.
 | `SECTORS_API_KEY` | — | Key Sectors (raw, tanpa `Bearer`) |
 | `OLLAMA_BASE_URL` | `https://ollama.com/v1` | Endpoint OpenAI-compatible |
 | `OLLAMA_API_KEY` | — | Key Ollama cloud |
-| `MODEL_ANALYST/DEBATE/JUDGE` | `deepseek-v4-flash` | Model per peran |
+| `MODEL_ANALYST/DEBATE/JUDGE` | `deepseek-v4.1-flash` | Model per peran |
 | `TRIAL_TIMEOUT_SECONDS` | `300` | Batas waktu sidang |
 | `CACHE_TTL_DAYS` | `7` | TTL cache Sectors di SQLite |
+
+> **Model Ollama bisa di-retire sewaktu-waktu.** `deepseek-v4-flash:0731` (dipakai
+> sampai 2026-10-06) dihentikan Ollama pada 2026-09-25; sejak itu setiap panggilan
+> LLM mengembalikan **HTTP 410**, dan karena semua jalur LLM menangkap exception
+> lalu jatuh ke template/heuristik, kegagalannya SENYAP — sidang tetap "jalan"
+> tapi isinya template, dan chat papan menjawab dengan chip kuning `heuristik`.
+> Kalau perilakunya terasa aneh, cek dulu daftar model yang hidup:
+> `curl -H "Authorization: Bearer $OLLAMA_API_KEY" https://ollama.com/v1/models`
 
 Tanpa `OLLAMA_API_KEY`, pipeline memakai **template deterministik**
 (`llm_fallback_template=True`) sehingga demo fixture tetap menghasilkan

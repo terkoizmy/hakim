@@ -35,7 +35,7 @@ import {
   type NodeType,
   type TickerBoardData,
 } from '../types/board';
-import { formatDate } from '../utils/format';
+import { formatDate, formatRupiah } from '../utils/format';
 import type { VerdictCategory } from '../types/contract';
 
 const SEV_CLS: Record<string, string> = {
@@ -943,6 +943,18 @@ export default function DetectiveBoardPage() {
     };
   }, [boardData, selectedTicker, t]);
 
+  // Harga arsip untuk emiten terpilih. Angka di kartu grafik DULU di-hardcode
+  // per ticker (`selectedTicker === 'BBCA' ? 'Rp 9.850' : …`) — sisa era mock.
+  // Akibatnya halaman bertema bukti menampilkan harga yang tidak berasal dari
+  // mana pun, tepat di sebelah grafik yang justru kosong. Sekarang: titik
+  // terakhir seri harga kalau ada, kalau tidak harga saat sidang dari jurnal,
+  // kalau tidak ada keduanya ya "—".
+  const chartPrice = useMemo<number | null>(() => {
+    const hist = currentBoard.priceHistory;
+    if (hist && hist.length) return hist[hist.length - 1].close;
+    return vettedEmiten.find((e) => e.ticker === selectedTicker)?.priceAtTrial ?? null;
+  }, [currentBoard.priceHistory, vettedEmiten, selectedTicker]);
+
   const filteredEmiten = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return vettedEmiten;
@@ -1186,10 +1198,15 @@ export default function DetectiveBoardPage() {
           </header>
         </Reveal>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[265px_1fr_310px] gap-4 items-stretch">
+        {/* Tinggi baris DIKUNCI pada layar lebar: kanvas 720 + celah 14 + panel
+            chat 420 = 1154. Harus `grid-rows`, bukan `h-[…]` di kontainer:
+            tinggi kontainer TIDAK mengikat baris `auto`, jadi tanpa ini kolom
+            kiri/kanan meregang mengikuti panjang daftar emiten (`h-full` resolve
+            ke auto) dan halaman jadi ~1.000px lebih tinggi. */}
+        <div className="grid grid-cols-1 lg:grid-cols-[265px_1fr_310px] gap-4 items-stretch lg:grid-rows-[1154px]">
           {/* LEFT: emiten list + filter */}
           <Reveal>
-            <div className="flex flex-col gap-3.5 h-[720px]">
+            <div className="flex flex-col gap-3.5 h-full min-h-[720px]">
               <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase">
@@ -1385,9 +1402,13 @@ export default function DetectiveBoardPage() {
             </div>
           </Reveal>
 
-          {/* CENTER: board canvas */}
-          <Reveal delay={40}>
-            <div className="bg-[#0b0907] border border-[#3a332a] rounded-[14px] overflow-hidden shadow-2 h-[720px] flex flex-col">
+          {/* CENTER: board canvas + asisten investigasi TEPAT DI BAWAHNYA.
+              Sketsa pemilik proyek memang menaruh kotak tanya-jawab di sini.
+              Sebelumnya panelnya duduk di section bawah halaman (~1.600px dari
+              atas), jadi fiturnya ada tapi tidak ada yang menemukannya. */}
+          <Reveal delay={40} className="lg:h-full">
+            <div className="flex flex-col gap-3.5 h-full min-h-[720px]">
+            <div className="bg-[#0b0907] border border-[#3a332a] rounded-[14px] overflow-hidden shadow-2 h-[720px] flex-none flex flex-col">
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-[#2a251e] bg-bg-2 flex-none">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase">
@@ -1497,11 +1518,176 @@ export default function DetectiveBoardPage() {
                 </ReactFlowProvider>
               </div>
             </div>
+
+            {/* LEFT: Asisten AI Interaktif + Smart Chips */}
+            <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-5 shadow-sm flex flex-col h-[420px] flex-none">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h3 className="font-mono text-[11.5px] text-text-0 font-semibold tracking-wide flex items-center gap-2">
+                  <SparkIcon size={14} className="text-brass-400" />{' '}
+                  {t('board.chat.title', { ticker: selectedTicker })}
+                </h3>
+                <span className="text-[11px] font-mono text-text-3">
+                  {renderRich(t('board.chat.focus', { name: selected?.data.label ?? selectedTicker }), {
+                    b: (children) => (
+                      <b className="text-brass-300 font-semibold">{children}</b>
+                    ),
+                  })}
+                </span>
+              </div>
+
+              {/* Keterangan kejujuran: backend penjawab chat hanya berbahasa
+                  Indonesia, jadi pembaca mode EN tidak mengira ini bug. */}
+              <div className="mb-3 font-mono text-[10px] text-text-3/80">{t('board.chatNote')}</div>
+
+              <div className="flex flex-col gap-3 flex-1 min-h-[120px] overflow-y-auto mb-4 pr-1">
+                {chatLog.map((m, i) => (
+                  <div
+                    key={m.id ?? i}
+                    className={`text-[13px] leading-relaxed ${
+                      m.role === 'user'
+                        ? 'text-text-0 text-right bg-brass-500/10 border border-brass-500/30 rounded-lg p-3 ml-12'
+                        : 'text-text-2 bg-bg-1 border border-[#2e271f] rounded-lg p-3 mr-6'
+                    } ${m.pending ? 'animate-fade-in' : ''}`}
+                  >
+                    {m.role === 'ai' && !m.pending && (
+                      <div className="font-mono text-[10.5px] font-semibold text-brass-400 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="flex items-center gap-1.5">
+                          <SparkIcon size={11} /> {t('board.chat.from')}
+                        </span>
+                        {/* jujur soal jalur jawaban: model bahasa vs heuristik lokal */}
+                        {m.mode === 'heuristik' ? (
+                          <span
+                            className="font-normal text-[9.5px] uppercase tracking-wide px-1.5 py-[1px] rounded border text-[#d9a441] bg-[#d9a441]/10 border-[#d9a441]/30"
+                            title={t('board.chat.heuristicTitle')}
+                          >
+                            {t('board.chat.heuristic')}
+                          </span>
+                        ) : m.mode === 'llm' ? (
+                          <span
+                            className="font-normal text-[9.5px] uppercase tracking-wide px-1.5 py-[1px] rounded border text-[#7fb069] bg-[#7fb069]/10 border-[#7fb069]/30"
+                            title={t('board.chat.modelTitle', { model: m.model ?? 'LLM' })}
+                          >
+                            {m.model ?? 'llm'}
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
+                    {m.pending ? (
+                      // Animasi "asisten sedang menelusuri papan": tiga titik
+                      // memantul bergantian + garis progres. LLM bisa butuh
+                      // beberapa detik, jadi harus terlihat hidup — bukan
+                      // gelembung kosong yang tampak seperti jawaban hampa.
+                      <div
+                        className="flex flex-col gap-2"
+                        role="status"
+                        aria-live="polite"
+                        aria-label={t('board.chat.busyAria', { ticker: selectedTicker })}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-[3px]" aria-hidden>
+                            {[0, 1, 2].map((d) => (
+                              <span
+                                key={d}
+                                className="h-1.5 w-1.5 rounded-full bg-brass-400 animate-bounce motion-reduce:animate-none"
+                                style={{ animationDelay: `${d * 0.16}s`, animationDuration: '1.05s' }}
+                              />
+                            ))}
+                          </span>
+                          <span className="font-mono text-[10.5px] text-brass-300/90 tracking-wide">
+                            {t('board.chat.busy', { ticker: selectedTicker })}
+                          </span>
+                        </div>
+                        {/* Bar progres tak-tentu. Memakai keyframe `livebar`
+                            (menggeser `left`), bukan `strip-slide` yang
+                            menganimasikan `backgroundPosition` — yang terakhir
+                            tidak menggerakkan elemen berwarna solid apa pun. */}
+                        <span
+                          className="relative h-[2px] w-full overflow-hidden rounded-full bg-brass-500/15"
+                          aria-hidden
+                        >
+                          <span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-brass-400/70 animate-livebar motion-reduce:animate-none" />
+                        </span>
+                      </div>
+                    ) : (
+                      m.text
+                    )}
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Smart Suggestion Chips */}
+              <div className="mb-4 pt-3 border-t border-[#2e271f]">
+                <div className="flex items-center gap-1.5 font-mono text-[10.5px] text-text-3 uppercase tracking-wider mb-2">
+                  <SparkIcon size={11} className="text-brass-400 flex-none" />
+                  <span>
+                    {t('board.chat.suggestions', {
+                      name: selected?.data.label ?? selectedTicker,
+                    })}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {promptChips.map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => sendQuestion(chip)}
+                      disabled={chatBusy}
+                      className={`text-left font-mono text-[11px] rounded-md border border-[#3a332a] bg-bg-1 px-3 py-1.5 text-text-2 hover:border-brass-500 hover:text-brass-300 hover:bg-brass-500/10 transition-all ${FOCUS} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#3a332a] disabled:hover:text-text-2 disabled:hover:bg-bg-1`}
+                      title={
+                        chatBusy
+                          ? t('board.chat.chipBusyTitle')
+                          : t('board.chat.chipTitle')
+                      }
+                    >
+                      💬 {chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  sendChat();
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  value={chat}
+                  onChange={(e) => setChat(e.target.value)}
+                  placeholder={t(
+                    chatBusy ? 'board.chat.placeholderBusy' : 'board.chat.placeholder',
+                    { name: selected?.data.label ?? selectedTicker },
+                  )}
+                  className="flex-1 bg-bg-1 border border-[#3a332a] rounded-md px-3.5 py-2.5 text-sm text-text-0 placeholder:text-text-3 focus-visible:border-brass-500 focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(201,162,74,.12)] transition-shadow"
+                />
+                <button
+                  type="submit"
+                  disabled={chatBusy}
+                  aria-busy={chatBusy}
+                  className={`font-mono text-xs tracking-wider text-[#14120f] bg-brass-500 rounded-md px-4 py-2.5 transition-colors hover:bg-brass-400 ${FOCUS} font-semibold disabled:opacity-60 disabled:cursor-wait disabled:hover:bg-brass-500 inline-flex items-center gap-2`}
+                >
+                  {chatBusy && (
+                    <span
+                      className="h-3 w-3 rounded-full border-2 border-[#14120f]/30 border-t-[#14120f] animate-spin motion-reduce:animate-none"
+                      aria-hidden
+                    />
+                  )}
+                  {t(chatBusy ? 'board.chat.sending' : 'board.chat.send')}
+                </button>
+              </form>
+
+              <div className="mt-2.5 text-center font-mono text-[10px] text-text-3/80">
+                {t('board.chat.disclaimer')}
+              </div>
+            </div>
+            </div>
           </Reveal>
 
           {/* RIGHT: detail + benang */}
           <Reveal delay={80}>
-            <div className="flex flex-col gap-3.5 h-[720px]">
+            <div className="flex flex-col gap-3.5 h-full min-h-[720px]">
               <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-3.5 flex-none max-h-[340px] flex flex-col min-h-0 overflow-y-auto">
                 <h3 className="font-mono text-[11px] text-text-3 tracking-[1.5px] uppercase mb-3 flex-none">
                   {t('board.inspector.title')}
@@ -1640,173 +1826,11 @@ export default function DetectiveBoardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-5 items-start">
-              {/* LEFT: Asisten AI Interaktif + Smart Chips */}
-              <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <h3 className="font-mono text-[11.5px] text-text-0 font-semibold tracking-wide flex items-center gap-2">
-                    <SparkIcon size={14} className="text-brass-400" />{' '}
-                    {t('board.chat.title', { ticker: selectedTicker })}
-                  </h3>
-                  <span className="text-[11px] font-mono text-text-3">
-                    {renderRich(t('board.chat.focus', { name: selected?.data.label ?? selectedTicker }), {
-                      b: (children) => (
-                        <b className="text-brass-300 font-semibold">{children}</b>
-                      ),
-                    })}
-                  </span>
-                </div>
-
-                {/* Keterangan kejujuran: backend penjawab chat hanya berbahasa
-                    Indonesia, jadi pembaca mode EN tidak mengira ini bug. */}
-                <div className="mb-3 font-mono text-[10px] text-text-3/80">{t('board.chatNote')}</div>
-
-                <div className="flex flex-col gap-3 max-h-[260px] overflow-y-auto mb-4 pr-1">
-                  {chatLog.map((m, i) => (
-                    <div
-                      key={m.id ?? i}
-                      className={`text-[13px] leading-relaxed ${
-                        m.role === 'user'
-                          ? 'text-text-0 text-right bg-brass-500/10 border border-brass-500/30 rounded-lg p-3 ml-12'
-                          : 'text-text-2 bg-bg-1 border border-[#2e271f] rounded-lg p-3 mr-6'
-                      } ${m.pending ? 'animate-fade-in' : ''}`}
-                    >
-                      {m.role === 'ai' && !m.pending && (
-                        <div className="font-mono text-[10.5px] font-semibold text-brass-400 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span className="flex items-center gap-1.5">
-                            <SparkIcon size={11} /> {t('board.chat.from')}
-                          </span>
-                          {/* jujur soal jalur jawaban: model bahasa vs heuristik lokal */}
-                          {m.mode === 'heuristik' ? (
-                            <span
-                              className="font-normal text-[9.5px] uppercase tracking-wide px-1.5 py-[1px] rounded border text-[#d9a441] bg-[#d9a441]/10 border-[#d9a441]/30"
-                              title={t('board.chat.heuristicTitle')}
-                            >
-                              {t('board.chat.heuristic')}
-                            </span>
-                          ) : m.mode === 'llm' ? (
-                            <span
-                              className="font-normal text-[9.5px] uppercase tracking-wide px-1.5 py-[1px] rounded border text-[#7fb069] bg-[#7fb069]/10 border-[#7fb069]/30"
-                              title={t('board.chat.modelTitle', { model: m.model ?? 'LLM' })}
-                            >
-                              {m.model ?? 'llm'}
-                            </span>
-                          ) : null}
-                        </div>
-                      )}
-                      {m.pending ? (
-                        // Animasi "asisten sedang menelusuri papan": tiga titik
-                        // memantul bergantian + garis progres. LLM bisa butuh
-                        // beberapa detik, jadi harus terlihat hidup — bukan
-                        // gelembung kosong yang tampak seperti jawaban hampa.
-                        <div
-                          className="flex flex-col gap-2"
-                          role="status"
-                          aria-live="polite"
-                          aria-label={t('board.chat.busyAria', { ticker: selectedTicker })}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-[3px]" aria-hidden>
-                              {[0, 1, 2].map((d) => (
-                                <span
-                                  key={d}
-                                  className="h-1.5 w-1.5 rounded-full bg-brass-400 animate-bounce motion-reduce:animate-none"
-                                  style={{ animationDelay: `${d * 0.16}s`, animationDuration: '1.05s' }}
-                                />
-                              ))}
-                            </span>
-                            <span className="font-mono text-[10.5px] text-brass-300/90 tracking-wide">
-                              {t('board.chat.busy', { ticker: selectedTicker })}
-                            </span>
-                          </div>
-                          {/* Bar progres tak-tentu. Memakai keyframe `livebar`
-                              (menggeser `left`), bukan `strip-slide` yang
-                              menganimasikan `backgroundPosition` — yang terakhir
-                              tidak menggerakkan elemen berwarna solid apa pun. */}
-                          <span
-                            className="relative h-[2px] w-full overflow-hidden rounded-full bg-brass-500/15"
-                            aria-hidden
-                          >
-                            <span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-brass-400/70 animate-livebar motion-reduce:animate-none" />
-                          </span>
-                        </div>
-                      ) : (
-                        m.text
-                      )}
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
-                </div>
-
-                {/* Smart Suggestion Chips */}
-                <div className="mb-4 pt-3 border-t border-[#2e271f]">
-                  <div className="flex items-center gap-1.5 font-mono text-[10.5px] text-text-3 uppercase tracking-wider mb-2">
-                    <SparkIcon size={11} className="text-brass-400 flex-none" />
-                    <span>
-                      {t('board.chat.suggestions', {
-                        name: selected?.data.label ?? selectedTicker,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {promptChips.map((chip, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => sendQuestion(chip)}
-                        disabled={chatBusy}
-                        className={`text-left font-mono text-[11px] rounded-md border border-[#3a332a] bg-bg-1 px-3 py-1.5 text-text-2 hover:border-brass-500 hover:text-brass-300 hover:bg-brass-500/10 transition-all ${FOCUS} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#3a332a] disabled:hover:text-text-2 disabled:hover:bg-bg-1`}
-                        title={
-                          chatBusy
-                            ? t('board.chat.chipBusyTitle')
-                            : t('board.chat.chipTitle')
-                        }
-                      >
-                        💬 {chip}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    sendChat();
-                  }}
-                  className="flex gap-2"
-                >
-                  <input
-                    value={chat}
-                    onChange={(e) => setChat(e.target.value)}
-                    placeholder={t(
-                      chatBusy ? 'board.chat.placeholderBusy' : 'board.chat.placeholder',
-                      { name: selected?.data.label ?? selectedTicker },
-                    )}
-                    className="flex-1 bg-bg-1 border border-[#3a332a] rounded-md px-3.5 py-2.5 text-sm text-text-0 placeholder:text-text-3 focus-visible:border-brass-500 focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(201,162,74,.12)] transition-shadow"
-                  />
-                  <button
-                    type="submit"
-                    disabled={chatBusy}
-                    aria-busy={chatBusy}
-                    className={`font-mono text-xs tracking-wider text-[#14120f] bg-brass-500 rounded-md px-4 py-2.5 transition-colors hover:bg-brass-400 ${FOCUS} font-semibold disabled:opacity-60 disabled:cursor-wait disabled:hover:bg-brass-500 inline-flex items-center gap-2`}
-                  >
-                    {chatBusy && (
-                      <span
-                        className="h-3 w-3 rounded-full border-2 border-[#14120f]/30 border-t-[#14120f] animate-spin motion-reduce:animate-none"
-                        aria-hidden
-                      />
-                    )}
-                    {t(chatBusy ? 'board.chat.sending' : 'board.chat.send')}
-                  </button>
-                </form>
-
-                <div className="mt-2.5 text-center font-mono text-[10px] text-text-3/80">
-                  {t('board.chat.disclaimer')}
-                </div>
-              </div>
-
-              {/* RIGHT: Visual Grafik Harga & Benchmark Metrik Evaluasi */}
-              <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-5">
+              {/* Visual grafik harga & benchmark metrik — dulu menemani panel
+                  chat; sekarang berdiri sendiri karena chat-nya pindah ke bawah
+                  kanvas. Dua kartu ini berdampingan di layar lebar. */}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* 1. Grafik Tren Harga */}
                 <div className="bg-bg-2 border border-[#3a332a] rounded-[14px] p-4">
                   <div className="flex items-center justify-between gap-2 mb-2">
@@ -1814,17 +1838,7 @@ export default function DetectiveBoardPage() {
                       {t('board.chart.title', { ticker: selectedTicker })}
                     </h3>
                     <span className="font-mono text-[12px] font-bold text-brass-300">
-                      {selectedTicker === 'BBCA'
-                        ? 'Rp 9.850'
-                        : selectedTicker === 'BRMS'
-                          ? 'Rp 186'
-                          : selectedTicker === 'CUAN'
-                            ? 'Rp 6.425'
-                            : selectedTicker === 'GOTO'
-                              ? 'Rp 68'
-                              : selectedTicker === 'BBRI'
-                                ? 'Rp 4.920'
-                                : 'Rp 2.890'}
+                      {chartPrice != null ? formatRupiah(chartPrice) : '—'}
                     </span>
                   </div>
                   <div className="pt-2">

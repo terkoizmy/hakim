@@ -394,10 +394,15 @@ klaim.
 
 ## 9. Checklist akhir sebelum submit
 
+> Langkah teknis unggahnya (perintah git, judul/deskripsi YouTube, setelan yang
+> mudah terlewat, caption medsos siap tempel) ada di [`UPLOAD.md`](UPLOAD.md).
+
 - [ ] Repo publik, tanpa API key, history bersih
 - [ ] `README.md` menjelaskan cara menjalankan dari nol
 - [ ] Teaser 1 menit terunggah **publik**
-- [ ] Video judging ≤3 menit terunggah (publik/unlisted)
+- [ ] Video judging ≤3 menit terunggah (publik/unlisted) — **170,2 detik** ✅
+- [ ] Thumbnail video judging terpasang (`hakim-teaser/out/thumbnail-judging.png`)
+- [ ] Pengungkapan konten sintetis dicentang (narasi video memakai suara TTS)
 - [ ] Problem statement 1 kalimat tersalin ke formulir
 - [ ] Track = AI Agents & Assistants + anggota tim
 - [ ] Post medsos terunggah, akun resmi Sectors ter-tag
