@@ -3,7 +3,12 @@
 Dokumen kerja untuk pengisian formulir submission. Tiap bagian di bawah ini memetakan
 satu isian formulir, dengan naskah, alasan, dan catatan produksinya.
 
-**Batas waktu: 30 Sep 2026. Repo freeze total setelah submit.**
+**Batas waktu: 8 Oktober 2026, 23:59 WIB** (registrasi tutup 7 Okt 23:59 WIB).
+**Setelah submit: repo DAN aplikasi beku total** — aturan resminya: *"no commits,
+pushes, edits, or changes of any kind, including bug fixes"*. Semua dokumen harus
+sudah ter-push **sebelum** menekan submit, bukan sesudah.
+
+Sumber: <https://hackathon.sectors.app/rules> (§02 tanggal, §05 freeze, §08 submission).
 
 ---
 
@@ -418,15 +423,18 @@ klaim.
 
 > Langkah teknis unggahnya (perintah git, judul/deskripsi YouTube, setelan yang
 > mudah terlewat, caption medsos siap tempel) ada di [`UPLOAD.md`](UPLOAD.md).
+> Tag medsos & cara memastikannya "nyangkut" ada di [`SOCIAL-THREADS.md`](SOCIAL-THREADS.md).
 
-- [ ] Repo publik, tanpa API key, history bersih
+- [ ] Repo publik, tanpa API key, history bersih, **sudah ter-push** (submit membekukan repo)
 - [ ] `README.md` menjelaskan cara menjalankan dari nol
-- [ ] Teaser 1 menit terunggah **publik**
-- [ ] Video judging ≤3 menit terunggah (publik/unlisted) — **170,2 detik** ✅
+- [ ] Teaser 1 menit terunggah **publik** (YouTube atau medsos)
+- [ ] Video judging ≤3 menit — **170,2 detik** ✅ — YouTube (publik/unlisted), Vimeo, Drive *link sharing*, atau Loom
 - [ ] Thumbnail video judging terpasang (`hakim-teaser/out/thumbnail-judging.png`)
 - [ ] Pengungkapan konten sintetis dicentang (narasi video memakai suara TTS)
-- [ ] Problem statement 1 kalimat tersalin ke formulir
-- [ ] Track = AI Agents & Assistants + anggota tim
-- [ ] Post medsos terunggah, akun resmi Sectors ter-tag
-- [ ] Formulir tersubmit **pagi hari 30 Sep**, bukan tengah malam
-- [ ] Setelah submit: freeze total
+- [ ] Problem statement 1 kalimat tersalin ke formulir (§2)
+- [ ] Track = AI Agents & Assistants + nama anggota tim
+- [ ] Post medsos terunggah: **tag akun resmi Sectors** + **pakai template thumbnail panitia**
+      (<https://canva.link/mexgt4g89m17xln>) + hashtag `#SectorsHackathon`
+- [ ] Formulir di <https://hackathon.sectors.app/portal/submit> tersubmit **sebelum 8 Okt 23:59 WIB**
+      — server yang menentukan on-time, jadi jangan menit terakhir
+- [ ] Setelah submit: **jangan commit, jangan push, jangan edit apa pun**

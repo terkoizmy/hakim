@@ -13,8 +13,31 @@
 | Video ≤5 menit | teaser 9:16 (59 detik) dan video judging 9:16 (2:50) dua-duanya masuk |
 | Balasan menentukan jangkauan | posting, lalu **balas komentar** — jangan posting lalu pergi |
 
-Yang **wajib** ada karena ini syarat submission: tag akun resmi **@sectors**
-(ganti dengan handle yang diminta formulir) dan hashtag **#SectorsHackathon**.
+Yang **wajib** ada karena ini syarat submission: tag akun resmi **Sectors** dan
+hashtag **#SectorsHackathon**.
+
+## Siapa yang di-tag
+
+Aturan resminya hanya menuntut satu hal: *"a social media post publishing the project
+… **tagging the official Sectors account**"* — jadi tag Sectors sudah memenuhi syarat.
+Tidak ada daftar tag lain yang diwajibkan.
+
+| Akun | Handle yang bisa diverifikasi | Peran |
+|---|---|---|
+| **Sectors** | `@sectorsapp` (LinkedIn: [linkedin.com/company/sectorsapp](https://linkedin.com/company/sectorsapp)) | penyelenggara + pemilik data — **wajib** |
+| Algoritma | `@teamalgoritma` (LinkedIn: linkedin.com/school/teamalgoritma) | penyelenggara; pengumuman pemenang lewat Sectors **dan** Algoritma |
+| Supertype | `@supertypeai` (GitHub org: github.com/supertypeai) | perusahaan di balik Sectors; ikut jadi penyelenggara & juri |
+
+**Cara memastikan tag-nya benar-benar "nyangkut":** ketik `@` di Threads, lalu
+**pilih dari daftar autocomplete**. Tag yang tidak muncul di autocomplete bukan akun
+— ia hanya teks abu-abu yang tidak memberi notifikasi ke siapa pun. Kalau `@sectors`
+tidak muncul, ganti dengan `@sectorsapp`.
+
+> Kalau formulir submission menyebut handle tertentu, **ikuti formulir** — itu kata
+> terakhir. Tiga handle di tabel adalah yang bisa diverifikasi dari sumber publik.
+
+**Tambahan yang bukan tag tapi wajib:** post medsos harus memakai **template thumbnail
+yang disediakan panitia** (aturan §08): <https://canva.link/mexgt4g89m17xln>.
 
 ---
 
