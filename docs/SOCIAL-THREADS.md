@@ -22,14 +22,19 @@ Yang **wajib** ada karena ini syarat submission: tag akun resmi **@sectors**
 
 Paling cocok dengan budaya Threads: orang membaca cerita, bukan siaran pers.
 
+> **Satu baris jujur diselipkan di awal** — "Bu Sri" di video adalah **ilustrasi**,
+> sedangkan angkanya nyata (CUAN, suspensi, free float 3,1%). Di dalam video, konteks
+> komik yang membuatnya terbaca sebagai ilustrasi; di caption teks konteks itu hilang,
+> dan cerita tentang orang yang tidak ada bisa terbaca sebagai testimoni palsu.
+
 ```
-Bu Sri, pensiunan guru. 31 tahun mengajar.
+Pensiunan guru, 31 tahun mengajar. Di video kami dia "Bu Sri" — ilustrasi.
 
 Grup WA: "CUAN besok naik 50%". Dua minggu benar. Hari ke-17, 80% uangnya hilang — sahamnya disuspensi.
 
 Free float 3,1%, tertulis di data publik sejak dulu. Jawabannya sudah ada — cuma tak ada yang membacakannya.
 
-Jadi kami bikin SIDANG: pengadilan saham AI. Satu ticker → 5 analis periksa bukti @sectors → jaksa vs pembela debat → hakim kasih putusan. Bukan perintah beli: red flag + pertanyaan buat kamu jawab dulu.
+Kami bikin SIDANG: pengadilan saham AI. Satu ticker → 5 analis periksa bukti @sectors → hakim kasih putusan. Bukan perintah beli: red flag + pertanyaan buat kamu jawab dulu.
 
 Saham apa yang mau kamu adili?
 ```
@@ -83,6 +88,9 @@ Jangan lebih dari tiga post: makin panjang, makin banyak orang berhenti di post 
 - [ ] Handle **@sectors** sudah diganti dengan yang diminta formulir
 - [ ] Video terpasang (9:16) — teaser 59 detik atau video judging 2:50
 - [ ] Baris pertama sudah "berdiri sendiri" saat dipotong
-- [ ] Panjang ≤500 karakter
+- [ ] Panjang ≤500 karakter — **opsi A 496 · B 443 · C 335** (diukur, bukan dikira)
 - [ ] Setelah posting: salin URL post-nya ke formulir submission
 - [ ] Balas komentar yang masuk — jangkauan Threads ditentukan dari situ
+
+Waktu posting: **malam WIB (19.00–22.00)**. Audiensnya investor ritel yang membuka
+ponsel setelah jam kerja — dan Sectors akan melihat post Anda di jam yang sama.
