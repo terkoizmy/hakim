@@ -130,6 +130,60 @@ Studio.
 
 ---
 
+## 2️⃣b Video teaser → YouTube (Item 3) — **wajib PUBLIK**
+
+Teaser bukan ringkasan video judging: ia ada supaya orang **mau** menonton yang
+tiga menit. Karena itu unggahannya berdiri sendiri, dan aturannya menuntut
+visibilitas **publik** (video judging boleh unlisted, teaser tidak).
+
+Berkas: `teaser-16x9.mp4` — **59,1 detik**, narasi TTS + musik.
+Versi vertikal `teaser-9x16.mp4` untuk Reels/Shorts/TikTok.
+
+**Judul:**
+
+```
+Sebelum beli, adili dulu — SIDANG: pengadilan saham AI (teaser 60s)
+```
+
+**Deskripsi** (tanpa babak — video 59 detik, dan babak YouTube minimal 10 detik;
+memaksakan babak di sini justru bikin daftarnya dibuang):
+
+```
+Sebelum beli, adili dulu.
+
+Dua puluh juta investor ritel Indonesia — dominan milenial dan Gen Z, pengalaman minim, aset kecil. Riset yang layak hanya milik institusi; yang tersisa sinyal beli dari AI tanpa cara memeriksanya.
+
+SIDANG mengadili emitennya: lima analis memeriksa bukti dari Sectors API (fundamental, harga, smart money, insider, anti-gorengan), jaksa dan pembela berdebat dua ronde, dan hakim merumuskan memorandum riset yang tiap angkanya tersitasi ke endpoint asalnya.
+
+Bukan "AI bilang BELI". Keluarannya putusan, red flag, dan pertanyaan verifikasi yang wajib Anda jawab sebelum uang Anda keluar. Dan SIDANG menilai kembali putusan lamanya terhadap harga yang benar-benar terjadi.
+
+Video lengkapnya (2 menit 50): [tempel tautan video judging di sini]
+
+Kode sumber: https://github.com/terkoizmy/hakim
+Sectors Hackathon Indonesia 2026 — Track 1: AI Agents & Assistants.
+
+SIDANG adalah alat bantu riset, bukan rekomendasi investasi. DYOR.
+
+#SectorsHackathon #AIAgents #PasarModal
+```
+
+**Tag:** `SIDANG, Sectors Hackathon, saham Indonesia, investor ritel, AI Agents, IDX, analisis saham`
+
+| Kolom | Nilai |
+|---|---|
+| Visibilitas | **Publik** — ini satu-satunya item yang mewajibkannya |
+| Thumbnail | `hakim-teaser/out/thumbnail-teaser.png` (1280×720, 339 KB) |
+| Bahasa video | Indonesia · Kategori: Science & Technology |
+| "Bukan untuk anak" | ya |
+| **Konten sintetis/altered** | **ya** — narasinya suara TTS |
+| Babak | **jangan diisi** (video <60 detik) |
+
+> Varian `no-trial` (`teaser-16x9-no-trial.mp4`, 56 detik, musik saja) sengaja
+> bisu untuk diisi suara Anda sendiri — pakai yang itu kalau ingin VO sendiri,
+> lalu unggah varian itu sebagai teaser, bukan yang ber-TTS.
+
+---
+
 ## 3️⃣ Post media sosial
 
 Pakai **video 9:16** (`teaser-9x16-judging.mp4` atau teaser 58 detik) supaya
