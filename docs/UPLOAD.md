@@ -74,15 +74,22 @@ Yang kedua hanya boleh memunculkan `.env.example`.
 SIDANG — pengadilan saham berbasis AI untuk IDX | Sectors Hackathon 2026
 ```
 
-**Deskripsi** (siap tempel; babak di bawah wajib ≥10 detik per babak — itu
-sebabnya ada yang digabung):
+**Deskripsi** (siap tempel). Catatan babak: YouTube mengabaikan **seluruh** daftar
+babak kalau ada satu babak yang lebih pendek dari 10 detik — itu sebabnya
+post-mortem (1:41) dan papan bukti (1:49) digabung jadi satu babak, bukan dipisah.
 
 ```
-Setiap hari ribuan investor ritel Indonesia menerima sinyal beli dari AI — dan hampir tidak ada yang bisa menjelaskan dari mana angkanya datang.
+Dua puluh juta investor ritel Indonesia. Naik 36% dalam setahun. Dominan milenial dan Gen Z — pengalaman minim, aset kecil. Dan setiap hari mereka menerima sinyal beli dari AI, tanpa cara memeriksa dari mana angkanya datang.
 
-SIDANG adalah pengadilan saham berbasis multi-agent AI. Kasih satu ticker IDX: lima analis memeriksa bukti dari Sectors API, jaksa dan pembela berdebat dua ronde, lalu hakim merumuskan memorandum riset yang setiap angkanya tersitasi ke endpoint asalnya.
+SIDANG adalah pengadilan saham berbasis multi-agent AI. Kasih satu ticker IDX: lima analis memeriksa bukti dari Sectors API (fundamental, harga, smart money, insider, anti-gorengan), jaksa dan pembela berdebat dua ronde di atas bukti yang sama, lalu hakim merumuskan memorandum riset yang setiap angkanya tersitasi ke endpoint asalnya.
 
-Bukan "AI bilang BELI" — keluarannya putusan, red flag, dan pertanyaan verifikasi yang wajib Anda jawab dulu. Dan SIDANG menilai kembali putusan lamanya terhadap harga yang benar-benar terjadi.
+Bukan "AI bilang BELI". Keluarannya putusan, red flag, dan pertanyaan verifikasi yang wajib Anda jawab sebelum uang Anda keluar. Dan SIDANG menilai kembali putusan lamanya terhadap harga yang benar-benar terjadi — alat ini mempublikasikan kesalahannya sendiri.
+
+Yang bisa Anda periksa sendiri di video ini:
+• Memorandum bersitasi — tiap angka membawa ID dan endpoint asalnya
+• Tabel Audit Sumber Data — endpoint, parameter, tanggal ambil, dan status cache (hit = 0 kredit)
+• Post-mortem — putusan lama dinilai ulang terhadap harga nyata
+• Papan bukti — jaringan kepemilikan, plus asisten AI yang bisa ditanyai soal emitennya (0 kredit Sectors)
 
 Babak:
 0:00 Pembuka
@@ -91,10 +98,11 @@ Babak:
 0:57 Lima analis bekerja — bukti dari Sectors API
 1:10 Jaksa vs pembela, dua ronde
 1:28 Fakta kunci & tabel Audit Sumber Data
-1:41 Post-mortem: alat ini menilai putusannya sendiri
+1:41 Post-mortem & papan bukti — termasuk bertanya ke asisten AI
 2:01 Di balik layar: 8 agen & Sectors API
 2:27 Disiplin kredit & arsip permanen
 
+Kode sumber: https://github.com/terkoizmy/hakim
 Dibangun untuk Sectors Hackathon Indonesia 2026 — Track 1: AI Agents & Assistants.
 
 SIDANG adalah alat bantu riset dan analisis informasi pasar, bukan rekomendasi investasi. Keputusan investasi sepenuhnya tanggung jawab Anda.
