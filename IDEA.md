@@ -197,9 +197,9 @@ Diferensiasi metodologi (bukan sekadar "AI chatbot"):
 - [ ] Repo publik, tanpa API key, tetap publik ≥90 hari setelah pemenang diumumkan
 - [ ] Teaser 1 menit — publik di YouTube/medsos
 - [ ] Video judging ≤3 menit — publik/unlisted (YT, Drive link-sharing, Loom)
-- [ ] Problem statement 1 kalimat: *"SIDANG membantu 20 juta investor ritel Indonesia menguji ide beli sahamnya melalui sidang AI multi-agent berbasis data — sebelum uangnya keluar."* (draft, boleh dirapatkan)
+- [ ] Problem statement 1 kalimat — **finalnya di [`docs/SUBMISSION.md`](docs/SUBMISSION.md) §2**: *"SIDANG membantu 20,32 juta investor ritel Indonesia menguji ide beli sahamnya lewat sidang AI multi-agent berbasis data Sectors — sebelum uangnya keluar, bukan sesudah."*
 - [ ] Pilihan track (AI Agents & Assistants) + nama anggota tim
-- [ ] Post medsos (IG/LinkedIn/Threads/TikTok) tag akun resmi Sectors + template thumbnail Canva
+- [ ] Post medsos (IG/LinkedIn/Threads/TikTok) tag akun resmi Sectors + thumbnail (bukan Canva — dibuat sendiri di `hakim-teaser/out/thumbnail-*.png`)
 
 ---
 
