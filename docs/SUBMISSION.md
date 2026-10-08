@@ -52,20 +52,42 @@ Formulir meminta satu kalimat: **untuk siapa** dan **masalah apa yang dipecahkan
 
 **Rekomendasi (pakai ini):**
 
-> SIDANG membantu 20 juta investor ritel Indonesia menguji ide beli sahamnya melalui sidang AI multi-agent berbasis data — sebelum uangnya keluar.
+> SIDANG membantu 20,32 juta investor ritel Indonesia menguji ide beli sahamnya
+> lewat sidang AI multi-agent berbasis data Sectors — sebelum uangnya keluar,
+> bukan sesudah.
 
-Kalimat ini sudah ada di `IDEA.md` §11 dan bentuknya sudah benar: ada subjek (20 juta
-investor ritel), ada masalah (ide beli diuji setelah uang keluar, bukan sebelum), ada
-mekanisme (sidang AI multi-agent), ada sumber (data).
+Empat unsur yang harus ada, dan semuanya ada di kalimat itu: **untuk siapa**
+(20,32 juta investor ritel), **masalahnya** (ide beli lazimnya diuji *setelah* uang
+keluar), **mekanismenya** (sidang AI multi-agent), dan **sumber datanya** (Sectors).
+Angka 20,32 juta diambil apa adanya dari KSEI akhir 2025 (+36% YoY) — angka bulat
+"20 juta" lebih enak dibaca, tapi yang tepat lebih sulit dibantah.
 
 **Versi Inggris**, bila formulir lebih nyaman diisi bahasa Inggris:
 
-> SIDANG helps Indonesia's 20 million retail investors stress-test a stock idea through a multi-agent AI trial grounded in real market data — before the money leaves their account.
+> SIDANG helps Indonesia's 20.32 million retail investors stress-test a stock idea
+> through a multi-agent AI trial grounded in Sectors data — before the money leaves
+> their account, not after.
 
 **Dua alternatif** kalau ingin nada berbeda:
 
-- *Menekankan gorengan:* SIDANG memberi 20 juta investor ritel Indonesia cara memeriksa red flag saham gorengan lewat sidang AI multi-agent — karena riset yang layak selama ini hanya milik institusi.
-- *Menekankan ketidakpercayaan pada AI:* SIDANG mengubah rekomendasi saham dari AI menjadi putusan yang bisa diaudit — setiap angka tersitasi ke endpoint Sectors, dan tiap putusan dinilai ulang terhadap harga yang benar-benar terjadi.
+- *Menekankan gorengan:* Riset yang layak selama ini hanya milik institusi, sementara
+  20,32 juta investor ritel Indonesia harus menanggung sendiri risiko saham gorengan —
+  SIDANG memberi mereka sidang AI multi-agent untuk menguji ide beli sebelum uangnya keluar.
+- *Menekankan audit:* SIDANG mengubah rekomendasi saham dari AI menjadi putusan yang bisa
+  diaudit: lima analis multi-agent memeriksa data Sectors, setiap angka tersitasi ke
+  endpoint asalnya, dan setiap putusan dinilai ulang terhadap harga yang benar-benar terjadi.
+
+**Kalau kolomnya lega** (tiga kalimat, bukan satu):
+
+> 20,32 juta investor ritel Indonesia (+36% YoY) kini dominan milenial dan Gen Z dengan
+> pengalaman minim, sementara equity research yang layak hanya milik institusi — yang
+> tersisa bagi mereka adalah sinyal beli dari AI tanpa cara memeriksanya. SIDANG
+> mengadili emitennya lewat sidang AI multi-agent: lima analis memeriksa bukti dari
+> Sectors API, jaksa dan pembela berdebat di atas bukti yang sama, dan hakim merumuskan
+> memorandum riset yang setiap angkanya tersitasi ke endpoint asalnya. Keluarannya bukan
+> perintah beli, melainkan putusan, red flag, dan pertanyaan verifikasi yang wajib
+> dijawab investor sebelum uangnya keluar — dan setiap putusan lama dinilai ulang
+> terhadap harga yang benar-benar terjadi.
 
 Yang **jangan** dipakai: kalimat yang menyebut "AI" sebagai nilainya sendiri. Juri
 sudah melihat puluhan proyek AI; yang membedakan SIDANG adalah *perilaku komitenya*.
