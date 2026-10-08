@@ -15,6 +15,24 @@ Berkas yang diunggah:
 
 ---
 
+## Di mana mengunggah? YouTube, Drive, atau Loom?
+
+Aturan panitianya (tercatat di `IDEA.md` §checklist): *"publik/unlisted (YT, Drive
+link-sharing, Loom)"* — **ketiganya sah**. Rekomendasinya:
+
+| Tempat | Pakai untuk | Alasan |
+|---|---|---|
+| **YouTube** | video judging **dan** teaser | streaming adaptif (juri tidak perlu mengunduh 28 MB), bisa di-embed di post medsos, ada babak/timestamp + thumbnail + pemutar ponsel yang rapi. Teaser juga **wajib publik** — di Drive, "publik" tidak punya arti yang sama |
+| **Google Drive** | **cadangan master** | folder `hakim-teaser/out/upload/` sudah siap di-drag: video judging 16:9 & 9:16, teaser 16:9 & 9:16, thumbnail, SRT, dan zip kode sumber (1,4 MB) |
+| Loom | tidak perlu | tidak menambah apa pun untuk kebutuhan ini |
+
+Kalau Drive dipakai sebagai tautan **utama**, setel sharing ke *Anyone with the
+link — Viewer*. Drive yang masih "Restricted" adalah kesalahan paling sering, dan
+juri tidak akan mengejar aksesnya. Perhitungkan juga kuota harian Drive untuk
+berkas 28 MB yang ditonton banyak orang sekaligus.
+
+---
+
 ## 1️⃣ Repo (paling dulu)
 
 Repo harus publik **sebelum** video diunggah — deskripsi video menyebutnya.
